@@ -1,9 +1,11 @@
 import * as Sentry from '@sentry/react';
 
 export function initSentry() {
+  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+
   Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    enabled: Boolean(import.meta.env.VITE_SENTRY_DSN),
+    dsn,
+    enabled: Boolean(dsn),
     tracesSampleRate: 1,
   });
 }

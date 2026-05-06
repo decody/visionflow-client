@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "tsc -p tsconfig.json && vite build",
-    "preview": "vite preview",
+    "dev": "next dev --turbopack -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint ."
   },
@@ -20,6 +20,7 @@
     "ag-grid-react": "35.2.1",
     "antd": "6.3.7",
     "axios": "1.16.0",
+    "next": "16.2.4",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "recharts": "3.8.1",
@@ -31,8 +32,6 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@types/three": "0.184.0",
-    "@vitejs/plugin-react": "6.0.1",
-    "typescript": "6.0.3",
-    "vite": "8.0.10"
+    "typescript": "6.0.3"
   }
 }
