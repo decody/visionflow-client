@@ -45,7 +45,7 @@ Deploy this monorepo as two separate Vercel projects from the same Git repositor
   - Root Directory: `apps/web`
   - Framework Preset: Next.js
   - Build Command: `pnpm build`
-  - Output Directory: default
+  - Output Directory: empty/default
 - `visionflow-admin`
   - Root Directory: `apps/admin`
   - Framework Preset: Vite
@@ -53,3 +53,8 @@ Deploy this monorepo as two separate Vercel projects from the same Git repositor
   - Output Directory: `dist`
 
 Assign the public domain to the web project and an admin subdomain, such as `admin.visionflow.com`, to the admin project.
+
+If Vercel reports `No Output Directory named "public" found`, open the failing
+project's Settings > Build and Deployment and clear the stale `public` Output
+Directory value. The web project should leave Output Directory empty, while the
+admin project should use `dist`.
