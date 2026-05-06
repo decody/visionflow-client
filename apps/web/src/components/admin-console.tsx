@@ -1,11 +1,14 @@
 'use client';
 
 import { pipelineRuns, useWorkspaceStore, type PipelineRun } from '@visionflow/shared';
+import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import { Button, Layout, Segmented, Space, Statistic, Typography } from 'antd';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import styles from './admin-console.module.css';
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 const latencyByModel = pipelineRuns.map((run) => ({
   latency: run.latencyMs,
