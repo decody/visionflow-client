@@ -1,5 +1,5 @@
-import Notice from '../../src/features/notice';
+'use client';
 
 export default function NoticePage() {
-  return <Notice />;
+  return <div>Notice</div>;
 }

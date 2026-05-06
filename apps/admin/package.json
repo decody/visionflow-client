@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack -p 3001",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start -p 3001",
     "typecheck": "tsc -p tsconfig.json",
@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@react-three/fiber": "9.6.1",
-    "@sentry/react": "10.51.0",
     "@tanstack/react-query": "5.100.9",
     "@tanstack/react-query-devtools": "5.100.9",
     "@visionflow/shared": "workspace:*",
