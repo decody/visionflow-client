@@ -1,0 +1,38 @@
+{
+  "name": "@visionflow/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.6.1",
+    "@sentry/react": "10.51.0",
+    "@tanstack/react-query": "5.100.9",
+    "@tanstack/react-query-devtools": "5.100.9",
+    "@visionflow/shared": "workspace:*",
+    "ag-grid-community": "35.2.1",
+    "ag-grid-react": "35.2.1",
+    "antd": "6.3.7",
+    "axios": "1.16.0",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "recharts": "3.8.1",
+    "three": "0.184.0",
+    "zustand": "5.0.13"
+  },
+  "devDependencies": {
+    "@types/node": "25.6.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@types/three": "0.184.0",
+    "@vitejs/plugin-react": "6.0.1",
+    "typescript": "6.0.3",
+    "vite": "8.0.10"
+  }
+}
