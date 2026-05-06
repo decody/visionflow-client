@@ -58,3 +58,7 @@ If Vercel reports `No Output Directory named "public" found`, open the failing
 project's Settings > Build and Deployment and clear the stale `public` Output
 Directory value. The web project should use `.next`, while the admin project
 should use `dist`.
+
+The root `vercel.json` is a fallback for a mistakenly root-scoped Vercel project
+and deploys the web app from `apps/web`. For the intended two-project setup,
+still set each Vercel project's Root Directory to `apps/web` or `apps/admin`.
