@@ -60,6 +60,7 @@ export function App() {
           </div>
           <div className={`${styles.tablePanel} ag-theme-quartz`}>
             <AgGridReact<PipelineRun>
+              theme="legacy"
               rowData={pipelineRuns}
               columnDefs={[
                 { field: 'id', headerName: 'Run ID' },

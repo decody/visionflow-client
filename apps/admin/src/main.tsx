@@ -3,6 +3,7 @@ import 'ag-grid-community/styles/ag-theme-quartz.css';
 import 'antd/dist/reset.css';
 import './styles/global.css';
 
+import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { StrictMode } from 'react';
@@ -10,6 +11,8 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from './app';
 import { initSentry } from './lib/sentry';
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 initSentry();
 
