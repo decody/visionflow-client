@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./styles/fonts.css": "./styles/fonts.css",
     "./styles/tokens.css": "./styles/tokens.css"
   },
   "scripts": {

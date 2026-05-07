@@ -1,3 +1,4 @@
+import '@visionflow/ui/styles/fonts.css';
 import '@visionflow/ui/styles/tokens.css';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';

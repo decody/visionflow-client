@@ -2,24 +2,44 @@
   "font": {
     "family": {
       "sans": {
-        "value": "Inter, system-ui, sans-serif"
+        "value": "\"Gmarket Sans\", GmarketSans, Inter, Pretendard, system-ui, sans-serif"
       },
       "mono": {
         "value": "JetBrains Mono, Consolas, monospace"
       }
     },
     "size": {
+      "xs": {
+        "value": "12px"
+      },
       "sm": {
-        "value": "0.875rem"
+        "value": "14px"
       },
-      "md": {
-        "value": "1rem"
-      },
-      "lg": {
-        "value": "1.125rem"
+      "base": {
+        "value": "16px"
       },
       "xl": {
-        "value": "1.25rem"
+        "value": "20px"
+      },
+      "3xl": {
+        "value": "30px"
+      }
+    },
+    "line-height": {
+      "xs": {
+        "value": "18px"
+      },
+      "sm": {
+        "value": "20px"
+      },
+      "base": {
+        "value": "24px"
+      },
+      "xl": {
+        "value": "28px"
+      },
+      "3xl": {
+        "value": "38px"
       }
     },
     "weight": {

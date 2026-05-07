@@ -12,26 +12,66 @@ export const theme = {
     "danger": "#EF4444",
     "brand-green": "#00DA7C"
   },
+  "layout": {
+    "grid": {
+      "breakpoint": {
+        "mobile": "<768px",
+        "tablet": "768px-1023px",
+        "desktop": "1024px-1639px",
+        "wide": ">=1640px"
+      },
+      "container": {
+        "mobile": "calc(100% - 32px)",
+        "tablet": "720px",
+        "desktop": "1080px",
+        "wide": "1640px"
+      },
+      "columns": {
+        "mobile": "4",
+        "tablet": "8",
+        "desktop": "12",
+        "wide": "12"
+      },
+      "gutter": {
+        "mobile": "16px",
+        "tablet": "24px",
+        "desktop": "24px",
+        "wide": "24px"
+      }
+    }
+  },
   "spacing": {
     "0": "0",
-    "1": "0.25rem",
-    "2": "0.5rem",
-    "3": "0.75rem",
-    "4": "1rem",
-    "6": "1.5rem",
-    "8": "2rem",
-    "12": "3rem"
+    "2": "2px",
+    "4": "4px",
+    "8": "8px",
+    "12": "12px",
+    "16": "16px",
+    "20": "20px",
+    "24": "24px",
+    "30": "30px",
+    "32": "32px",
+    "40": "40px",
+    "48": "48px"
   },
   "font": {
     "family": {
-      "sans": "Inter, system-ui, sans-serif",
+      "sans": "\"Gmarket Sans\", GmarketSans, Inter, Pretendard, system-ui, sans-serif",
       "mono": "JetBrains Mono, Consolas, monospace"
     },
     "size": {
-      "sm": "0.875rem",
-      "md": "1rem",
-      "lg": "1.125rem",
-      "xl": "1.25rem"
+      "xs": "12px",
+      "sm": "14px",
+      "base": "16px",
+      "xl": "20px",
+      "3xl": "30px"
+    },
+    "line-height": {
+      "xs": "18px",
+      "sm": "20px",
+      "base": "24px",
+      "xl": "28px",
+      "3xl": "38px"
     },
     "weight": {
       "regular": "400",

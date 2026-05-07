@@ -53,6 +53,9 @@ importers:
       '@visionflow/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@visionflow/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       ag-grid-community:
         specifier: 35.2.1
         version: 35.2.1
