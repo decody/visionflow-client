@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { create } from 'zustand';
 
+export { theme } from './constants/theme';
+export type { Theme } from './constants/theme';
+
 export type VisionMetric = {
   id: string;
   label: string;
