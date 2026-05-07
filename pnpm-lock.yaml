@@ -183,13 +183,6 @@ importers:
         version: 6.0.3
 
   packages/shared:
-    dependencies:
-      axios:
-        specifier: 1.16.0
-        version: 1.16.0
-      zustand:
-        specifier: 5.0.13
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.6)(react@19.2.5)(use-sync-external-store@1.6.0(react@19.2.5))
     devDependencies:
       typescript:
         specifier: 6.0.3

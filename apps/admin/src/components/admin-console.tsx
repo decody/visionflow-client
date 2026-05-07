@@ -1,11 +1,11 @@
 'use client';
 
-import { pipelineRuns, type PipelineRun } from '@visionflow/shared';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import { Statistic, Typography } from 'antd';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
+import { pipelineRuns, type PipelineRun } from '../data/pipeline-runs';
 import styles from './admin-console.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);

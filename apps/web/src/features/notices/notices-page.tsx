@@ -1,8 +1,11 @@
-import { notices, noticeSummaryItems } from '../constants';
-import { toDateTimeValue } from '../date';
+'use client';
+
+import { useNoticeListQuery } from '@/hooks/notices/useNoticeQuery';
 import styles from './notices-page.module.css';
 
 export function NoticesPage() {
+  useNoticeListQuery();
+
   return (
     <main className={styles.page}>
       <header className={styles.hero}>
@@ -14,17 +17,17 @@ export function NoticesPage() {
           </p>
         </div>
 
-        <div aria-label="공지 요약" className={styles.summaryGrid}>
-          {noticeSummaryItems.map((item) => (
+        {/* <div aria-label="공지 요약" className={styles.summaryGrid}>
+          {noticeSummaryItems.map((item: NoticeSummaryItem) => (
             <div className={styles.summaryItem} key={item.label}>
               <strong className={styles.summaryValue}>{item.value}</strong>
               <span className={styles.summaryLabel}>{item.label}</span>
             </div>
           ))}
-        </div>
+        </div> */}
       </header>
 
-      <section aria-label="공지 목록" className={styles.noticeList}>
+      {/* <section aria-label="공지 목록" className={styles.noticeList}>
         {notices.map((notice) => (
           <article className={styles.noticeItem} key={`${notice.category}-${notice.date}`}>
             <div className={styles.noticeBody}>
@@ -37,7 +40,7 @@ export function NoticesPage() {
             </div>
           </article>
         ))}
-      </section>
+      </section> */}
     </main>
   );
 }

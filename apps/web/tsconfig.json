@@ -14,6 +14,6 @@
     "plugins": [{ "name": "next" }],
     "types": ["node"]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next.config.mjs", "../../packages/shared/src/utils/masking.ts", "../../packages/shared/src/utils/date.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next.config.mjs"],
   "exclude": ["node_modules"]
 }

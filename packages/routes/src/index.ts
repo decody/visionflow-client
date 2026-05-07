@@ -20,7 +20,7 @@ export const ROUTES = {
   QNA: {
     ORDERS: '/pages/qna',
     DETAIL: (id: string) => `/qna/${id}`,
-    WRITE: (id: string) => `/qna/write`,
+    WRITE: () => `/qna/write`,
     EDIT: (id: string) => `/notice/${id}/edit`,
   },
 

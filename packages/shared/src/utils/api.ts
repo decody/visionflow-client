@@ -1,15 +1,13 @@
-const DEFAULT_SUPABASE_REST_URL = 'https://milytmxkzwanonnkrkme.supabase.co/rest/v1';
+const SUPABASE_REST_PATH = '/rest/v1';
 
-declare const process:
-  | {
-      env: {
-        NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
-        NEXT_PUBLIC_SUPABASE_REST_URL?: string;
-        NEXT_PUBLIC_SUPABASE_URL?: string;
-      };
-    }
-  | undefined;
+type SupabaseEnv = {
+  NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
+  NEXT_PUBLIC_SUPABASE_REST_URL?: string;
+  NEXT_PUBLIC_SUPABASE_URL?: string;
+};
+
+declare const process: { env: SupabaseEnv } | undefined;
 
 export type ApiResponse<T> = {
   data: T;
@@ -17,145 +15,92 @@ export type ApiResponse<T> = {
 };
 
 export type ApiPayload = Record<string, unknown>;
-export type ApiQueryValue = string | number | boolean | undefined | null;
+export type ApiQueryValue = string | number | boolean | null | undefined;
 
 export type ApiGetOptions = {
   count?: boolean;
   query?: Record<string, ApiQueryValue>;
 };
 
-type RequestHeadersOptions = {
+type RequestOptions = {
+  body?: unknown;
   count?: boolean;
-  preferRepresentation?: boolean;
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  returnRepresentation?: boolean;
+  singleRow?: boolean;
 };
 
-const readEnv = (key: string) => {
-  if (typeof process === 'undefined') {
-    return undefined;
-  }
+const env = () => (typeof process === 'undefined' ? {} : process.env);
+const trimSlash = (value: string) => value.replace(/\/+$/, '');
 
-  switch (key) {
-    case 'NEXT_PUBLIC_SUPABASE_ANON_KEY':
-      return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    case 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY':
-      return process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    case 'NEXT_PUBLIC_SUPABASE_REST_URL':
-      return process.env.NEXT_PUBLIC_SUPABASE_REST_URL;
-    case 'NEXT_PUBLIC_SUPABASE_URL':
-      return process.env.NEXT_PUBLIC_SUPABASE_URL;
-    default:
-      return undefined;
-  }
+const getRestBaseUrl = () => {
+  const { NEXT_PUBLIC_SUPABASE_REST_URL, NEXT_PUBLIC_SUPABASE_URL } = env();
+
+  if (NEXT_PUBLIC_SUPABASE_REST_URL) return trimSlash(NEXT_PUBLIC_SUPABASE_REST_URL);
+  if (NEXT_PUBLIC_SUPABASE_URL)
+    return `${trimSlash(NEXT_PUBLIC_SUPABASE_URL)}${SUPABASE_REST_PATH}`;
+
+  throw new Error(
+    'Supabase URL is required. Set NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_REST_URL.',
+  );
 };
 
-const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
+const getSupabaseKey = () => {
+  const { NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY } = env();
 
-const createRestBaseUrl = () => {
-  const restUrl = readEnv('NEXT_PUBLIC_SUPABASE_REST_URL');
-
-  if (restUrl) {
-    return trimTrailingSlashes(restUrl);
-  }
-
-  const supabaseUrl = readEnv('NEXT_PUBLIC_SUPABASE_URL');
-
-  if (supabaseUrl) {
-    return `${trimTrailingSlashes(supabaseUrl)}/rest/v1`;
-  }
-
-  return DEFAULT_SUPABASE_REST_URL;
+  return NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || NEXT_PUBLIC_SUPABASE_ANON_KEY;
 };
 
-const getSupabaseKey = () =>
-  readEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') ?? readEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-
-const toCamelCase = (key: string) => key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
+const toCamelCase = (key: string) =>
+  key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
 const toSnakeCase = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 
-const normalizeResponseKeys = <T>(data: unknown): T => {
-  if (Array.isArray(data)) {
-    return data.map((item) => normalizeResponseKeys(item)) as T;
-  }
-
-  if (!data || typeof data !== 'object') {
-    return data as T;
-  }
+const mapObjectKeys = (value: unknown, mapKey: (key: string) => string): unknown => {
+  if (Array.isArray(value)) return value.map((item) => mapObjectKeys(item, mapKey));
+  if (!value || typeof value !== 'object') return value;
 
   return Object.fromEntries(
-    Object.entries(data).map(([key, value]) => [toCamelCase(key), normalizeResponseKeys(value)]),
-  ) as T;
-};
-
-const normalizePayloadKeys = (payload: unknown): unknown => {
-  if (Array.isArray(payload)) {
-    return payload.map((item) => normalizePayloadKeys(item));
-  }
-
-  if (!payload || typeof payload !== 'object') {
-    return payload;
-  }
-
-  return Object.fromEntries(
-    Object.entries(payload).map(([key, value]) => [toSnakeCase(key), normalizePayloadKeys(value)]),
+    Object.entries(value).map(([key, item]) => [mapKey(key), mapObjectKeys(item, mapKey)]),
   );
 };
 
 const parsePath = (path: string) => {
-  const pathParts = path.replace(/^\/+/, '').split('?');
-  const pathname = pathParts[0] ?? '';
-  const queryString = pathParts[1] ?? '';
-  const segments = pathname.split('/');
-  const table = segments[0];
-  const id = segments[1];
+  const [pathname = '', queryString = ''] = path.replace(/^\/+/, '').split('?');
+  const [table, id] = pathname.split('/');
 
-  if (!table) {
-    throw new Error('Supabase table name is required.');
-  }
+  if (!table) throw new Error('Supabase table name is required.');
 
   return { id, queryString, table };
 };
 
-const getHeaders = ({ count = false, preferRepresentation = false }: RequestHeadersOptions = {}): HeadersInit => {
-  const supabaseKey = getSupabaseKey();
+const createHeaders = ({ count = false, returnRepresentation = false } = {}): HeadersInit => {
+  const key = getSupabaseKey();
 
-  if (!supabaseKey) {
+  if (!key) {
     throw new Error(
       'Supabase public key is required. Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY.',
     );
   }
 
+  const prefer = [returnRepresentation && 'return=representation', count && 'count=exact']
+    .filter(Boolean)
+    .join(',');
+
   return {
-    apikey: supabaseKey,
-    Authorization: `Bearer ${supabaseKey}`,
+    apikey: key,
+    Authorization: `Bearer ${key}`,
     'Content-Type': 'application/json',
-    ...((preferRepresentation || count) && {
-      Prefer: [preferRepresentation ? 'return=representation' : undefined, count ? 'count=exact' : undefined]
-        .filter(Boolean)
-        .join(','),
-    }),
+    ...(prefer && { Prefer: prefer }),
   };
 };
 
-const createTableUrl = ({
-  id,
-  query,
-  queryString,
-  table,
-}: {
-  id?: string;
-  query?: Record<string, ApiQueryValue>;
-  queryString?: string;
-  table: string;
-}) => {
-  const url = new URL(`${createRestBaseUrl()}/${table}`);
+const createUrl = (path: string, query?: Record<string, ApiQueryValue>) => {
+  const { id, queryString, table } = parsePath(path);
+  const url = new URL(`${getRestBaseUrl()}/${table}`);
 
   url.searchParams.set('select', '*');
 
-  if (queryString) {
-    new URLSearchParams(queryString).forEach((value, key) => {
-      url.searchParams.set(key, value);
-    });
-  }
+  new URLSearchParams(queryString).forEach((value, key) => url.searchParams.set(key, value));
 
   if (id) {
     url.searchParams.set('id', `eq.${id}`);
@@ -163,24 +108,15 @@ const createTableUrl = ({
   }
 
   Object.entries(query ?? {}).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return;
-
-    url.searchParams.set(key, String(value));
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, String(value));
+    }
   });
 
-  return url.toString();
+  return { id, url: url.toString() };
 };
 
-const parseTotalCount = (contentRange: string | null) => {
-  if (!contentRange) return undefined;
-
-  const [, total] = contentRange.split('/');
-  const parsedTotal = Number(total);
-
-  return Number.isFinite(parsedTotal) ? parsedTotal : undefined;
-};
-
-const parseResponse = async (response: Response) => {
+const parseBody = async (response: Response) => {
   const text = await response.text();
 
   if (!text) return null;
@@ -192,101 +128,92 @@ const parseResponse = async (response: Response) => {
   }
 };
 
-const throwIfResponseError = async (response: Response) => {
+const assertSuccess = async (response: Response) => {
   if (response.ok) return;
 
-  const errorBody = await parseResponse(response);
+  const error = await parseBody(response);
 
-  if (errorBody && typeof errorBody === 'object') {
-    const error = errorBody as { details?: string; message?: string };
-    throw new Error(error.message ?? error.details ?? response.statusText);
+  if (error && typeof error === 'object') {
+    const { details, message } = error as { details?: string; message?: string };
+    throw new Error(message ?? details ?? response.statusText);
   }
 
-  throw new Error(typeof errorBody === 'string' ? errorBody : response.statusText);
+  throw new Error(typeof error === 'string' ? error : response.statusText);
 };
 
-const firstRow = <T>(data: unknown): T => {
-  if (Array.isArray(data)) {
-    return data[0] as T;
-  }
+const getTotalCount = (response: Response) => {
+  const total = response.headers.get('content-range')?.split('/')[1];
+  const count = Number(total);
 
-  return data as T;
+  return Number.isFinite(count) ? count : undefined;
 };
 
-const request = async <T>(url: string, options: RequestInit, singleRow = false): Promise<ApiResponse<T>> => {
-  const response = await fetch(url, options);
+const request = async <T>(url: string, options: RequestOptions): Promise<ApiResponse<T>> => {
+  const response = await fetch(url, {
+    body:
+      options.body === undefined
+        ? undefined
+        : JSON.stringify(mapObjectKeys(options.body, toSnakeCase)),
+    headers: createHeaders({
+      count: options.count,
+      returnRepresentation: options.returnRepresentation,
+    }),
+    method: options.method,
+  });
 
-  await throwIfResponseError(response);
+  await assertSuccess(response);
 
-  const data = await parseResponse(response);
-  const responseData = singleRow ? firstRow<T>(data) : (data as T);
+  const body = await parseBody(response);
+  const data = options.singleRow && Array.isArray(body) ? body[0] : body;
 
   return {
-    data: normalizeResponseKeys<T>(responseData),
-    totalCount: parseTotalCount(response.headers.get('content-range')),
+    data: mapObjectKeys(data, toCamelCase) as T,
+    totalCount: getTotalCount(response),
   };
 };
 
 export const apiClient = {
-  async get<T>(path: string, options: ApiGetOptions = {}): Promise<ApiResponse<T>> {
-    const { id, queryString, table } = parsePath(path);
+  get<T>(path: string, options: ApiGetOptions = {}) {
+    const { id, url } = createUrl(path, options.query);
 
-    return request<T>(
-      createTableUrl({ id, query: options.query, queryString, table }),
-      {
-        headers: getHeaders({ count: options.count }),
-        method: 'GET',
-      },
-      Boolean(id),
-    );
+    return request<T>(url, {
+      count: options.count,
+      method: 'GET',
+      singleRow: Boolean(id),
+    });
   },
 
-  async post<T>(path: string, payload: ApiPayload): Promise<ApiResponse<T>> {
-    const { table } = parsePath(path);
-
-    return request<T>(
-      createTableUrl({ table }),
-      {
-        body: JSON.stringify(normalizePayloadKeys(payload)),
-        headers: getHeaders({ preferRepresentation: true }),
-        method: 'POST',
-      },
-      true,
-    );
+  post<T>(path: string, payload: ApiPayload) {
+    return request<T>(createUrl(path).url, {
+      body: payload,
+      method: 'POST',
+      returnRepresentation: true,
+      singleRow: true,
+    });
   },
 
-  async patch<T>(path: string, payload: ApiPayload): Promise<ApiResponse<T>> {
-    const { id, table } = parsePath(path);
+  patch<T>(path: string, payload: ApiPayload) {
+    const { id, url } = createUrl(path);
 
-    if (!id) {
-      throw new Error('Supabase row id is required for update.');
-    }
+    if (!id) throw new Error('Supabase row id is required for update.');
 
-    return request<T>(
-      createTableUrl({ id, table }),
-      {
-        body: JSON.stringify(normalizePayloadKeys(payload)),
-        headers: getHeaders({ preferRepresentation: true }),
-        method: 'PATCH',
-      },
-      true,
-    );
+    return request<T>(url, {
+      body: payload,
+      method: 'PATCH',
+      returnRepresentation: true,
+      singleRow: true,
+    });
   },
 
-  async delete<T>(path: string): Promise<ApiResponse<T>> {
-    const { id, table } = parsePath(path);
+  delete<T>(path: string) {
+    const { id, url } = createUrl(path);
 
-    if (!id) {
-      throw new Error('Supabase row id is required for delete.');
-    }
+    if (!id) throw new Error('Supabase row id is required for delete.');
 
-    return request<T>(
-      createTableUrl({ id, table }),
-      {
-        headers: getHeaders({ preferRepresentation: true }),
-        method: 'DELETE',
-      },
-      true,
-    );
+    return request<T>(url, {
+      method: 'DELETE',
+      returnRepresentation: true,
+      singleRow: true,
+    });
   },
 };

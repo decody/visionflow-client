@@ -1,7 +1,6 @@
 'use client';
 
-import { useWorkspaceStore } from '@visionflow/shared';
-
+import { useWorkspaceStore } from '../../stores/workspace-store';
 import styles from './admin-shell.module.css';
 
 export function AdminHeader() {
