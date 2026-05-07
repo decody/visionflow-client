@@ -1,0 +1,124 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background var(--transition-base),
+    color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ===== Sizes ===== */
+.size_l {
+  min-height: 56px;
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--fs-body-lg);
+}
+
+.size_m {
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-body);
+}
+
+.size_s {
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-small);
+}
+
+/* ===== Primary ===== */
+.variant_primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.variant_primary:hover,
+.variant_primary:active {
+  background: var(--color-primary-dark);
+}
+
+/* ===== Secondary (border style) ===== */
+.variant_secondary {
+  background: var(--color-bg);
+  border: 1.5px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.variant_secondary:hover,
+.variant_secondary:active {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary-dark);
+  color: var(--color-primary-dark);
+}
+
+/* ===== Tertiary ===== */
+.variant_tertiary {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.variant_tertiary:hover,
+.variant_tertiary:active {
+  background: var(--color-disabled-bg);
+}
+
+/* ===== Ghost ===== */
+.variant_ghost {
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.variant_ghost:hover,
+.variant_ghost:active {
+  background: var(--color-primary-softer);
+  color: var(--color-primary-dark);
+}
+
+/* ===== Disabled ===== */
+.btn.disabled,
+.btn.disabled:hover,
+.btn.disabled:active {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.variant_primary.disabled {
+  background: var(--color-disabled-bg);
+  color: var(--color-disabled-text);
+}
+
+.variant_ghost.disabled {
+  background: transparent;
+  color: var(--color-disabled-text);
+}
+
+/* Figma DS에는 Secondary/Tertiary disabled 상태가 없음 — 안전장치로 동일 룩 적용 */
+.variant_secondary.disabled,
+.variant_tertiary.disabled {
+  background: var(--color-disabled-bg);
+  border-color: transparent;
+  color: var(--color-disabled-text);
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.label {
+  display: inline-block;
+}

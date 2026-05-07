@@ -2,7 +2,7 @@
   "font": {
     "family": {
       "sans": {
-        "value": "\"Gmarket Sans\", GmarketSans, Inter, Pretendard, system-ui, sans-serif"
+        "value": "var(--font-inter), var(--font-pretendard), system-ui, sans-serif"
       },
       "mono": {
         "value": "JetBrains Mono, Consolas, monospace"

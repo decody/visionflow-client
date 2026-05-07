@@ -56,7 +56,7 @@ export const theme = {
   },
   "font": {
     "family": {
-      "sans": "\"Gmarket Sans\", GmarketSans, Inter, Pretendard, system-ui, sans-serif",
+      "sans": "var(--font-inter), var(--font-pretendard), system-ui, sans-serif",
       "mono": "JetBrains Mono, Consolas, monospace"
     },
     "size": {

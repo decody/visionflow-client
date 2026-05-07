@@ -1,5 +1,114 @@
 :root {
   font-family: var(--font-family-sans);
+
+  /* Colors — Brand */
+  --color-primary: #004fff;
+  --color-primary-light: #3d6fff;
+  --color-primary-dark: #0040f1;
+  --color-on-primary: #ffffff;
+
+  /* Colors — Neutral */
+  --color-text: #111827;
+  --color-text-secondary: #6b7280;
+  --color-muted: #75787f;
+  --color-bg: #ffffff;
+  --color-surface: #f9fafb;
+  --color-surface-2: #f6f8fb;
+  --color-border: #e8eef2;
+  --color-border-strong: #d1d5db;
+
+  /* Colors — Status */
+  --color-success: #03c75a;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Colors — UI States (from Figma DS Buttons 21:2) */
+  --color-disabled-bg: #e5e7eb;
+  --color-disabled-text: #9ca3af;
+  --color-primary-soft: #e8f0ff;
+  --color-primary-softer: #f1f5ff;
+
+  /* Colors — Category Accents (Hero gradients) */
+  --color-web3d-from: #0e1428;
+  --color-web3d-to: #051026;
+  --color-ad-from: #140f29;
+  --color-ad-via: #3b144a;
+  --color-ad-to: #0a0519;
+  --color-ad-pink: #ec4899;
+  --color-ad-purple: #a855f7;
+  --color-dashboard-from: #0f1428;
+  --color-dashboard-to: #051026;
+
+  /* Typography — Sizes */
+  --fs-h1-hero: 56px;
+  --fs-h1: 36px;
+  --fs-h2: 24px;
+  --fs-h3: 20px;
+  --fs-body-lg: 18px;
+  --fs-body: 16px;
+  --fs-small: 14px;
+  --fs-caption: 13px;
+  --fs-micro: 12px;
+  --fs-tiny: 11px;
+
+  /* Typography — Weights */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* Typography — Line Heights */
+  --lh-tight: 1.2;
+  --lh-snug: 1.3;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.65;
+  --lh-loose: 1.75;
+
+  /* Typography — Letter Spacing */
+  --ls-tighter: -0.02em;
+  --ls-tight: -0.01em;
+  --ls-normal: 0;
+  --ls-wide: 0.05em;
+  --ls-wider: 0.08em;
+  --ls-widest: 0.12em;
+
+  /* Spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* Layout */
+  --container-max: 1200px;
+  --page-padding-x: 120px;
+  --page-padding-x-mobile: 24px;
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1);
+  --shadow-cta: 0 4px 12px rgba(0, 79, 255, 0.3);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
 }
 
 * {
@@ -11,3 +120,10 @@ body {
   min-height: 100vh;
   margin: 0;
 }
+
+/* Breakpoints (reference, used in module.css via media queries):
+   Mobile  : < 768px
+   Tablet  : 768 ~ 1023px
+   Desktop : 1024 ~ 1639px
+   Wide    : >= 1640px
+*/

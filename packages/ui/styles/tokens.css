@@ -41,7 +41,7 @@
   --spacing-32: 32px;
   --spacing-40: 40px;
   --spacing-48: 48px;
-  --font-family-sans: "Gmarket Sans", GmarketSans, Inter, Pretendard, system-ui, sans-serif;
+  --font-family-sans: var(--font-inter), var(--font-pretendard), system-ui, sans-serif;
   --font-family-mono: JetBrains Mono, Consolas, monospace;
   --font-size-xs: 12px;
   --font-size-sm: 14px;
