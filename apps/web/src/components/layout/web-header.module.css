@@ -119,7 +119,7 @@
 
 @media (min-width: 1024px) {
   .inner {
-    grid-template-columns: minmax(230px, 1.4fr) minmax(0, auto) minmax(148px, 0.7fr);
+    grid-template-columns: minmax(230px, 1.4fr) minmax(0, auto) minmax(100px, 0.7fr);
     column-gap: var(--spacing-32);
     width: var(--layout-grid-container-desktop);
     padding: 0;

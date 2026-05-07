@@ -8,8 +8,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
-import { WebShell } from '../src/components/layout/web-shell';
-import { QueryProvider } from '../src/components/query-provider';
+import { WebShell } from '@/components/layout/web-shell';
+import { QueryProvider } from '@/components/query-provider';
 
 export const metadata: Metadata = {
   description: 'VisionFlow realtime computer vision operations dashboard',

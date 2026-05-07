@@ -11,6 +11,10 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.heroText {
+  min-width: 0;
+}
+
 .eyebrow {
   margin: 0;
   color: var(--color-primary);
@@ -121,10 +125,6 @@
     grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
     align-items: end;
     padding-top: var(--spacing-32);
-  }
-
-  .heroText {
-    min-width: 0;
   }
 
   .summaryGrid {
