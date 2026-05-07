@@ -1,30 +1,24 @@
 export const ROUTES = {
   // ─── Web ───────────────────────────────
   HOME: '/',
-
-  ABOUT: {
-    ROOT: '/about',
-    LOGIN: '/about',
-    REGISTER: '/about',
-  },
-
-  WEB_3D: '/web-3d',
-  AD_VISUALS: '/ad-visuals',
-  WEB_APP: '/web-app',
-  DASHBOARD: '/dashboard',
-  WORK: '/work',
-  CONTACT: '/contact',
-  KAKAO: '/kakao',
-  TERMS: '/terms',
-  PRIVACY: '/privacy',
+  ABOUT: '/pages/about',
+  WEB_3D: '/pages/web-3d',
+  AD_VISUALS: '/pages/ad-visuals',
+  WEB_APP: '/pages/web-app',
+  DASHBOARD: '/pages/dashboard',
+  WORK: '/pages/work',
+  CONTACT: '/pages/contact',
+  KAKAO: '/pages/kakao',
+  TERMS: '/pages/terms',
+  PRIVACY: '/pages/privacy',
 
   NOTICES: {
-    ROOT: '/notice',
-    DETAIL: (id: string) => `/notice/${id}`,
+    ROOT: '/pages/notices',
+    DETAIL: (id: string) => `/pages/notices/${id}`,
   },
 
   QNA: {
-    ORDERS: '/qna',
+    ORDERS: '/pages/qna',
     DETAIL: (id: string) => `/qna/${id}`,
     WRITE: (id: string) => `/qna/write`,
     EDIT: (id: string) => `/notice/${id}/edit`,
@@ -33,24 +27,24 @@ export const ROUTES = {
   // ─── Admin ─────────────────────────────
   ADMIN: {
     HOME: '/',
-    NOTICES: '/notice',
-    DASHBOARD: '/admin/dashboard',
+    NOTICES: '/admin/pages/notice',
+    DASHBOARD: '/admin/pages/dashboard',
 
     USERS: {
-      ROOT: '/admin/users',
-      DETAIL: (id: string) => `/admin/users/${id}`,
-      EDIT: (id: string) => `/admin/users/${id}/edit`,
+      ROOT: '/admin/pages/users',
+      DETAIL: (id: string) => `/admin/pages/users/${id}`,
+      EDIT: (id: string) => `/admin/pages/users/${id}/edit`,
     },
 
     PRODUCTS: {
-      ROOT: '/admin/products',
-      CREATE: '/admin/products/create',
-      EDIT: (id: string) => `/admin/products/${id}/edit`,
+      ROOT: '/admin/pages/products',
+      CREATE: '/admin/pages/products/create',
+      EDIT: (id: string) => `/admin/pages/products/${id}/edit`,
     },
 
     ORDERS: {
-      ROOT: '/admin/orders',
-      DETAIL: (id: string) => `/admin/orders/${id}`,
+      ROOT: '/admin/pages/orders',
+      DETAIL: (id: string) => `/admin/pages/orders/${id}`,
     },
   },
 } as const

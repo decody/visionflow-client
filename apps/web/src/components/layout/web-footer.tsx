@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { ROUTES } from '@visionflow/routes';
+import Link from 'next/link';
 
 import styles from './web-footer.module.css';
 
@@ -11,7 +11,7 @@ const serviceLinks = [
 ];
 
 const companyLinks = [
-  { href: ROUTES.ABOUT.ROOT, label: 'About' },
+  { href: ROUTES.ABOUT, label: 'About' },
   { href: ROUTES.WORK, label: 'Work' },
   { href: ROUTES.CONTACT, label: '문의하기' },
   { href: ROUTES.KAKAO, label: '카카오톡 채널' },

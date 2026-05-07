@@ -1,5 +1,7 @@
 .shell {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .content {
@@ -8,4 +10,8 @@
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
   padding: 28px 0 40px;
+}
+
+.shell footer {
+  margin-top: auto;
 }
