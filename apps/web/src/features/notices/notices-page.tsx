@@ -4,10 +4,15 @@ import { useNoticeListQuery } from '@/hooks/notices/useNoticeQuery';
 import styles from './notices-page.module.css';
 
 export function NoticesPage() {
-  useNoticeListQuery();
-
+  const { data: notices = [], isError, isLoading } = useNoticeListQuery();
+  console.log(notices)
   return (
-    <main className={styles.page}>
+    <main
+      aria-busy={isLoading}
+      className={styles.page}
+      data-notice-count={notices.length}
+      data-notice-status={isError ? 'error' : 'ready'}
+    >
       <header className={styles.hero}>
         <div className={styles.heroText}>
           <p className={styles.eyebrow}>Notice</p>

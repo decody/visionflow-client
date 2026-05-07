@@ -3,10 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@visionflow/shared';
 
 const fetchNoticeList = async (): Promise<INotice[]> => {
-  const { data } = await apiClient.get<INotice[]>('notices');
-  console.log(data);
+  const { data } = await apiClient.get<INotice[] | null>('notices');
 
-  return data;
+  return data ?? [];
 };
 
 export const useNoticeListQuery = () => {

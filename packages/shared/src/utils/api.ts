@@ -7,7 +7,7 @@ type SupabaseEnv = {
   NEXT_PUBLIC_SUPABASE_URL?: string;
 };
 
-declare const process: { env: SupabaseEnv } | undefined;
+declare const process: { env: SupabaseEnv };
 
 export type ApiResponse<T> = {
   data: T;
@@ -30,11 +30,11 @@ type RequestOptions = {
   singleRow?: boolean;
 };
 
-const env = () => (typeof process === 'undefined' ? {} : process.env);
 const trimSlash = (value: string) => value.replace(/\/+$/, '');
 
 const getRestBaseUrl = () => {
-  const { NEXT_PUBLIC_SUPABASE_REST_URL, NEXT_PUBLIC_SUPABASE_URL } = env();
+  const NEXT_PUBLIC_SUPABASE_REST_URL = process.env.NEXT_PUBLIC_SUPABASE_REST_URL;
+  const NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   if (NEXT_PUBLIC_SUPABASE_REST_URL) return trimSlash(NEXT_PUBLIC_SUPABASE_REST_URL);
   if (NEXT_PUBLIC_SUPABASE_URL)
@@ -46,7 +46,8 @@ const getRestBaseUrl = () => {
 };
 
 const getSupabaseKey = () => {
-  const { NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY } = env();
+  const NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   return NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || NEXT_PUBLIC_SUPABASE_ANON_KEY;
 };
