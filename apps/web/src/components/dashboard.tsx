@@ -8,7 +8,7 @@ import {
   useWorkspaceStore,
   type PipelineRun,
 } from '@visionflow/shared';
-import { Button, Layout, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
+import { Statistic, Table, Tag, Typography } from 'antd';
 import {
   Area,
   AreaChart,
@@ -54,87 +54,66 @@ function ScenePreview() {
 }
 
 export function Dashboard() {
-  const { activeWorkspace, setActiveWorkspace } = useWorkspaceStore();
+  const { activeWorkspace } = useWorkspaceStore();
   const { data = pipelineRuns } = useQuery({
     queryKey: ['pipeline-runs', activeWorkspace],
     queryFn: async () => pipelineRuns,
   });
 
   return (
-    <Layout className={styles.shell}>
-      <header className={styles.header}>
-        <div>
-          <Typography.Title level={2}>VisionFlow</Typography.Title>
-          <Typography.Text type="secondary">Computer vision operations dashboard</Typography.Text>
+    <>
+      <section className={styles.metrics}>
+        {dashboardMetrics.map((metric) => (
+          <div className={styles.metric} key={metric.id}>
+            <Statistic
+              title={metric.label}
+              value={metric.value}
+              precision={metric.id === 'accuracy' ? 1 : 0}
+              suffix={metric.id === 'accuracy' ? '%' : undefined}
+            />
+            <Typography.Text type={metric.delta > 0 ? 'success' : 'danger'}>
+              {metric.delta > 0 ? '+' : ''}
+              {metric.delta}% this week
+            </Typography.Text>
+          </div>
+        ))}
+      </section>
+
+      <section className={styles.panels}>
+        <div className={styles.panel}>
+          <Typography.Title level={4}>Frame Throughput</Typography.Title>
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart data={trend}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Area dataKey="frames" fill="#2f6fed" fillOpacity={0.18} stroke="#2f6fed" />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
-        <Space>
-          <Select
-            aria-label="Workspace"
-            value={activeWorkspace}
-            onChange={setActiveWorkspace}
-            options={[
-              { label: 'Production', value: 'production' },
-              { label: 'Staging', value: 'staging' },
-            ]}
-          />
-          <Button type="primary">Deploy Model</Button>
-        </Space>
-      </header>
+        <div className={styles.preview}>
+          <ScenePreview />
+        </div>
+      </section>
 
-      <main className={styles.content}>
-        <section className={styles.metrics}>
-          {dashboardMetrics.map((metric) => (
-            <div className={styles.metric} key={metric.id}>
-              <Statistic
-                title={metric.label}
-                value={metric.value}
-                precision={metric.id === 'accuracy' ? 1 : 0}
-                suffix={metric.id === 'accuracy' ? '%' : undefined}
-              />
-              <Typography.Text type={metric.delta > 0 ? 'success' : 'danger'}>
-                {metric.delta > 0 ? '+' : ''}
-                {metric.delta}% this week
-              </Typography.Text>
-            </div>
-          ))}
-        </section>
-
-        <section className={styles.panels}>
-          <div className={styles.panel}>
-            <Typography.Title level={4}>Frame Throughput</Typography.Title>
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={trend}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Area dataKey="frames" fill="#2f6fed" fillOpacity={0.18} stroke="#2f6fed" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className={styles.preview}>
-            <ScenePreview />
-          </div>
-        </section>
-
-        <Table<PipelineRun>
-          rowKey="id"
-          dataSource={data}
-          pagination={false}
-          columns={[
-            { dataIndex: 'id', title: 'Run ID' },
-            { dataIndex: 'model', title: 'Model' },
-            { dataIndex: 'owner', title: 'Owner' },
-            { dataIndex: 'accuracy', title: 'Accuracy', render: (value: number) => `${value}%` },
-            { dataIndex: 'latencyMs', title: 'Latency', render: (value: number) => `${value}ms` },
-            {
-              dataIndex: 'status',
-              title: 'Status',
-              render: (status) => <StatusTag status={status} />,
-            },
-          ]}
-        />
-      </main>
-    </Layout>
+      <Table<PipelineRun>
+        rowKey="id"
+        dataSource={data}
+        pagination={false}
+        columns={[
+          { dataIndex: 'id', title: 'Run ID' },
+          { dataIndex: 'model', title: 'Model' },
+          { dataIndex: 'owner', title: 'Owner' },
+          { dataIndex: 'accuracy', title: 'Accuracy', render: (value: number) => `${value}%` },
+          { dataIndex: 'latencyMs', title: 'Latency', render: (value: number) => `${value}ms` },
+          {
+            dataIndex: 'status',
+            title: 'Status',
+            render: (status) => <StatusTag status={status} />,
+          },
+        ]}
+      />
+    </>
   );
 }

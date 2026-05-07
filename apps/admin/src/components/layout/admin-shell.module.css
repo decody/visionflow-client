@@ -1,0 +1,158 @@
+.shell {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  color: #172033;
+  background: #eef2f5;
+}
+
+.header {
+  display: contents;
+}
+
+.sidebar {
+  grid-row: 1 / span 3;
+  grid-column: 1;
+  padding: 28px 20px;
+  background: #ffffff;
+  border-right: 1px solid #dde4ea;
+}
+
+.brand {
+  margin: 0 0 20px;
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: #eef2f5;
+  border-radius: 8px;
+}
+
+.segment {
+  min-height: 32px;
+  color: #4a5872;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.segment[aria-pressed='true'] {
+  color: #172033;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgb(23 32 51 / 12%);
+}
+
+.topbar {
+  display: flex;
+  grid-row: 1;
+  grid-column: 2;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px 32px 0;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.subtitle,
+.footerText {
+  margin: 0;
+  color: #647089;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.primaryButton,
+.secondaryButton {
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.primaryButton {
+  color: #ffffff;
+  background: #13a37f;
+  border: 1px solid #13a37f;
+}
+
+.secondaryButton {
+  color: #172033;
+  background: #ffffff;
+  border: 1px solid #c9d3df;
+}
+
+.main {
+  display: grid;
+  grid-row: 2;
+  grid-column: 2;
+  gap: 24px;
+  padding: 28px 32px 40px;
+}
+
+.footer {
+  display: flex;
+  grid-row: 3;
+  grid-column: 2;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 32px 32px;
+}
+
+.footerLinks {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #4a5872;
+}
+
+@media (max-width: 920px) {
+  .shell {
+    display: block;
+  }
+
+  .header {
+    display: block;
+  }
+
+  .sidebar {
+    padding: 24px 16px 18px;
+    border-right: 0;
+    border-bottom: 1px solid #dde4ea;
+  }
+
+  .topbar,
+  .footer {
+    display: grid;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .topbar {
+    padding-top: 20px;
+  }
+
+  .main {
+    padding: 20px 16px 40px;
+  }
+}

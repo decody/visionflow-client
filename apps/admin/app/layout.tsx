@@ -8,6 +8,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { AdminShell } from '../src/components/layout/admin-shell';
 import { QueryProvider } from '../src/components/query-provider';
 
 export const metadata: Metadata = {
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="ko">
       <body>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <AdminShell>{children}</AdminShell>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -1,30 +1,3 @@
-.shell {
-  min-height: 100vh;
-  background: #eef2f5;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 28px 40px 20px;
-  background: #ffffff;
-  border-bottom: 1px solid #dde4ea;
-}
-
-.header h2 {
-  margin: 0 0 4px;
-}
-
-.content {
-  display: grid;
-  gap: 24px;
-  width: min(1180px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 28px 0 48px;
-}
-
 .metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -63,14 +36,8 @@
 }
 
 @media (max-width: 860px) {
-  .header,
   .metrics,
   .panels {
     grid-template-columns: 1fr;
-  }
-
-  .header {
-    display: grid;
-    padding: 24px 16px 18px;
   }
 }
