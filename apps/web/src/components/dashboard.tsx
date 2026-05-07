@@ -97,23 +97,26 @@ export function Dashboard() {
         </div>
       </section>
 
-      <Table<PipelineRun>
-        rowKey="id"
-        dataSource={data}
-        pagination={false}
-        columns={[
-          { dataIndex: 'id', title: 'Run ID' },
-          { dataIndex: 'model', title: 'Model' },
-          { dataIndex: 'owner', title: 'Owner' },
-          { dataIndex: 'accuracy', title: 'Accuracy', render: (value: number) => `${value}%` },
-          { dataIndex: 'latencyMs', title: 'Latency', render: (value: number) => `${value}ms` },
-          {
-            dataIndex: 'status',
-            title: 'Status',
-            render: (status) => <StatusTag status={status} />,
-          },
-        ]}
-      />
+      <div className={styles.tableWrap}>
+        <Table<PipelineRun>
+          rowKey="id"
+          dataSource={data}
+          pagination={false}
+          scroll={{ x: 760 }}
+          columns={[
+            { dataIndex: 'id', title: 'Run ID' },
+            { dataIndex: 'model', title: 'Model' },
+            { dataIndex: 'owner', title: 'Owner' },
+            { dataIndex: 'accuracy', title: 'Accuracy', render: (value: number) => `${value}%` },
+            { dataIndex: 'latencyMs', title: 'Latency', render: (value: number) => `${value}ms` },
+            {
+              dataIndex: 'status',
+              title: 'Status',
+              render: (status) => <StatusTag status={status} />,
+            },
+          ]}
+        />
+      </div>
     </>
   );
 }

@@ -1,21 +1,21 @@
 .footer {
   width: 100%;
   color: #111827;
-  background: #ffffff;
+  background: var(--color-background);
 }
 
 .inner {
-  width: min(1440px, calc(100% - 64px));
+  width: var(--layout-grid-container-mobile);
   margin: 0 auto;
-  padding: 63px 0 31px;
+  padding: var(--spacing-40) 0 var(--spacing-32);
 }
 
 .top {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  column-gap: 72px;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-32);
   align-items: start;
-  padding-bottom: 51px;
+  padding-bottom: var(--spacing-40);
 }
 
 .brandBlock {
@@ -58,10 +58,10 @@
 }
 
 .logoText {
-  font-size: 31px;
+  font-size: 26px;
   font-weight: 900;
   line-height: 1;
-  letter-spacing: -1px;
+  letter-spacing: 0;
 }
 
 .tagline {
@@ -103,13 +103,13 @@
 }
 
 .bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
+  display: grid;
+  align-items: start;
+  justify-content: start;
+  gap: var(--spacing-16);
   min-height: 64px;
-  padding-top: 23px;
-  border-top: 1px solid #e0e5ec;
+  padding-top: var(--spacing-24);
+  border-top: 1px solid var(--color-border);
 }
 
 .copyright {
@@ -123,7 +123,8 @@
 .legalLinks {
   display: flex;
   align-items: center;
-  gap: 26px;
+  flex-wrap: wrap;
+  gap: var(--spacing-16) var(--spacing-24);
 }
 
 .legalLinks a {
@@ -135,34 +136,58 @@
   text-decoration: none;
 }
 
-@media (max-width: 760px) {
+@media (min-width: 768px) {
   .inner {
-    width: min(100% - 32px, 1200px);
-    padding-top: 40px;
+    width: var(--layout-grid-container-tablet);
   }
 
   .top {
     grid-template-columns: 1fr 1fr;
-    row-gap: 36px;
-    column-gap: 32px;
-    padding-bottom: 40px;
+    gap: var(--spacing-40) var(--spacing-32);
   }
 
   .brandBlock {
     grid-column: 1 / -1;
   }
+}
+
+@media (min-width: 1024px) {
+  .inner {
+    width: var(--layout-grid-container-desktop);
+    padding-top: var(--spacing-48);
+  }
+
+  .top {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    column-gap: var(--spacing-48);
+  }
+
+  .brandBlock {
+    grid-column: auto;
+  }
 
   .bottom {
-    display: grid;
-    justify-items: start;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+@media (min-width: 1640px) {
+  .inner {
+    width: var(--layout-grid-container-wide);
+  }
+
+  .top {
+    column-gap: 72px;
+  }
+
+  .logoText {
+    font-size: 31px;
   }
 }
 
 @media (max-width: 420px) {
-  .top {
-    grid-template-columns: 1fr;
-  }
-
   .logoMark {
     grid-template-columns: 24px 24px;
     width: 48px;

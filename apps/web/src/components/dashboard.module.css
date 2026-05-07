@@ -1,29 +1,30 @@
 .metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-16);
 }
 
 .metric,
 .panel,
 .preview {
-  background: #ffffff;
-  border: 1px solid #dde4ea;
+  min-width: 0;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
 .metric {
-  padding: 20px;
+  padding: var(--spacing-20);
 }
 
 .panels {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-16);
 }
 
 .panel {
-  padding: 20px;
+  padding: var(--spacing-20);
 }
 
 .panel h4 {
@@ -31,13 +32,28 @@
 }
 
 .preview {
-  min-height: 320px;
+  aspect-ratio: 16 / 10;
+  min-height: 240px;
   overflow: hidden;
 }
 
-@media (max-width: 860px) {
-  .metrics,
+.tableWrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+@media (min-width: 768px) {
+  .metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
   .panels {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
+  }
+
+  .preview {
+    min-height: 320px;
   }
 }

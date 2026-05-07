@@ -6,12 +6,31 @@
 
 .content {
   display: grid;
-  gap: 24px;
-  width: min(1180px, calc(100% - 32px));
+  gap: var(--spacing-24);
+  width: var(--layout-grid-container-mobile);
   margin: 0 auto;
-  padding: 28px 0 40px;
+  padding: var(--spacing-24) 0 var(--spacing-40);
 }
 
 .shell footer {
   margin-top: auto;
+}
+
+@media (min-width: 768px) {
+  .content {
+    width: var(--layout-grid-container-tablet);
+    padding-top: var(--spacing-32);
+  }
+}
+
+@media (min-width: 1024px) {
+  .content {
+    width: var(--layout-grid-container-desktop);
+  }
+}
+
+@media (min-width: 1640px) {
+  .content {
+    width: var(--layout-grid-container-wide);
+  }
 }
