@@ -1,6 +1,6 @@
+import { ROUTES } from '@visionflow/routes';
 import { Gauge, Home } from 'lucide-react';
 import Link from 'next/link';
-
 import styles from './not-found.module.css';
 
 export default function NotFound() {
@@ -21,11 +21,12 @@ export default function NotFound() {
         </div>
 
         <div className={styles.actions}>
-          <Link className={styles.primaryAction} href="/">
+          <Link className={styles.primaryAction} href={ROUTES.ADMIN.HOME}>
             <Home size={17} aria-hidden="true" />
             콘솔 홈으로 이동
           </Link>
-          <Link className={styles.secondaryAction} href="/notice">
+          <Link className={styles.secondaryAction} href={ROUTES.ADMIN.NOTICES}>
+     
             공지사항 보기
           </Link>
         </div>

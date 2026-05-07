@@ -1,6 +1,7 @@
 import { Home, Radar } from 'lucide-react';
 import Link from 'next/link';
 
+import { ROUTES } from '@visionflow/routes';
 import styles from './not-found.module.css';
 
 export default function NotFound() {
@@ -21,7 +22,7 @@ export default function NotFound() {
         </div>
 
         <div className={styles.actions}>
-          <Link className={styles.primaryAction} href="/">
+          <Link className={styles.primaryAction} href={ROUTES.HOME}>
             <Home size={17} aria-hidden="true" />
             홈으로 이동
           </Link>

@@ -12,6 +12,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "paths": {
+      "@visionflow/routes": ["packages/routes/src/index.ts"],
       "@visionflow/shared": ["packages/shared/src/index.ts"]
     },
     "resolveJsonModule": true,

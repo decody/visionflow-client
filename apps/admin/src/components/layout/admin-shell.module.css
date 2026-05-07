@@ -4,7 +4,6 @@
   grid-template-rows: auto 1fr auto;
   min-height: 100vh;
   color: #172033;
-  background: #eef2f5;
 }
 
 .header {
@@ -31,7 +30,6 @@
   grid-template-columns: 1fr 1fr;
   gap: 4px;
   padding: 4px;
-  background: #eef2f5;
   border-radius: 8px;
 }
 

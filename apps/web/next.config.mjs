@@ -1,6 +1,6 @@
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@visionflow/shared'],
+  transpilePackages: ['@visionflow/routes', '@visionflow/shared'],
 };
 
 export default nextConfig;
