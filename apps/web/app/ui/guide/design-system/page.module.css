@@ -3,7 +3,28 @@
   background: var(--color-background);
   color: #111827;
   font-family: var(--font-family-sans);
-  padding: var(--spacing-20) var(--spacing-32) var(--spacing-40);
+  padding: var(--spacing-16) var(--spacing-32) var(--spacing-40);
+}
+
+.pageHeader {
+  margin: 0 0 var(--spacing-40);
+}
+
+.pageTitle {
+  align-items: center;
+  display: flex;
+  font-size: 40px;
+  font-weight: 800;
+  gap: var(--spacing-8);
+  letter-spacing: 0;
+  line-height: 48px;
+  margin: 0;
+}
+
+.titleIcon {
+  flex: 0 0 auto;
+  font-size: 34px;
+  line-height: 1;
 }
 
 .section {
@@ -19,10 +40,11 @@
 }
 
 .sectionTitle {
-  font-size: var(--font-size-3xl);
+  font-size: 26px;
   font-weight: var(--font-weight-bold);
-  line-height: var(--font-line-height-3xl);
-  margin: 0 0 var(--spacing-20);
+  letter-spacing: 0;
+  line-height: 34px;
+  margin: 0 0 var(--spacing-24);
 }
 
 .typographyList {
@@ -291,8 +313,26 @@
     padding: var(--spacing-20) var(--spacing-16) var(--spacing-32);
   }
 
+  .pageHeader {
+    margin-bottom: var(--spacing-32);
+  }
+
+  .pageTitle {
+    font-size: 32px;
+    line-height: 40px;
+  }
+
+  .titleIcon {
+    font-size: 28px;
+  }
+
   .section + .section {
     margin-top: var(--spacing-32);
+  }
+
+  .sectionTitle {
+    font-size: 24px;
+    line-height: 32px;
   }
 
   .typographyRow,

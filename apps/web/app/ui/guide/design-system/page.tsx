@@ -3,6 +3,7 @@
 import { theme } from '@visionflow/shared';
 import { useState } from 'react';
 
+import { PaletteIcon } from 'lucide-react';
 import styles from './page.module.css';
 
 const colorTokens = [
@@ -141,9 +142,9 @@ const spacingTokens: Array<{ name: string; value: string; variable: string }> = 
 const layoutRows = [
   {
     breakpoint: 'Mobile (<768)',
-    container: '100% - 32',
-    columns: '4 columns',
-    gutter: '16 gutter',
+    container: theme.layout.grid.container.mobile,
+    columns: `${theme.layout.grid.columns.mobile} columns`,
+    gutter: theme.layout.grid.gutter.mobile,
     variables: [
       '--layout-grid-container-mobile',
       '--layout-grid-columns-mobile',
@@ -152,9 +153,9 @@ const layoutRows = [
   },
   {
     breakpoint: 'Tablet (768-1023)',
-    container: theme.layout.grid.container.tablet.replace('px', ''),
-    columns: '8 columns',
-    gutter: '24 gutter',
+    container: theme.layout.grid.container.tablet,
+    columns: `${theme.layout.grid.columns.tablet} columns`,
+    gutter: theme.layout.grid.gutter.tablet,
     variables: [
       '--layout-grid-container-tablet',
       '--layout-grid-columns-tablet',
@@ -163,9 +164,9 @@ const layoutRows = [
   },
   {
     breakpoint: 'Desktop (1024-1639)',
-    container: theme.layout.grid.container.desktop.replace('px', ''),
-    columns: '12 columns',
-    gutter: '24 gutter',
+    container: theme.layout.grid.container.desktop,
+    columns: `${theme.layout.grid.columns.desktop} columns`,
+    gutter: theme.layout.grid.gutter.desktop,
     variables: [
       '--layout-grid-container-desktop',
       '--layout-grid-columns-desktop',
@@ -174,9 +175,9 @@ const layoutRows = [
   },
   {
     breakpoint: 'Wide (>=1640)',
-    container: theme.layout.grid.container.wide.replace('px', ''),
-    columns: '12 columns',
-    gutter: '24 gutter',
+    container: theme.layout.grid.container.wide,
+    columns: `${theme.layout.grid.columns.wide} columns`,
+    gutter: theme.layout.grid.gutter.wide,
     variables: [
       '--layout-grid-container-wide',
       '--layout-grid-columns-wide',
@@ -196,10 +197,19 @@ export default function DesignSystem() {
 
   return (
     <main className={styles.page}>
-      <section aria-labelledby="color-title" className={`${styles.section} ${styles.colorSection}`}>
-        <h1 className={styles.sectionTitle} id="color-title">
-          Color Palette
+      <header className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>
+          <span aria-hidden="true" className={styles.titleIcon}>
+            <PaletteIcon size={34} color="#EF4444" /> 
+          </span>
+          Design Tokens
         </h1>
+      </header>
+
+      <section aria-labelledby="color-title" className={`${styles.section} ${styles.colorSection}`}>
+        <h2 className={styles.sectionTitle} id="color-title">
+          Color Palette
+        </h2>
 
         <div aria-label="Color tokens" className={styles.colorGrid}>
           {colorTokens.map((token) => (
@@ -210,7 +220,7 @@ export default function DesignSystem() {
               />
               <div className={styles.colorMeta}>
                 <div>
-                  <h2 className={styles.colorName}>{token.name}</h2>
+                  <h3 className={styles.colorName}>{token.name}</h3>
                   <p className={styles.hex}>{token.hex}</p>
                   <code className={styles.tokenCode}>{token.variable}</code>
                 </div>
@@ -229,9 +239,9 @@ export default function DesignSystem() {
       </section>
 
       <section aria-labelledby="typography-title" className={styles.section}>
-        <h1 className={styles.sectionTitle} id="typography-title">
+        <h2 className={styles.sectionTitle} id="typography-title">
           Typography
-        </h1>
+        </h2>
 
         <div className={styles.typographyList}>
           {typographyTokens.map((item) => (
