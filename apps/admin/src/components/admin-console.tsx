@@ -6,7 +6,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { Button, Layout, Segmented, Space, Statistic, Typography } from 'antd';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-import styles from './app.module.css';
+import styles from './admin-console.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -15,7 +15,7 @@ const latencyByModel = pipelineRuns.map((run) => ({
   model: run.model.replace(' ', '\n'),
 }));
 
-export function App() {
+export function AdminConsole() {
   const { activeWorkspace, setActiveWorkspace } = useWorkspaceStore();
 
   return (

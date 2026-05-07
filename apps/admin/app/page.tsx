@@ -1,5 +1,5 @@
-import { App } from '../src/app';
+import { AdminConsole } from '../src/components/admin-console';
 
 export default function AdminPage() {
-  return <App />;
+  return <AdminConsole />;
 }
