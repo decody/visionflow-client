@@ -29,7 +29,10 @@ StyleDictionary.registerFormat({
 });
 
 export default {
-  source: ['tokens/**/*.json'],
+  source: [
+    'tokens/base/**/*.json',
+    // 'tokens/semantic/**/*.json',
+  ],
   platforms: {
     css: {
       transformGroup: 'css',

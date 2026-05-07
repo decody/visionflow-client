@@ -1,43 +1,16 @@
 // AUTO GENERATED - DO NOT EDIT
 export const theme = {
   "color": {
-    "white": "#ffffff",
-    "black": "#111827",
-    "blue": {
-      "50": "#eff6ff",
-      "500": "#3b82f6",
-      "700": "#1d4ed8"
-    },
-    "gray": {
-      "50": "#f9fafb",
-      "100": "#f3f4f6",
-      "500": "#6b7280",
-      "900": "#111827"
-    },
-    "red": {
-      "500": "#ef4444"
-    },
-    "green": {
-      "500": "#22c55e"
-    },
-    "background": {
-      "canvas": "#f9fafb",
-      "surface": "#ffffff"
-    },
-    "foreground": {
-      "primary": "#111827",
-      "muted": "#6b7280",
-      "inverse": "#ffffff"
-    },
-    "brand": {
-      "primary": "#3b82f6",
-      "strong": "#1d4ed8",
-      "subtle": "#eff6ff"
-    },
-    "status": {
-      "success": "#22c55e",
-      "danger": "#ef4444"
-    }
+    "primary": "#004FFF",
+    "primary-light": "#3D6FFF",
+    "primary-dark": "#0040F1",
+    "secondary": "#6B7280",
+    "background": "#FFFFFF",
+    "surface": "#F9FAFB",
+    "border": "#E8EEF2",
+    "success": "#03C75A",
+    "danger": "#EF4444",
+    "brand-green": "#00DA7C"
   },
   "spacing": {
     "0": "0",

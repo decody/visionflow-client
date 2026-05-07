@@ -1,0 +1,137 @@
+.page {
+  min-height: 100vh;
+  background: var(--color-background);
+  color: #111827;
+  font-family: var(--font-family-sans);
+  padding: 40px 22px;
+}
+
+.header {
+  margin: 0 auto 24px;
+  max-width: 1180px;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  gap: 22px 20px;
+  grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
+  margin: 0 auto;
+  max-width: 1180px;
+}
+
+.card {
+  min-width: 0;
+}
+
+.swatch {
+  aspect-ratio: 7 / 4;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+  width: 100%;
+}
+
+.swatchBordered {
+  border-color: #e8eef2;
+}
+
+.primarySwatch {
+  background: var(--color-primary);
+}
+
+.primaryLightSwatch {
+  background: var(--color-primary-light);
+}
+
+.primaryDarkSwatch {
+  background: var(--color-primary-dark);
+}
+
+.secondarySwatch {
+  background: var(--color-secondary);
+}
+
+.backgroundSwatch {
+  background: var(--color-background);
+}
+
+.surfaceSwatch {
+  background: var(--color-surface);
+}
+
+.borderSwatch {
+  background: var(--color-border);
+}
+
+.successSwatch {
+  background: var(--color-success);
+}
+
+.dangerSwatch {
+  background: var(--color-danger);
+}
+
+.brandGreenSwatch {
+  background: var(--color-brand-green);
+}
+
+.meta {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 9px;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.hex {
+  color: var(--color-secondary);
+  font-size: 13px;
+  line-height: 1.3;
+  margin: 7px 0 0;
+}
+
+.variable {
+  color: var(--color-secondary);
+  display: block;
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  line-height: 1.3;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+
+.copyButton {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: #111827;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.copyButtonActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-background);
+}
