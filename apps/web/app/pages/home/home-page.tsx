@@ -1,16 +1,43 @@
+'use client';
+
 import { ROUTES } from '@visionflow/routes';
 import Link from 'next/link';
 
 import { Container } from '@/components/common/container';
 
-import { FaqPage } from '@/components/pages/faq/faq-page';
+import { FaqPage } from '@/components/common/faq/faq-page';
+import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
 import styles from './home-page.module.css';
 
 const heroChips = [
-  { label: 'Web 3D', color: '#8c4dd9', rotate: 2, top: 560, left: 158.92 },
-  { label: 'Ad Visuals', color: '#f26659', rotate: -1, top: 598, left: 380 },
-  { label: 'Web & App', color: '#338cff', rotate: 1, top: 600, left: 879 },
-  { label: 'Dashboard', color: '#33c78c', rotate: -2, top: 566, left: 1100 },
+  {
+    label: 'Web 3D',
+    color: '#8c4dd9',
+    rotate: 2,
+    top: 560,
+    left: 158.92,
+  },
+  {
+    label: 'Ad Visuals',
+    color: '#f26659',
+    rotate: -1,
+    top: 598,
+    left: 380,
+  },
+  {
+    label: 'Web & App',
+    color: '#338cff',
+    rotate: 1,
+    top: 600,
+    left: 879,
+  },
+  {
+    label: 'Dashboard',
+    color: '#33c78c',
+    rotate: -2,
+    top: 566,
+    left: 1100,
+  },
 ];
 
 interface ServiceCard {
@@ -37,7 +64,12 @@ const services: ServiceCard[] = [
     category: '광고 이미지',
     title: '클릭을 부르는 한 장',
     desc: '제품 컷부터 캠페인 키 비주얼까지. AI로 빠르게, 브랜드 톤은 일관되게.',
-    tags: ['이커머스 상세컷', 'SNS 멀티 비율', '4K 고해상도', '톤 학습'],
+    tags: [
+      '이커머스 상세컷',
+      'SNS 멀티 비율',
+      '4K 고해상도',
+      '톤 학습',
+    ],
     gradient: 'linear-gradient(165deg, #ffa659 0%, #f24d4d 73%)',
     badge: '100+ VARIATIONS',
     href: ROUTES.AD_VISUALS,
@@ -66,8 +98,7 @@ const whyCards = [
   {
     no: '01',
     title: 'End-to-End 풀스택',
-    desc:
-      '기획·디자인·AI 제작·웹 개발·운영까지. 한 팀이 책임지니 외주 단계마다 발생하던 커뮤니케이션 손실이 사라집니다.',
+    desc: '기획·디자인·AI 제작·웹 개발·운영까지. 한 팀이 책임지니 외주 단계마다 발생하던 커뮤니케이션 손실이 사라집니다.',
     eyebrow: 'ONE TEAM',
     sub: '커뮤니케이션 손실 0회',
     icon: 'flow',
@@ -75,8 +106,7 @@ const whyCards = [
   {
     no: '02',
     title: 'Korean Market Fit',
-    desc:
-      '국내 마케팅·이커머스·교육 도메인에 대한 깊은 이해. 토스·카카오페이·네이버 SEO까지 현장에서 통하는 결과물을 만듭니다.',
+    desc: '국내 마케팅·이커머스·교육 도메인에 대한 깊은 이해. 토스·카카오페이·네이버 SEO까지 현장에서 통하는 결과물을 만듭니다.',
     eyebrow: 'KR-FIRST',
     sub: '국내 도메인 깊은 이해',
     icon: 'kr',
@@ -84,8 +114,7 @@ const whyCards = [
   {
     no: '03',
     title: 'AI 도구 + 사람 디렉션',
-    desc:
-      'AI는 빠른 생산을 위한 도구. 디자이너와 개발자가 디렉션하고, 결과물의 최종 책임은 우리 팀이 집니다.',
+    desc: 'AI는 빠른 생산을 위한 도구. 디자이너와 개발자가 디렉션하고, 결과물의 최종 책임은 우리 팀이 집니다.',
     eyebrow: 'AI + HUMAN',
     sub: '결과물의 책임은 사람이',
     icon: 'ai',
@@ -142,10 +171,30 @@ const featuredWorks: FeaturedWork[] = [
 ];
 
 const stats = [
-  { value: '120', suffix: '+', label: '누적 프로젝트', sub: '2024년까지 누적' },
-  { value: '80', suffix: '+', label: '협업 고객사', sub: '스타트업부터 대기업까지' },
-  { value: '5', suffix: '일', label: '평균 납기', sub: '광고 이미지 기준' },
-  { value: '85', suffix: '%', label: '재의뢰율', sub: '프로젝트 완료 후' },
+  {
+    value: '120',
+    suffix: '+',
+    label: '누적 프로젝트',
+    sub: '2024년까지 누적',
+  },
+  {
+    value: '80',
+    suffix: '+',
+    label: '협업 고객사',
+    sub: '스타트업부터 대기업까지',
+  },
+  {
+    value: '5',
+    suffix: '일',
+    label: '평균 납기',
+    sub: '광고 이미지 기준',
+  },
+  {
+    value: '85',
+    suffix: '%',
+    label: '재의뢰율',
+    sub: '프로젝트 완료 후',
+  },
 ];
 
 const processSteps = [
@@ -228,6 +277,9 @@ const testimonials: Testimonial[] = [
 ];
 
 export function HomePage() {
+  // 자주하는 질문
+  const { data: faqs = [] } = useFaqListQuery();
+
   return (
     <>
       <section className={styles.hero}>
@@ -238,7 +290,10 @@ export function HomePage() {
         <div aria-hidden="true" className={styles.heroGrid} />
         <div className={styles.heroCenter}>
           <span className={styles.heroEyebrow}>
-            <span aria-hidden="true" className={styles.heroEyebrowDot} />
+            <span
+              aria-hidden="true"
+              className={styles.heroEyebrowDot}
+            />
             AI-powered Digital Studio · 2026 New
           </span>
           <h1 className={styles.heroTitle}>
@@ -247,13 +302,20 @@ export function HomePage() {
             결과물은 우리의 책임.
           </h1>
           <p className={styles.heroSub}>
-            웹 3D, 광고 이미지, 웹·앱, 데이터 대시보드까지 — 한 팀이 만듭니다.
+            웹 3D, 광고 이미지, 웹·앱, 데이터 대시보드까지 — 한 팀이
+            만듭니다.
           </p>
           <div className={styles.heroCtas}>
-            <Link className={`${styles.heroCta} ${styles.heroCtaPrimary}`} href={ROUTES.CONTACT}>
+            <Link
+              className={`${styles.heroCta} ${styles.heroCtaPrimary}`}
+              href={ROUTES.CONTACT}
+            >
               무료 견적 받기 <span aria-hidden="true">→</span>
             </Link>
-            <Link className={`${styles.heroCta} ${styles.heroCtaGhost}`} href={ROUTES.WORK}>
+            <Link
+              className={`${styles.heroCta} ${styles.heroCtaGhost}`}
+              href={ROUTES.WORK}
+            >
               포트폴리오 보기
             </Link>
           </div>
@@ -269,12 +331,17 @@ export function HomePage() {
               transform: `rotate(${c.rotate}deg)`,
             }}
           >
-            <span className={styles.heroFloatDot} style={{ background: c.color }} />
+            <span
+              className={styles.heroFloatDot}
+              style={{ background: c.color }}
+            />
             {c.label}
           </span>
         ))}
         <div aria-hidden="true" className={styles.heroScroll}>
-          <span className={styles.heroScrollText}>Scroll to explore</span>
+          <span className={styles.heroScrollText}>
+            Scroll to explore
+          </span>
           <span className={styles.heroScrollIcon}>↓</span>
         </div>
       </section>
@@ -283,22 +350,35 @@ export function HomePage() {
         <Container>
           <header className={styles.sectionHead}>
             <span className={styles.eyebrow}>Services</span>
-            <h2 className={styles.sectionTitle}>한 팀이 책임지는 4가지 라인업</h2>
+            <h2 className={styles.sectionTitle}>
+              한 팀이 책임지는 4가지 라인업
+            </h2>
             <p className={styles.sectionSub}>
-              AI를 도구로, 사람의 디렉션으로. 4개 영역을 모두 같은 디자인 언어로 만듭니다.
+              AI를 도구로, 사람의 디렉션으로. 4개 영역을 모두 같은
+              디자인 언어로 만듭니다.
             </p>
           </header>
           <ul className={styles.servicesGrid}>
             {services.map((s) => (
               <li className={styles.serviceItem} key={s.title}>
                 <Link className={styles.serviceCard} href={s.href}>
-                  <div className={styles.serviceVisual} style={{ backgroundImage: s.gradient }}>
-                    <span className={styles.serviceVisualBadge}>{s.badge}</span>
+                  <div
+                    className={styles.serviceVisual}
+                    style={{ backgroundImage: s.gradient }}
+                  >
+                    <span className={styles.serviceVisualBadge}>
+                      {s.badge}
+                    </span>
                   </div>
                   <div className={styles.serviceBody}>
                     <div className={styles.serviceTopRow}>
-                      <span className={styles.serviceCat}>{s.category}</span>
-                      <span aria-hidden="true" className={styles.serviceArrow}>
+                      <span className={styles.serviceCat}>
+                        {s.category}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={styles.serviceArrow}
+                      >
                         →
                       </span>
                     </div>
@@ -323,9 +403,12 @@ export function HomePage() {
         <Container>
           <header className={styles.sectionHead}>
             <span className={styles.eyebrow}>Why VisionFlow</span>
-            <h2 className={styles.sectionTitle}>왜 VisionFlow를 선택해야 하나요?</h2>
+            <h2 className={styles.sectionTitle}>
+              왜 VisionFlow를 선택해야 하나요?
+            </h2>
             <p className={styles.sectionSub}>
-              다른 곳과 다른 3가지 이유. 외주가 아닌 디지털 파트너십을 추구합니다.
+              다른 곳과 다른 3가지 이유. 외주가 아닌 디지털 파트너십을
+              추구합니다.
             </p>
           </header>
           <ul className={styles.whyGrid}>
@@ -333,9 +416,15 @@ export function HomePage() {
               <li className={styles.whyItem} key={w.no}>
                 <article className={styles.whyCard}>
                   <div className={styles.whyVisual}>
-                    <span className={styles.whyVisualEyebrow}>{w.eyebrow}</span>
-                    <div className={`${styles.whyIllust} ${styles[`whyIllust_${w.icon}`] ?? ''}`} />
-                    <span className={styles.whyVisualSub}>{w.sub}</span>
+                    <span className={styles.whyVisualEyebrow}>
+                      {w.eyebrow}
+                    </span>
+                    <div
+                      className={`${styles.whyIllust} ${styles[`whyIllust_${w.icon}`] ?? ''}`}
+                    />
+                    <span className={styles.whyVisualSub}>
+                      {w.sub}
+                    </span>
                   </div>
                   <div className={styles.whyBody}>
                     <span className={styles.whyNo}>{w.no}</span>
@@ -354,8 +443,12 @@ export function HomePage() {
           <div className={styles.featuredHead}>
             <header className={styles.sectionHead}>
               <span className={styles.eyebrow}>Featured Work</span>
-              <h2 className={styles.sectionTitle}>신뢰를 만든 결과물</h2>
-              <p className={styles.sectionSub}>각 카테고리에서 선정한 대표 프로젝트입니다.</p>
+              <h2 className={styles.sectionTitle}>
+                신뢰를 만든 결과물
+              </h2>
+              <p className={styles.sectionSub}>
+                각 카테고리에서 선정한 대표 프로젝트입니다.
+              </p>
             </header>
             <Link className={styles.seeAll} href={ROUTES.WORK}>
               전체 작업 보기 <span aria-hidden="true">→</span>
@@ -365,20 +458,31 @@ export function HomePage() {
             {featuredWorks.map((w) => (
               <li className={styles.featuredItem} key={w.title}>
                 <article className={styles.featuredCard}>
-                  <div className={styles.featuredImage} style={{ backgroundImage: w.gradient }}>
-                    <span className={styles.featuredImageBadge}>{w.badge}</span>
+                  <div
+                    className={styles.featuredImage}
+                    style={{ backgroundImage: w.gradient }}
+                  >
+                    <span className={styles.featuredImageBadge}>
+                      {w.badge}
+                    </span>
                   </div>
                   <div className={styles.featuredBody}>
                     <div className={styles.featuredTopRow}>
                       <div className={styles.featuredCatRow}>
-                        <span className={styles.featuredCat}>{w.category}</span>
-                        <span className={styles.featuredYear}>{w.year}</span>
+                        <span className={styles.featuredCat}>
+                          {w.category}
+                        </span>
+                        <span className={styles.featuredYear}>
+                          {w.year}
+                        </span>
                       </div>
                       <span className={styles.featuredMetric}>
                         <span aria-hidden="true">▲</span> {w.metric}
                       </span>
                     </div>
-                    <h3 className={styles.featuredTitle}>{w.title}</h3>
+                    <h3 className={styles.featuredTitle}>
+                      {w.title}
+                    </h3>
                     <p className={styles.featuredDesc}>{w.desc}</p>
                   </div>
                 </article>
@@ -392,20 +496,29 @@ export function HomePage() {
         <Container>
           <header className={styles.sectionHead}>
             <span className={styles.eyebrow}>By the Numbers</span>
-            <h2 className={styles.sectionTitle}>숫자가 만드는 신뢰</h2>
-            <p className={styles.sectionSub}>말이 아닌, 누적된 결과로 증명합니다.</p>
+            <h2 className={styles.sectionTitle}>
+              숫자가 만드는 신뢰
+            </h2>
+            <p className={styles.sectionSub}>
+              말이 아닌, 누적된 결과로 증명합니다.
+            </p>
           </header>
           <div className={styles.statsRow}>
             {stats.map((s, i) => (
               <div className={styles.statItem} key={s.label}>
                 <span className={styles.statValue}>
                   <strong>{s.value}</strong>
-                  <span className={styles.statSuffix}>{s.suffix}</span>
+                  <span className={styles.statSuffix}>
+                    {s.suffix}
+                  </span>
                 </span>
                 <span className={styles.statLabel}>{s.label}</span>
                 <span className={styles.statSub}>{s.sub}</span>
                 {i < stats.length - 1 ? (
-                  <span aria-hidden="true" className={styles.statSep} />
+                  <span
+                    aria-hidden="true"
+                    className={styles.statSep}
+                  />
                 ) : null}
               </div>
             ))}
@@ -417,26 +530,36 @@ export function HomePage() {
         <Container>
           <header className={styles.sectionHead}>
             <span className={styles.eyebrow}>Process</span>
-            <h2 className={styles.sectionTitle}>의뢰부터 납품까지 5단계</h2>
+            <h2 className={styles.sectionTitle}>
+              의뢰부터 납품까지 5단계
+            </h2>
             <p className={styles.sectionSub}>
-              명확한 절차와 예측 가능한 일정. 각 단계 완료 후 다음 단계 진행 여부를 결정할 수
-              있습니다.
+              명확한 절차와 예측 가능한 일정. 각 단계 완료 후 다음
+              단계 진행 여부를 결정할 수 있습니다.
             </p>
           </header>
           <ol className={styles.processList}>
             {processSteps.map((s, i) => (
               <li className={styles.processItem} key={s.no}>
                 <article className={styles.processCard}>
-                  <span aria-hidden="true" className={styles.processNum}>
+                  <span
+                    aria-hidden="true"
+                    className={styles.processNum}
+                  >
                     {s.icon}
                   </span>
                   <span className={styles.processStep}>{s.no}</span>
                   <h3 className={styles.processTitle}>{s.title}</h3>
                   <p className={styles.processDesc}>{s.desc}</p>
-                  <span className={styles.processDur}>⏱ {s.duration}</span>
+                  <span className={styles.processDur}>
+                    ⏱ {s.duration}
+                  </span>
                 </article>
                 {i < processSteps.length - 1 ? (
-                  <span aria-hidden="true" className={styles.processConnector} />
+                  <span
+                    aria-hidden="true"
+                    className={styles.processConnector}
+                  />
                 ) : null}
               </li>
             ))}
@@ -446,7 +569,9 @@ export function HomePage() {
 
       <section className={styles.logos}>
         <Container>
-          <p className={styles.logosLabel}>TRUSTED BY 80+ COMPANIES</p>
+          <p className={styles.logosLabel}>
+            TRUSTED BY 80+ COMPANIES
+          </p>
           {customerLogos.map((row, i) => (
             <ul className={styles.logoRow} key={`row-${i}`}>
               {row.map((logo) => (
@@ -463,8 +588,13 @@ export function HomePage() {
         <Container>
           <header className={styles.sectionHead}>
             <span className={styles.eyebrow}>Testimonials</span>
-            <h2 className={styles.sectionTitle}>실제 사용해본 분들의 이야기</h2>
-            <p className={styles.sectionSub}>의사결정자들이 직접 남긴 후기. 가공 없이 그대로 옮겼습니다.</p>
+            <h2 className={styles.sectionTitle}>
+              실제 사용해본 분들의 이야기
+            </h2>
+            <p className={styles.sectionSub}>
+              의사결정자들이 직접 남긴 후기. 가공 없이 그대로
+              옮겼습니다.
+            </p>
           </header>
           <ul className={styles.tGrid}>
             {testimonials.map((t) => (
@@ -486,7 +616,9 @@ export function HomePage() {
                       <strong>{t.author}</strong>
                       <span>{t.role}</span>
                     </div>
-                    <span className={styles.tCategory}>{t.category}</span>
+                    <span className={styles.tCategory}>
+                      {t.category}
+                    </span>
                   </div>
                 </article>
               </li>
@@ -495,7 +627,8 @@ export function HomePage() {
         </Container>
       </section>
 
-      <FaqPage />
+      {/* 자주하는 질문 */}
+      <FaqPage faqs={faqs} />
 
       <section className={styles.cta}>
         <div aria-hidden="true" className={styles.ctaOrb1} />
@@ -503,18 +636,28 @@ export function HomePage() {
         <div aria-hidden="true" className={styles.ctaGrid} />
         <div className={styles.ctaInner}>
           <span className={styles.ctaEyebrow}>
-            <span aria-hidden="true" className={styles.ctaEyebrowDot} />
+            <span
+              aria-hidden="true"
+              className={styles.ctaEyebrowDot}
+            />
             Start Your Project
           </span>
           <h2 className={styles.ctaTitle}>지금 시작해보세요</h2>
           <p className={styles.ctaSub}>
-            아이디어 단계여도 좋습니다. 30분 무료 상담으로 가능성을 먼저 확인해보세요.
+            아이디어 단계여도 좋습니다. 30분 무료 상담으로 가능성을
+            먼저 확인해보세요.
           </p>
           <div className={styles.ctaButtons}>
-            <Link className={`${styles.ctaButton} ${styles.ctaButtonPrimary}`} href={ROUTES.CONTACT}>
+            <Link
+              className={`${styles.ctaButton} ${styles.ctaButtonPrimary}`}
+              href={ROUTES.CONTACT}
+            >
               무료 견적 받기 <span aria-hidden="true">→</span>
             </Link>
-            <Link className={`${styles.ctaButton} ${styles.ctaButtonGhost}`} href={ROUTES.KAKAO}>
+            <Link
+              className={`${styles.ctaButton} ${styles.ctaButtonGhost}`}
+              href={ROUTES.KAKAO}
+            >
               <span aria-hidden="true">💬</span> 카카오톡 문의
             </Link>
           </div>

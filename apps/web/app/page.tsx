@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { HomePage } from '@/features/home/home-page';
+import { HomePage } from 'app/pages/home/home-page';
 
 export const metadata: Metadata = {
   title: 'VisionFlow — AI 기반 디지털 스튜디오',

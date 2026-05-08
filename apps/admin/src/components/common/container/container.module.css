@@ -1,0 +1,22 @@
+.container {
+  width: var(--layout-grid-container-mobile);
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .container {
+    width: var(--layout-grid-container-tablet);
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    width: var(--layout-grid-container-desktop);
+  }
+}
+
+@media (min-width: 1640px) {
+  .container {
+    width: var(--layout-grid-container-wide);
+  }
+}

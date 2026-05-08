@@ -1,7 +1,21 @@
-import { FaqPage } from '@/components/pages/faq/faq-page';
+'use client';
+
+import { FaqPage } from '@/components/common/faq/faq-page';
+import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
+
+function CustomHeader() {
+  return <div>asdf</div>;
+}
 
 export default function UIComponents() {
+  // 자주하는 질문
+  const { data: faqs = [] } = useFaqListQuery();
+
   return (
-    <FaqPage />
-  )
+    <FaqPage
+      category="contact"
+      faqs={faqs}
+      headerSlot={<CustomHeader />}
+    />
+  );
 }

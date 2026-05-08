@@ -1,3 +1,5 @@
+'use client';
+
 import { type IFaq } from '@/types/faq';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@visionflow/shared';
