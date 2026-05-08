@@ -2,22 +2,47 @@
 
 import { Container } from '@/components/common/container';
 import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
+import { IFaq } from '@/types/faq';
 import { ROUTES } from '@visionflow/routes';
 import Link from 'next/link';
 import styles from './faq-page.module.css';
 
+export function Collapse({ faqs }: { faqs: IFaq[] }) {
+  return (
+    <ul className={styles.faqList}>
+      {faqs.map((f, i) => (
+        <li className={styles.faqItem} key={f.question}>
+          <details className={styles.faqDetails} open={f.open}>
+            <summary
+              className={`${styles.faqQ} ${f.open ? styles.faqQActive : ''}`}
+            >
+              <span className={styles.faqNum}>
+                Q{String(i + 1).padStart(2, '0')}
+              </span>
+              <span className={styles.faqQText}>{f.question}</span>
+              <span
+                aria-hidden="true"
+                className={styles.faqToggle}
+              >
+                {f.open ? '−' : '+'}
+              </span>
+            </summary>
+            {f.answer ? (
+              <div className={styles.faqA}>
+                <hr className={styles.faqDivider} />
+                <p className={styles.faqText}>{f.answer}</p>
+              </div>
+            ) : null}
+          </details>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function FaqPage() {
-  const {
-    data: faqs = [],
-    isError,
-    isLoading,
-  } = useFaqListQuery();
+  const { data: faqs = [] } = useFaqListQuery();
 
-  console.log(
-    faqs
-  );
-  
   return (
     <section className={styles.faq}>
       <Container>
@@ -29,34 +54,7 @@ export function FaqPage() {
             채널로 바로 문의 가능합니다.
           </p>
         </header>
-        <ul className={styles.faqList}>
-          {faqs.map((f, i) => (
-            <li className={styles.faqItem} key={f.question}>
-              <details className={styles.faqDetails} open={f.open}>
-                <summary
-                  className={`${styles.faqQ} ${f.open ? styles.faqQActive : ''}`}
-                >
-                  <span className={styles.faqNum}>
-                    Q{String(i + 1).padStart(2, '0')}
-                  </span>
-                  <span className={styles.faqQText}>{f.question}</span>
-                  <span
-                    aria-hidden="true"
-                    className={styles.faqToggle}
-                  >
-                    {f.open ? '−' : '+'}
-                  </span>
-                </summary>
-                {f.answer ? (
-                  <div className={styles.faqA}>
-                    <hr className={styles.faqDivider} />
-                    <p className={styles.faqText}>{f.answer}</p>
-                  </div>
-                ) : null}
-              </details>
-            </li>
-          ))}
-        </ul>
+        <Collapse faqs={faqs} />
         <div className={styles.faqHelp}>
           <div className={styles.faqHelpText}>
             <strong>답을 못 찾으셨나요?</strong>
