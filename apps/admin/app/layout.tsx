@@ -1,8 +1,8 @@
 import '@visionflow/ui/styles/fonts.css';
 import '@visionflow/ui/styles/tokens.css';
-import 'antd/dist/reset.css';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';
+import 'antd/dist/reset.css';
 import './globals.css';
 
 import type { Metadata } from 'next';

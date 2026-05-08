@@ -27,24 +27,25 @@ export const ROUTES = {
   // ─── Admin ─────────────────────────────
   ADMIN: {
     HOME: '/',
-    NOTICES: '/admin/pages/notice',
-    DASHBOARD: '/admin/pages/dashboard',
+    FAQ: '/pages/faq',
+    NOTICES: '/pages/notice',
+    DASHBOARD: '/pages/dashboard',
 
     USERS: {
-      ROOT: '/admin/pages/users',
-      DETAIL: (id: string) => `/admin/pages/users/${id}`,
-      EDIT: (id: string) => `/admin/pages/users/${id}/edit`,
+      ROOT: '/pages/users',
+      DETAIL: (id: string) => `/pages/users/${id}`,
+      EDIT: (id: string) => `/pages/users/${id}/edit`,
     },
 
     PRODUCTS: {
-      ROOT: '/admin/pages/products',
-      CREATE: '/admin/pages/products/create',
-      EDIT: (id: string) => `/admin/pages/products/${id}/edit`,
+      ROOT: '/pages/products',
+      CREATE: '/pages/products/create',
+      EDIT: (id: string) => `/pages/products/${id}/edit`,
     },
 
     ORDERS: {
-      ROOT: '/admin/pages/orders',
-      DETAIL: (id: string) => `/admin/pages/orders/${id}`,
+      ROOT: '/pages/orders',
+      DETAIL: (id: string) => `/pages/orders/${id}`,
     },
   },
 } as const
