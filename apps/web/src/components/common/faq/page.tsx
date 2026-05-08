@@ -3,7 +3,7 @@ import { IFaq } from '@/types/faq';
 import { ROUTES } from '@visionflow/routes';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import styles from './faq-page.module.css';
+import styles from './page.module.css';
 
 /*
  FaqPage

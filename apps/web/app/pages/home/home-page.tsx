@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 import { Container } from '@/components/common/container';
 
-import { FaqPage } from '@/components/common/faq/faq-page';
+import { FaqPage } from '@/components/common/faq/page';
 import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
 import styles from './home-page.module.css';
 

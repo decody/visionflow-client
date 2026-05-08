@@ -1,5 +1,7 @@
-import { FaqPage } from './faq-page';
-
-export default function Page() {
-  return <FaqPage />;
+export default function FaqPage() {
+  return (
+    <div>
+      FaqPage
+    </div>
+  );
 }

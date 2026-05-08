@@ -1,6 +1,6 @@
 'use client';
 
-import { FaqPage } from '@/components/common/faq/faq-page';
+import { FaqPage } from '@/components/common/faq/page';
 import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
 
 function CustomHeader() {
