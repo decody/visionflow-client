@@ -1,8 +1,7 @@
-'use client';
+ 'use client';
 
-import { type IFaq } from '@/types/faq';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@visionflow/shared';
+import { apiClient, type IFaq } from '@visionflow/shared';
 
 const fetchFaqList = async (): Promise<IFaq[]> => {
   const { data } = await apiClient.get<IFaq[] | null>('faq');

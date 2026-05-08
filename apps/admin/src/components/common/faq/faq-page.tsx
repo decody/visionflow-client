@@ -1,6 +1,6 @@
 import { Container } from '@/components/common/container';
-import { IFaq } from '@/types/faq';
 import { ROUTES } from '@visionflow/routes';
+import type { IFaq } from '@visionflow/shared';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import styles from './faq-page.module.css';
