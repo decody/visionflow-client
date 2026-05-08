@@ -10,7 +10,12 @@ const fetchFaqList = async (): Promise<IFaq[]> => {
 
 export const useFaqListQuery = () => {
   return useQuery<IFaq[]>({
+    gcTime: Infinity,
     queryKey: ['faq-list'],
     queryFn: fetchFaqList,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 };
