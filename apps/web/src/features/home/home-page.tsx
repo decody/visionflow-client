@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { Container } from '@/components/common/container';
 
+import { FaqPage } from '@/components/pages/faq/faq-page';
 import styles from './home-page.module.css';
 
 const heroChips = [
@@ -224,27 +225,6 @@ const testimonials: Testimonial[] = [
     initial: '박',
     avatarColor: '#4db28c',
   },
-];
-
-interface FaqItem {
-  q: string;
-  a?: string;
-  open?: boolean;
-}
-
-const faqs: FaqItem[] = [
-  {
-    q: '견적은 어떻게 산정되나요?',
-    a: '프로젝트 범위, 기간, 수정 횟수, AI 콘텐츠 결합 여부에 따라 산정됩니다. 카테고리별 시작가는 견적 문의 시 안내드리며, 정확한 견적은 1주 디스커버리 후 확정됩니다.',
-    open: true,
-  },
-  { q: '평균 납기는 얼마나 걸리나요?' },
-  { q: '수정은 몇 번까지 가능한가요?' },
-  { q: '결제 방식은 어떻게 되나요?' },
-  { q: 'NDA(비밀유지계약) 작성이 가능한가요?' },
-  { q: 'AI로 만든 결과물의 저작권은 어떻게 되나요?' },
-  { q: '미팅은 온라인/오프라인 중 어디로 가능한가요?' },
-  { q: '납품 후 운영·유지보수도 맡길 수 있나요?' },
 ];
 
 export function HomePage() {
@@ -515,49 +495,7 @@ export function HomePage() {
         </Container>
       </section>
 
-      <section className={styles.faq}>
-        <Container>
-          <header className={styles.sectionHead}>
-            <span className={styles.eyebrow}>FAQ</span>
-            <h2 className={styles.sectionTitle}>자주 묻는 질문</h2>
-            <p className={styles.sectionSub}>
-              미팅 전에 미리 답변해 드립니다. 더 궁금한 점은 카카오톡 채널로 바로 문의 가능합니다.
-            </p>
-          </header>
-          <ul className={styles.faqList}>
-            {faqs.map((f, i) => (
-              <li className={styles.faqItem} key={f.q}>
-                <details className={styles.faqDetails} open={f.open}>
-                  <summary
-                    className={`${styles.faqQ} ${f.open ? styles.faqQActive : ''}`}
-                  >
-                    <span className={styles.faqNum}>Q{String(i + 1).padStart(2, '0')}</span>
-                    <span className={styles.faqQText}>{f.q}</span>
-                    <span aria-hidden="true" className={styles.faqToggle}>
-                      {f.open ? '−' : '+'}
-                    </span>
-                  </summary>
-                  {f.a ? (
-                    <div className={styles.faqA}>
-                      <hr className={styles.faqDivider} />
-                      <p className={styles.faqText}>{f.a}</p>
-                    </div>
-                  ) : null}
-                </details>
-              </li>
-            ))}
-          </ul>
-          <div className={styles.faqHelp}>
-            <div className={styles.faqHelpText}>
-              <strong>답을 못 찾으셨나요?</strong>
-              <span>카카오톡 채널로 바로 문의하시면 1영업일 안에 답변드립니다.</span>
-            </div>
-            <Link className={styles.faqHelpBtn} href={ROUTES.KAKAO}>
-              카카오톡 1:1 문의
-            </Link>
-          </div>
-        </Container>
-      </section>
+      <FaqPage />
 
       <section className={styles.cta}>
         <div aria-hidden="true" className={styles.ctaOrb1} />
