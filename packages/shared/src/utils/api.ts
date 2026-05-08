@@ -15,6 +15,7 @@ export type ApiResponse<T> = {
 };
 
 export type ApiPayload = Record<string, unknown>;
+export type ApiQueryParams = Record<string, boolean | number | string | null | undefined>;
 
 // apiClient 내부에서만 쓰는 최소 요청 옵션입니다.
 type RequestOptions = {
@@ -92,7 +93,7 @@ const parsePath = (path: string) => {
 };
 
 // Supabase REST 호출 URL을 만들고, id가 있으면 단일 row 필터를 붙입니다.
-const createUrl = (path: string) => {
+const createUrl = (path: string, query?: ApiQueryParams) => {
   const { id, table } = parsePath(path);
   const url = new URL(`${getRestBaseUrl()}/${table}`);
 
@@ -101,6 +102,14 @@ const createUrl = (path: string) => {
   if (id) {
     url.searchParams.set('id', `eq.${id}`);
     url.searchParams.set('limit', '1');
+  }
+
+  if (query) {
+    Object.entries(query).forEach(([key, value]) => {
+      if (value === null || value === undefined) return;
+
+      url.searchParams.set(toSnakeCase(key), String(value));
+    });
   }
 
   return { id, url: url.toString() };
@@ -158,8 +167,8 @@ const request = async <T>(url: string, options: RequestOptions): Promise<ApiResp
 
 // 앱에서 공통으로 사용하는 Supabase REST CRUD 클라이언트입니다.
 export const apiClient = {
-  get<T>(path: string) {
-    const { id, url } = createUrl(path);
+  get<T>(path: string, query?: ApiQueryParams) {
+    const { id, url } = createUrl(path, query);
 
     return request<T>(url, {
       method: 'GET',

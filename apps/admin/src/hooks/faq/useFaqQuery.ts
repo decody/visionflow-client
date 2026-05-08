@@ -6,7 +6,10 @@ import { apiClient, type IFaq } from '@visionflow/shared';
 const fetchFaqList = async (): Promise<IFaq[]> => {
   const { data } = await apiClient.get<IFaq[] | null>('faq');
   
-  return data ?? [];
+  return (data ?? []).map((faq) => ({
+    ...faq,
+    is_visible: faq.is_visible ?? faq.isVisible,
+  }));
 };
 
 export const useFaqListQuery = () => {

@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import { useQuery } from '@tanstack/react-query';
 import { apiClient, type IFaq } from '@visionflow/shared';
@@ -6,13 +6,16 @@ import { apiClient, type IFaq } from '@visionflow/shared';
 const fetchFaqList = async (): Promise<IFaq[]> => {
   const { data } = await apiClient.get<IFaq[] | null>('faq');
 
-  return data ?? [];
+  return (data ?? []).map((faq) => ({
+    ...faq,
+    is_visible: faq.is_visible ?? faq.isVisible,
+  }));
 };
 
 export const useFaqListQuery = () => {
   return useQuery<IFaq[]>({
     gcTime: Infinity,
-    queryKey: ['faq-list'],
+    queryKey: ['faq-list', 'visible'],
     queryFn: fetchFaqList,
     refetchOnMount: false,
     refetchOnReconnect: false,
