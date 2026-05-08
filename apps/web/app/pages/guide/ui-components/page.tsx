@@ -15,6 +15,7 @@ export default function UIComponents() {
     <FaqPage
       category="contact"
       faqs={faqs}
+      isOpen={2}
       headerSlot={<CustomHeader />}
     />
   );
