@@ -20,8 +20,6 @@ const { Text, Title } = Typography;
 export default function FaqPage() {
   const { data: faqs = []} = useFaqListQuery();
 
-  console.log(faqs)
-
   const columnDefs = useMemo<ColDef<IFaq>[]>(
     () => [
       {
@@ -35,9 +33,9 @@ export default function FaqPage() {
         headerName: '카테고리',
         maxWidth: 150,
         minWidth: 130,
-        cellRenderer: ({ value }: ICellRendererParams<IFaq, string>) => (
-          <Tag color="blue">{value ?? '-'}</Tag>
-        ),
+        cellRenderer: ({ value }: ICellRendererParams<IFaq, string>) => {
+          return <Tag color={value === 'contact' ? 'green' : 'blue'}>{value ?? '-'}</Tag>;
+        },
       },
       {
         field: 'question',
@@ -49,12 +47,20 @@ export default function FaqPage() {
         ),
       },
       {
+       
         field: 'is_visible',
         headerName: '노출',
         maxWidth: 120,
         minWidth: 110,
-        cellRenderer: ({ value }: ICellRendererParams<IFaq, boolean>) => {
-          console.log(value)
+        cellRenderer: (params: ICellRendererParams<IFaq, boolean>) => {
+          const { value, colDef, column, data } = params;
+          // colDef: 이 컬럼의 정의 객체
+          // column: 이 셀에 대한 컬럼 객체 (ag-grid column API)
+          // data: 이 셀이 속한 행 데이터(rowData)
+          // value: 해당 행의 is_visible 값
+          // 필요하다면 컬럼별 로직에 colDef나 column 사용 가능
+          console.log(data)
+          
           return value ? <Tag color="green">노출</Tag> : <Tag>비노출</Tag>;
         },
       },
