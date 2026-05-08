@@ -29,20 +29,6 @@ export function AdminHeader() {
           </button>
         </div>
       </aside>
-      <div className={styles.topbar}>
-        <div>
-          <h2 className={styles.title}>Admin Console</h2>
-          <p className={styles.subtitle}>Pipeline health and model operations</p>
-        </div>
-        <div className={styles.actions}>
-          <button className={styles.secondaryButton} type="button">
-            Export
-          </button>
-          <button className={styles.primaryButton} type="button">
-            New Pipeline
-          </button>
-        </div>
-      </div>
     </header>
   );
 }

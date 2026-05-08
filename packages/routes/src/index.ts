@@ -27,14 +27,14 @@ export const ROUTES = {
   // ─── Admin ─────────────────────────────
   ADMIN: {
     HOME: '/',
-    FAQ: '/pages/faq',
     NOTICES: '/pages/notice',
     DASHBOARD: '/pages/dashboard',
 
-    USERS: {
-      ROOT: '/pages/users',
-      DETAIL: (id: string) => `/pages/users/${id}`,
-      EDIT: (id: string) => `/pages/users/${id}/edit`,
+    FAQ: {
+      ROOT: '/pages/faq',
+      DETAIL: (id: string | number) => `/pages/faq/${id}`,
+      EDIT: (id: string | number) => `/pages/faq/${id}/edit`,
+      WRITE: () => '/pages/faq/write',
     },
 
     PRODUCTS: {
