@@ -9,11 +9,9 @@ const navItems = [
   { href: ROUTES.WEB_APP, label: 'Web & App' },
   { href: ROUTES.DASHBOARD, label: 'Dashboard' },
   { href: ROUTES.WORK, label: 'Work' },
+  { href: ROUTES.NOTICES.ROOT, label: 'Notice' },
 
-  { href: ROUTES.CONTACT, label: 'Contact' },
-  { href: ROUTES.NOTICES.ROOT, label: '공지사항' },
-
-  { href: '/pages/guide/design-system', label: 'design' },
+  // { href: '/pages/guide/design-system', label: 'Design' },
 ];
 
 export function WebHeader() {
