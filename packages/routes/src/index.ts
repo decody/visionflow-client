@@ -17,12 +17,7 @@ export const ROUTES = {
     DETAIL: (id: string) => `/pages/notices/${id}`,
   },
 
-  QNA: {
-    ORDERS: '/pages/qna',
-    DETAIL: (id: string) => `/qna/${id}`,
-    WRITE: () => `/qna/write`,
-    EDIT: (id: string) => `/notice/${id}/edit`,
-  },
+  QNA: '/pages/qna',
 
   // ─── Admin ─────────────────────────────
   ADMIN: {
@@ -37,10 +32,9 @@ export const ROUTES = {
       WRITE: () => '/pages/faq/write',
     },
 
-    PRODUCTS: {
-      ROOT: '/pages/products',
-      CREATE: '/pages/products/create',
-      EDIT: (id: string) => `/pages/products/${id}/edit`,
+    CONTACT: {
+      ROOT: '/pages/contact',
+      DETAIL: (id: string | number) => `/pages/contact/${id}`,
     },
 
     ORDERS: {
@@ -48,4 +42,4 @@ export const ROUTES = {
       DETAIL: (id: string) => `/pages/orders/${id}`,
     },
   },
-} as const
+} as const;

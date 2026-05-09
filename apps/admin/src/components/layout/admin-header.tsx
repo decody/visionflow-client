@@ -3,7 +3,6 @@
 import { ROUTES } from '@visionflow/routes';
 import {
   Bell,
-  Boxes,
   ClipboardList,
   HelpCircle,
   LayoutDashboard,
@@ -32,14 +31,9 @@ const NAV_ITEMS = [
     label: '공지사항',
   },
   {
-    href: ROUTES.ADMIN.PRODUCTS.ROOT,
-    icon: Boxes,
-    label: '상품',
-  },
-  {
-    href: ROUTES.ADMIN.ORDERS.ROOT,
+    href: ROUTES.ADMIN.CONTACT.ROOT,
     icon: ClipboardList,
-    label: '주문',
+    label: 'Contact',
   },
 ];
 
@@ -69,7 +63,10 @@ export function AdminHeader() {
           </button>
         </div>
 
-        <label className={styles.workspaceLabel} htmlFor="workspace-select">
+        <label
+          className={styles.workspaceLabel}
+          htmlFor="workspace-select"
+        >
           Workspace
         </label>
         <select

@@ -10,18 +10,21 @@ const navItems = [
   { href: ROUTES.DASHBOARD, label: 'Dashboard' },
   { href: ROUTES.WORK, label: 'Work' },
 
-  // { href: ROUTES.ABOUT.ROOT, label: 'About' },
+  { href: ROUTES.CONTACT, label: 'Contact' },
   { href: ROUTES.NOTICES.ROOT, label: '공지사항' },
 
   { href: '/pages/guide/design-system', label: 'design' },
-  { href: '/pages/guide/ui-components', label: 'UI' },
 ];
 
 export function WebHeader() {
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
-        <Link aria-label="VisionFlow home" className={styles.brand} href={ROUTES.HOME}>
+        <Link
+          aria-label="VisionFlow home"
+          className={styles.brand}
+          href={ROUTES.HOME}
+        >
           <span aria-hidden="true" className={styles.logoMark}>
             <span className={styles.logoGreen} />
             <span className={styles.logoBlack} />
@@ -31,7 +34,11 @@ export function WebHeader() {
 
         <nav aria-label="Primary navigation" className={styles.nav}>
           {navItems.map((item) => (
-            <Link className={styles.navLink} href={item.href} key={item.href}>
+            <Link
+              className={styles.navLink}
+              href={item.href}
+              key={item.href}
+            >
               {item.label}
             </Link>
           ))}

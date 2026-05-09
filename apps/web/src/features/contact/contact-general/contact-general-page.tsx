@@ -206,7 +206,7 @@ export function ContactGeneralPage() {
                 type="search"
               />
             </div>
-            <Link className={styles.boardWrite} href={ROUTES.QNA.WRITE()}>
+            <Link className={styles.boardWrite} href={ROUTES.QNA}>
               <span aria-hidden="true">✏️</span>
               질문 작성
             </Link>
