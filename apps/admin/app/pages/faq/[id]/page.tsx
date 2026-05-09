@@ -1,27 +1,38 @@
 'use client';
 
-import { Button, Card, Descriptions, Divider, Flex, Space, Tag, Typography } from 'antd';
 import { ROUTES } from '@visionflow/routes';
+import {
+  Button,
+  Card,
+  Descriptions,
+  Divider,
+  Flex,
+  Space,
+  Tag,
+  Typography,
+} from 'antd';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
+import Loading from '@/components/common/loading/page';
+import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
 import styles from '../page.module.css';
 
 const { Paragraph, Text, Title } = Typography;
 
-const sampleFaq = {
-  answer:
-    '프로젝트 견적은 요구사항, 제작 범위, 일정, 투입 리소스를 기준으로 산정합니다. 상담 이후 기능 목록과 산출물 범위를 정리한 뒤 상세 견적서를 전달드립니다.',
-  category: '기본',
-  created_at: '2026-05-01',
-  is_visible: true,
-  question: '프로젝트 견적은 어떻게 산정되나요?',
-  updated_at: '2026-05-06',
-};
-
 export default function FaqViewPage() {
+  const { data: faqs = [], isLoading } = useFaqListQuery();
   const params = useParams<{ id: string }>();
-  const id = params.id;
+  const id = String(params.id);
+  const faq = faqs.find((faq) => String(faq.id) === id);
+
+  if (isLoading) {
+    return <Loading />;
+  }
+
+  if (!faq) {
+    return <div>FAQ를 찾을 수 없습니다.</div>;
+  }
 
   return (
     <section className={styles.page}>
@@ -46,25 +57,37 @@ export default function FaqViewPage() {
         <Descriptions column={2} bordered>
           <Descriptions.Item label="번호">{id}</Descriptions.Item>
           <Descriptions.Item label="카테고리">
-            <Tag color="blue">{sampleFaq.category}</Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="노출 상태">
-            <Tag color={sampleFaq.is_visible ? 'green' : 'default'}>
-              {sampleFaq.is_visible ? '노출' : '비노출'}
+            <Tag color="blue">
+              {faq.category === 'contact' ? '문의' : '기본'}
             </Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="등록일">{sampleFaq.created_at}</Descriptions.Item>
-          <Descriptions.Item label="수정일">{sampleFaq.updated_at}</Descriptions.Item>
+          <Descriptions.Item label="노출 상태">
+            <Tag color={faq.is_visible ? 'green' : 'default'}>
+              {faq.is_visible ? '노출' : '비노출'}
+            </Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="등록일">
+            {faq.created_at
+              ? new Date(faq.created_at).toLocaleString()
+              : '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="수정일">
+            {faq.updated_at
+              ? new Date(faq.updated_at).toLocaleString()
+              : '-'}
+          </Descriptions.Item>
         </Descriptions>
 
         <Divider />
 
         <div className={styles.article}>
           <Text className={styles.label}>질문</Text>
-          <Title level={4}>{sampleFaq.question}</Title>
+          <Title level={4}>{faq.question}</Title>
 
           <Text className={styles.label}>답변</Text>
-          <Paragraph className={styles.answer}>{sampleFaq.answer}</Paragraph>
+          <Paragraph className={styles.answer}>
+            {faq.answer}
+          </Paragraph>
         </div>
       </Card>
     </section>

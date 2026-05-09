@@ -22,6 +22,7 @@ import { useMemo, useState } from 'react';
 
 import type { IFaq } from '@visionflow/shared';
 
+import Loading from '@/components/common/loading/page';
 import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
 import styles from './page.module.css';
 
@@ -33,43 +34,45 @@ type CategoryFilter = 'all' | 'contact' | 'default';
 type VisibilityFilter = 'all' | 'hidden' | 'visible';
 
 export default function FaqPage() {
-  const { data: faqs = [] } = useFaqListQuery();
+  const { data: faqs = [], isLoading } = useFaqListQuery();
   const [keyword, setKeyword] = useState('');
   const [categoryFilter, setCategoryFilter] =
     useState<CategoryFilter>('all');
   const [visibilityFilter, setVisibilityFilter] =
     useState<VisibilityFilter>('all');
 
-  // 필터링 조건을 보기 쉽게 분리해서 작성했습니다.
   const filteredFaqs = useMemo(() => {
-    // 입력된 키워드를 소문자로 변환하여 앞뒤 공백 제거
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return faqs.filter((faq) => {
-      // 키워드 관련 필터: 키워드가 없거나, 질문/답변에 포함되어 있으면 통과
-      const isKeywordMatched =
-        !normalizedKeyword ||
-        faq.question.toLowerCase().includes(normalizedKeyword) ||
-        faq.answer.toLowerCase().includes(normalizedKeyword);
-
-      // 카테고리 관련 필터: "all" 이거나 카테고리가 해당 값과 일치하면 통과
-      const isCategoryMatched =
-        categoryFilter === 'all' || faq.category === categoryFilter;
-
-      // 노출 여부 관련 필터: "all" 이거나, "visible"은 true, "hidden"은 false/undefined 체크
-      let isVisibilityMatched = true;
-      if (visibilityFilter === 'visible') {
-        isVisibilityMatched = faq.is_visible === true;
-      } else if (visibilityFilter === 'hidden') {
-        isVisibilityMatched = faq.is_visible !== true;
+      if (
+        normalizedKeyword &&
+        !(
+          faq.question.toLowerCase().includes(normalizedKeyword) ||
+          faq.answer.toLowerCase().includes(normalizedKeyword)
+        )
+      ) {
+        return false;
       }
 
-      // 모든 조건을 만족해야 해당 faq가 필터 통과
-      return (
-        isKeywordMatched && isCategoryMatched && isVisibilityMatched
-      );
+      if (
+        categoryFilter !== 'all' &&
+        faq.category !== categoryFilter
+      ) {
+        return false;
+      }
+
+      if (visibilityFilter === 'visible' && faq.is_visible !== true) {
+        return false;
+      }
+
+      if (visibilityFilter === 'hidden' && faq.is_visible === true) {
+        return false;
+      }
+
+      return true;
     });
-  }, [faqs, keyword, categoryFilter, visibilityFilter]);
+  }, [categoryFilter, faqs, keyword, visibilityFilter]);
 
   const columnDefs = useMemo<ColDef<IFaq>[]>(
     () => [
@@ -87,9 +90,12 @@ export default function FaqPage() {
         cellRenderer: ({
           value,
         }: ICellRendererParams<IFaq, string>) => {
+          const selectCategory =
+            value === 'contact' ? '문의' : '기본';
+
           return (
             <Tag color={value === 'contact' ? 'green' : 'blue'}>
-              {value ?? '-'}
+              {selectCategory}
             </Tag>
           );
         },
@@ -101,9 +107,25 @@ export default function FaqPage() {
         minWidth: 260,
         cellRenderer: ({
           value,
-        }: ICellRendererParams<IFaq, string>) => (
-          <Text strong>{value}</Text>
-        ),
+          data,
+        }: ICellRendererParams<IFaq, string>) => {
+          if (!data) {
+            return null;
+          }
+
+          return (
+            <Link
+              href={ROUTES.ADMIN.FAQ.DETAIL(data.id)}
+              style={{
+                width: '100%',
+                height: '100%',
+                display: 'block',
+              }}
+            >
+              <Text strong>{value}</Text>
+            </Link>
+          );
+        },
       },
       {
         field: 'is_visible',
@@ -123,8 +145,22 @@ export default function FaqPage() {
       {
         field: 'created_at',
         headerName: '등록일',
-        maxWidth: 150,
-        minWidth: 130,
+        maxWidth: 200,
+        minWidth: 200,
+        cellRenderer: ({
+          value,
+        }: ICellRendererParams<IFaq, string>) =>
+          value ? new Date(value).toLocaleString() : '-',
+      },
+      {
+        field: 'updated_at',
+        headerName: '수정일',
+        maxWidth: 200,
+        minWidth: 200,
+        cellRenderer: ({
+          value,
+        }: ICellRendererParams<IFaq, string>) =>
+          value ? new Date(value).toLocaleString() : '-',
       },
       {
         colId: 'action',
@@ -157,9 +193,16 @@ export default function FaqPage() {
       filter: true,
       resizable: true,
       sortable: true,
+      autoHeight: true,
     }),
     [],
   );
+
+  // 삭제
+
+  if (isLoading) {
+    return <Loading />;
+  }
 
   return (
     <section className={styles.page}>

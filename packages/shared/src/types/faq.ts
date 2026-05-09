@@ -1,4 +1,4 @@
-export interface IFaq {
+interface IFaq {
   id: number;
   category?: string | null;
   question: string;
@@ -7,4 +7,16 @@ export interface IFaq {
   isVisible?: boolean;
   is_visible?: boolean;
   created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
 }
+
+interface ICreateFaqRequest {
+  category?: string | null;
+  question: string;
+  answer: string;
+  is_visible?: boolean;
+}
+
+export type { ICreateFaqRequest, IFaq };

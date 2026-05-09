@@ -18,35 +18,133 @@
   border-right: 1px solid #dde4ea;
 }
 
+.brandBlock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
 .brand {
-  margin: 0 0 20px;
-  font-size: 24px;
-  line-height: 1.25;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brandMark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  color: #ffffff;
+  background: #004fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.brandName,
+.brandMeta {
+  display: block;
+}
+
+.brandName {
+  font-size: 19px;
+  line-height: 1.2;
   font-weight: 700;
 }
 
-.segmented {
+.brandMeta {
+  margin-top: 2px;
+  color: #647089;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.iconButton {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 4px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  color: #4a5872;
+  cursor: pointer;
+  background: #f6f8fb;
+  border: 1px solid #dde4ea;
   border-radius: 8px;
 }
 
-.segment {
-  min-height: 32px;
+.iconButton:hover {
+  color: #172033;
+  background: #eef3f8;
+}
+
+.workspaceLabel {
+  display: block;
+  margin-bottom: 8px;
+  color: #647089;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.workspaceSelect {
+  width: 100%;
+  height: 38px;
+  margin-bottom: 26px;
+  padding: 0 12px;
   color: #4a5872;
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid #c9d3df;
+  border-radius: 8px;
   font: inherit;
 }
 
-.segment[aria-pressed='true'] {
+.nav {
+  display: grid;
+  gap: 6px;
+}
+
+.navLink {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  color: #4a5872;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.navLink:hover {
   color: #172033;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgb(23 32 51 / 12%);
+  background: #f6f8fb;
+}
+
+.navLink[aria-current='page'] {
+  color: #004fff;
+  background: #f1f5ff;
+  border-color: #d9e5ff;
+  font-weight: 700;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .topbar {
@@ -137,6 +235,18 @@
     padding: 24px 16px 18px;
     border-right: 0;
     border-bottom: 1px solid #dde4ea;
+  }
+
+  .brandBlock {
+    margin-bottom: 18px;
+  }
+
+  .workspaceSelect {
+    margin-bottom: 18px;
+  }
+
+  .nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .topbar,
