@@ -1,6 +1,7 @@
 'use client';
 
 import { ROUTES } from '@visionflow/routes';
+import type { ICreateFaqRequest } from '@visionflow/shared';
 import {
   Button,
   Card,
@@ -21,12 +22,17 @@ import styles from '../page.module.css';
 
 const { Text, Title } = Typography;
 
+type FaqFormValues = Pick<
+  ICreateFaqRequest,
+  'answer' | 'category' | 'is_visible' | 'question'
+>;
+
 export default function FaqWritePage() {
   const router = useRouter();
   const createFaqMutation = useCreateFaqMutation();
   const [form] = Form.useForm();
 
-  const handleFinish = async (values: any) => {
+  const handleFinish = async (values: FaqFormValues) => {
     try {
       const result = await createFaqMutation.mutateAsync(values);
 
@@ -37,12 +43,12 @@ export default function FaqWritePage() {
       } else {
         router.push(ROUTES.ADMIN.FAQ.ROOT);
       }
-    } catch (error) {
+    } catch {
       message.error(`FAQ 등록 중 오류가 발생했습니다.`);
     }
   };
 
-  const handleFinishFailed = (errorInfo: any) => {
+  const handleFinishFailed = () => {
     message.error('폼 입력값을 확인하세요');
   };
 

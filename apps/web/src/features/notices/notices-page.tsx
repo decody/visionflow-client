@@ -1,6 +1,6 @@
 import { Container } from '@/components/common/container';
 import type { INotice } from '@/types/notice';
-import { Megaphone, Pin, Search } from 'lucide-react';
+import { Megaphone, Pin } from 'lucide-react';
 
 import styles from './notices-page.module.css';
 
@@ -18,7 +18,7 @@ const noticeMockItems: INotice[] = [
     date: '2026-05-08',
     title: 'VisionFlow 서비스 운영 정책 업데이트 안내',
     description:
-      '서비스 문의 접수와 프로젝트 진행 안내 기준이 일부 변경되었습니다.',
+      '서비스 문의 접수와 프로젝트 진행 안내 기준 일부가 변경되었습니다.',
     contentHtml: null,
     contentJson: null,
     isImportant: true,
@@ -31,7 +31,7 @@ const noticeMockItems: INotice[] = [
     id: '1041',
     category: 'update',
     date: '2026-05-06',
-    title: '3D 웹 제작 문의 접수 프로세스 변경',
+    title: '3D 제작 문의 접수 프로세스 변경',
     description:
       '프로젝트 범위 확인을 위해 사전 질문 항목이 추가됩니다.',
     contentHtml: null,
@@ -74,8 +74,6 @@ const noticeMockItems: INotice[] = [
   },
 ];
 
-const categoryTabs = ['전체', '공지', '업데이트', '이벤트', '점검'];
-
 const getCategoryLabel = (category: string) =>
   categoryLabels[category] ?? category;
 
@@ -92,20 +90,14 @@ export function NoticesPage() {
             <span className={styles.eyebrow}>Notice</span>
             <h1 className={styles.title}>공지사항</h1>
             <p className={styles.description}>
-              VisionFlow의 서비스 운영 소식과 업데이트 안내를
-              확인하세요.
+              VisionFlow의 서비스 운영 소식과 업데이트 안내를 확인하세요.
             </p>
-            <div
-              aria-label="공지 요약"
-              className={styles.summaryGrid}
-            >
+            <div aria-label="공지 요약" className={styles.summaryGrid}>
               <div className={styles.summaryItem}>
                 <strong className={styles.summaryValue}>
                   {noticeMockItems.length}
                 </strong>
-                <span className={styles.summaryLabel}>
-                  게시된 공지
-                </span>
+                <span className={styles.summaryLabel}>게시된 공지</span>
               </div>
               <div className={styles.summaryItem}>
                 <strong className={styles.summaryValue}>
@@ -120,32 +112,6 @@ export function NoticesPage() {
 
       <section className={styles.listSection}>
         <Container>
-          <div className={styles.toolbar}>
-            <label className={styles.searchBox}>
-              <Search aria-hidden="true" size={18} />
-              <span className={styles.srOnly}>공지 검색</span>
-              <input
-                placeholder="제목, 내용, 카테고리 검색"
-                type="search"
-              />
-            </label>
-
-            <div
-              aria-label="공지 카테고리"
-              className={styles.categoryTabs}
-            >
-              {categoryTabs.map((item, index) => (
-                <button
-                  className={`${styles.categoryTab} ${index === 0 ? styles.categoryTabActive : ''}`}
-                  key={item}
-                  type="button"
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div className={styles.listHeader}>
             <div className={styles.listTitle}>
               <span className={styles.listIcon}>
@@ -190,7 +156,7 @@ export function NoticesPage() {
                     aria-hidden="true"
                     className={styles.noticeArrow}
                   >
-                    →
+                    &rarr;
                   </span>
                 </article>
               </li>

@@ -48,9 +48,13 @@ const sortByNewest = (faqs: IFaq[]) => {
       return createdDiff;
     }
 
-    return String(b.id ?? '').localeCompare(String(a.id ?? ''), undefined, {
-      numeric: true,
-    });
+    return String(b.id ?? '').localeCompare(
+      String(a.id ?? ''),
+      undefined,
+      {
+        numeric: true,
+      },
+    );
   });
 };
 
@@ -84,11 +88,17 @@ export default function FaqPage() {
           return false;
         }
 
-        if (visibilityFilter === 'visible' && faq.is_visible !== true) {
+        if (
+          visibilityFilter === 'visible' &&
+          faq.is_visible !== true
+        ) {
           return false;
         }
 
-        if (visibilityFilter === 'hidden' && faq.is_visible === true) {
+        if (
+          visibilityFilter === 'hidden' &&
+          faq.is_visible === true
+        ) {
           return false;
         }
 
@@ -213,15 +223,13 @@ export default function FaqPage() {
 
   const defaultColDef = useMemo<ColDef<IFaq>>(
     () => ({
-      filter: true,
+      filter: false,
       resizable: true,
-      sortable: true,
+      sortable: false,
       autoHeight: true,
     }),
     [],
   );
-
-  // 삭제
 
   if (isLoading) {
     return <Loading />;

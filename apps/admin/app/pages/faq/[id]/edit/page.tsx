@@ -48,14 +48,12 @@ export default function FaqEditPage() {
   const { data: faqData = [], isLoading } = useFaqListQuery();
   const updateFaqMutation = useUpdateFaqMutation();
 
-  // 해당 id의 FAQ 항목 찾기
   const faq = faqData.find((item) => String(item.id) === String(id));
   const initialValues = useMemo(
     () => getFaqInitialValues(faq),
     [faq],
   );
 
-  // FAQ 데이터를 찾지 못한 경우
   if (!isLoading && !faq) {
     return (
       <section className={styles.page}>
@@ -67,7 +65,6 @@ export default function FaqEditPage() {
     );
   }
 
-  // handleFinish에서 id는 FormValues 타입이 아니므로 별도 인자로 전달
   const handleFinish = async (values: FaqFormValues) => {
     try {
       await updateFaqMutation.mutateAsync({
@@ -76,7 +73,7 @@ export default function FaqEditPage() {
       });
       message.success('FAQ가 성공적으로 수정되었습니다.');
       router.push(ROUTES.ADMIN.FAQ.DETAIL(id));
-    } catch (error) {
+    } catch {
       message.error(`FAQ 수정 중 오류가 발생했습니다.`);
     }
   };

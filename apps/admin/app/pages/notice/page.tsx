@@ -6,18 +6,9 @@ import {
   ModuleRegistry,
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
-import {
-  Button,
-  Card,
-  Flex,
-  Input,
-  Select,
-  Space,
-  Tag,
-  Typography,
-} from 'antd';
-import { Megaphone, Pencil, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Card, Flex, Input, Select, Space, Tag, Typography } from 'antd';
+import { Megaphone, Search } from 'lucide-react';
+import { useMemo } from 'react';
 
 import styles from './page.module.css';
 
@@ -25,17 +16,16 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const { Text, Title } = Typography;
 
-type NoticeStatus = 'published' | 'hidden';
 type NoticeCategory =
   | 'announcement'
   | 'event'
   | 'maintenance'
   | 'update';
 
+type NoticeStatus = 'published' | 'hidden';
+
 interface Notice {
   category: NoticeCategory;
-  contentHtml: string | null;
-  contentJson: Record<string, unknown> | null;
   createdAt: string;
   createdBy: string | null;
   date: string;
@@ -64,81 +54,6 @@ const statusColors: Record<NoticeStatus, string> = {
   published: 'green',
 };
 
-const notices: Notice[] = [
-  {
-    id: '1042',
-    category: 'announcement',
-    date: '2026-05-08',
-    title: 'VisionFlow 관리자 콘솔 개편 안내',
-    description:
-      '공지사항 관리 화면에서 공개 여부와 중요 공지 상태를 확인할 수 있습니다.',
-    contentHtml: null,
-    contentJson: null,
-    isImportant: true,
-    isPublished: true,
-    createdBy: '운영팀',
-    createdAt: '2026-05-08 10:30',
-    updatedAt: '2026-05-08 10:30',
-  },
-  {
-    id: '1041',
-    category: 'update',
-    date: '2026-05-06',
-    title: '3D 웹 제작 문의 접수 프로세스 변경',
-    description: '문의 접수 플로우와 사전 확인 문항이 변경됩니다.',
-    contentHtml: null,
-    contentJson: null,
-    isImportant: true,
-    isPublished: true,
-    createdBy: '프로덕트팀',
-    createdAt: '2026-05-06 14:00',
-    updatedAt: '2026-05-06 14:00',
-  },
-  {
-    id: '1040',
-    category: 'maintenance',
-    date: '2026-05-12',
-    title: '5월 정기 시스템 점검 사전 안내',
-    description:
-      '점검 시간 동안 일부 화면 이용이 일시적으로 제한될 수 있습니다.',
-    contentHtml: null,
-    contentJson: null,
-    isImportant: false,
-    isPublished: true,
-    createdBy: '인프라팀',
-    createdAt: '2026-05-05 09:00',
-    updatedAt: '2026-05-05 09:00',
-  },
-  {
-    id: '1039',
-    category: 'event',
-    date: '2026-05-02',
-    title: '신규 포트폴리오 템플릿 공개',
-    description: '프로젝트 사례 페이지에 새 템플릿이 추가됩니다.',
-    contentHtml: null,
-    contentJson: null,
-    isImportant: false,
-    isPublished: true,
-    createdBy: '마케팅팀',
-    createdAt: '2026-05-02 09:15',
-    updatedAt: '2026-05-02 09:15',
-  },
-  {
-    id: '1038',
-    category: 'update',
-    date: '2026-05-01',
-    title: '광고 비주얼 제작 패키지 업데이트 초안',
-    description: '공개 전 검토 중인 공지사항 예시입니다.',
-    contentHtml: null,
-    contentJson: null,
-    isImportant: false,
-    isPublished: false,
-    createdBy: '운영팀',
-    createdAt: '2026-05-01 11:20',
-    updatedAt: '2026-05-01 11:20',
-  },
-];
-
 const statusOptions = [
   { label: '전체 상태', value: 'all' },
   { label: '공개', value: 'published' },
@@ -153,41 +68,72 @@ const categoryOptions = [
   { label: '업데이트', value: 'update' },
 ];
 
+const notices: Notice[] = [
+  {
+    id: '1042',
+    category: 'announcement',
+    date: '2026-05-08',
+    title: 'VisionFlow 관리자 콘솔 개편 안내',
+    description:
+      '공지사항 관리 화면에서 공개 여부와 중요 공지 상태를 확인할 수 있습니다.',
+    isImportant: true,
+    isPublished: true,
+    createdBy: '운영팀',
+    createdAt: '2026-05-08 10:30',
+    updatedAt: '2026-05-08 10:30',
+  },
+  {
+    id: '1041',
+    category: 'update',
+    date: '2026-05-06',
+    title: '3D 제작 문의 접수 프로세스 변경',
+    description: '문의 접수 플로우의 사전 확인 문항이 변경됩니다.',
+    isImportant: true,
+    isPublished: true,
+    createdBy: '프로덕트팀',
+    createdAt: '2026-05-06 14:00',
+    updatedAt: '2026-05-06 14:00',
+  },
+  {
+    id: '1040',
+    category: 'maintenance',
+    date: '2026-05-12',
+    title: '5월 정기 시스템 점검 사전 안내',
+    description:
+      '점검 시간 동안 일부 화면 이용이 일시적으로 제한될 수 있습니다.',
+    isImportant: false,
+    isPublished: true,
+    createdBy: '인프라팀',
+    createdAt: '2026-05-05 09:00',
+    updatedAt: '2026-05-05 09:00',
+  },
+  {
+    id: '1039',
+    category: 'event',
+    date: '2026-05-02',
+    title: '신규 포트폴리오 템플릿 공개',
+    description: '프로젝트 사례 페이지에 새 템플릿이 추가됩니다.',
+    isImportant: false,
+    isPublished: true,
+    createdBy: '마케팅팀',
+    createdAt: '2026-05-02 09:15',
+    updatedAt: '2026-05-02 09:15',
+  },
+  {
+    id: '1038',
+    category: 'update',
+    date: '2026-05-01',
+    title: '광고 비주얼 제작 패키지 업데이트 초안',
+    description: '공개 전 검토 중인 공지사항 예시입니다.',
+    isImportant: false,
+    isPublished: false,
+    createdBy: '운영팀',
+    createdAt: '2026-05-01 11:20',
+    updatedAt: '2026-05-01 11:20',
+  },
+];
+
 export default function NoticePage() {
-  const [keyword, setKeyword] = useState('');
-  const [status, setStatus] = useState<NoticeStatus | 'all'>('all');
-  const [category, setCategory] = useState<NoticeCategory | 'all'>(
-    'all',
-  );
-
-  const filteredNotices = useMemo(() => {
-    const normalizedKeyword = keyword.trim().toLowerCase();
-
-    return notices.filter((notice) => {
-      if (
-        normalizedKeyword &&
-        !`${notice.title} ${notice.description ?? ''}`
-          .toLowerCase()
-          .includes(normalizedKeyword)
-      ) {
-        return false;
-      }
-
-      if (
-        status !== 'all' &&
-        (notice.isPublished ? 'published' : 'hidden') !== status
-      ) {
-        return false;
-      }
-
-      if (category !== 'all' && notice.category !== category) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [category, keyword, status]);
-
   const columnDefs = useMemo<ColDef<Notice>[]>(
     () => [
       {
@@ -268,28 +214,15 @@ export default function NoticePage() {
         maxWidth: 180,
         minWidth: 170,
       },
-      {
-        colId: 'action',
-        headerName: '관리',
-        maxWidth: 110,
-        minWidth: 100,
-        sortable: false,
-        filter: false,
-        cellRenderer: () => (
-          <Button icon={<Pencil size={15} />} size="small">
-            수정
-          </Button>
-        ),
-      },
     ],
     [],
   );
 
   const defaultColDef = useMemo<ColDef<Notice>>(
     () => ({
-      filter: true,
+      filter: false,
       resizable: true,
-      sortable: true,
+      sortable: false,
       autoHeight: true,
     }),
     [],
@@ -303,13 +236,9 @@ export default function NoticePage() {
             공지사항 관리
           </Title>
           <Text type="secondary">
-            사이트에 노출되는 공지사항을 등록하고 게시 상태를
-            관리합니다.
+            검색, 필터, 등록 기능을 붙이기 전의 UI 예시입니다.
           </Text>
         </div>
-        <Button icon={<Plus size={16} />} type="primary">
-          공지 등록
-        </Button>
       </Flex>
 
       <div className={styles.summaryGrid}>
@@ -342,22 +271,18 @@ export default function NoticePage() {
           <Input
             allowClear
             className={styles.search}
-            onChange={(event) => setKeyword(event.target.value)}
             placeholder="공지 제목 검색"
             prefix={<Search size={16} />}
-            value={keyword}
           />
           <Select
             className={styles.select}
-            onChange={setStatus}
+            defaultValue="all"
             options={statusOptions}
-            value={status}
           />
           <Select
             className={styles.select}
-            onChange={setCategory}
+            defaultValue="all"
             options={categoryOptions}
-            value={category}
           />
         </Flex>
       </Card>
@@ -373,7 +298,7 @@ export default function NoticePage() {
             </span>
             <Text strong>공지 목록</Text>
           </Flex>
-          <Text type="secondary">총 {filteredNotices.length}건</Text>
+          <Text type="secondary">총 {notices.length}건</Text>
         </div>
         <div className={`ag-theme-quartz ${styles.grid}`}>
           <AgGridReact<Notice>
@@ -381,7 +306,7 @@ export default function NoticePage() {
             defaultColDef={defaultColDef}
             pagination
             paginationPageSize={10}
-            rowData={filteredNotices}
+            rowData={notices}
             rowHeight={48}
             theme="legacy"
           />
