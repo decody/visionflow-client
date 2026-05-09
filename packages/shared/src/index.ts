@@ -5,6 +5,7 @@ export type { Theme } from './constants/theme';
 export { apiClient } from './utils/api';
 export type { ApiPayload, ApiResponse } from './utils/api';
 export type { ICreateFaqRequest, IFaq } from './types/faq';
+export type { CreateNoticeInput, INotice } from './types/notice';
 
 export { formatPostDate, getPostDateTime, sortPostsByLatest } from './utils/date';
 export { maskString } from './utils/masking';
