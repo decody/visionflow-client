@@ -26,21 +26,17 @@ export default function FaqWritePage() {
   const createFaqMutation = useCreateFaqMutation();
   const [form] = Form.useForm();
 
-  const saveFaq = async (values: any) => {
-    const result = await createFaqMutation.mutateAsync(values);
-
-    message.success('폼이 전송되었습니다');
-
-    if (result?.id) {
-      router.push(ROUTES.ADMIN.FAQ.DETAIL(result.id));
-    } else {
-      router.push(ROUTES.ADMIN.FAQ.ROOT);
-    }
-  };
-
   const handleFinish = async (values: any) => {
     try {
-      await saveFaq(values);
+      const result = await createFaqMutation.mutateAsync(values);
+
+      message.success('폼이 전송되었습니다');
+
+      if (result?.id) {
+        router.push(ROUTES.ADMIN.FAQ.DETAIL(result.id));
+      } else {
+        router.push(ROUTES.ADMIN.FAQ.ROOT);
+      }
     } catch (error) {
       message.error(`FAQ 등록 중 오류가 발생했습니다.`);
     }
