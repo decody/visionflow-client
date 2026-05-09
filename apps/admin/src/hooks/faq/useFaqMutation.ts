@@ -1,2 +1,2 @@
 export { useCreateFaqMutation } from './useCreateFaqMutation';
-// export { useUpdateFaqMutation } from './useUpdateFaqMutation';
+export { useUpdateFaqMutation } from './useUpdateFaqMutation';

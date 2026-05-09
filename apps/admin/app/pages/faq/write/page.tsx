@@ -46,6 +46,10 @@ export default function FaqWritePage() {
     message.error('폼 입력값을 확인하세요');
   };
 
+  if (createFaqMutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <section className={styles.page}>
       <Flex align="flex-start" justify="space-between" gap={16} wrap>

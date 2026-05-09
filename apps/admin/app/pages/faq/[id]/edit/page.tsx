@@ -1,6 +1,7 @@
 'use client';
 
 import { ROUTES } from '@visionflow/routes';
+import type { ICreateFaqRequest, IFaq } from '@visionflow/shared';
 import {
   Button,
   Card,
@@ -14,30 +15,79 @@ import {
   Typography,
 } from 'antd';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useMemo } from 'react';
 
+import Loading from '@/components/common/loading/page';
 import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
+import { useUpdateFaqMutation } from '@/hooks/faq/useUpdateFaqMutation';
 import styles from '../../page.module.css';
 
 const { Text, Title } = Typography;
 
+type FaqFormValues = Pick<
+  ICreateFaqRequest,
+  'answer' | 'category' | 'is_visible' | 'question'
+>;
+
+const getFaqInitialValues = (faq?: IFaq): FaqFormValues => ({
+  category: faq?.category ?? 'default',
+  question: faq?.question ?? '',
+  answer: faq?.answer ?? '',
+  is_visible:
+    typeof faq?.is_visible === 'boolean'
+      ? faq.is_visible
+      : (faq?.isVisible ?? true),
+});
+
 export default function FaqEditPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const router = useRouter();
   const [form] = Form.useForm();
-  const { data: faqData = [] } = useFaqListQuery();
+  const { data: faqData = [], isLoading } = useFaqListQuery();
+  const updateFaqMutation = useUpdateFaqMutation();
 
-  const handleFinish = async (values: any) => {
+  // 해당 id의 FAQ 항목 찾기
+  const faq = faqData.find((item) => String(item.id) === String(id));
+  const initialValues = useMemo(
+    () => getFaqInitialValues(faq),
+    [faq],
+  );
+
+  // FAQ 데이터를 찾지 못한 경우
+  if (!isLoading && !faq) {
+    return (
+      <section className={styles.page}>
+        <Title level={3}>FAQ를 찾을 수 없습니다.</Title>
+        <Link href={ROUTES.ADMIN.FAQ.ROOT}>
+          <Button>목록으로</Button>
+        </Link>
+      </section>
+    );
+  }
+
+  // handleFinish에서 id는 FormValues 타입이 아니므로 별도 인자로 전달
+  const handleFinish = async (values: FaqFormValues) => {
     try {
-      message.success('폼이 전송되었습니다');
+      await updateFaqMutation.mutateAsync({
+        values,
+        faqId: id,
+      });
+      message.success('FAQ가 성공적으로 수정되었습니다.');
+      router.push(ROUTES.ADMIN.FAQ.DETAIL(id));
     } catch (error) {
       message.error(`FAQ 수정 중 오류가 발생했습니다.`);
     }
   };
 
-  const handleFinishFailed = (errorInfo: any) => {
+  const handleFinishFailed = () => {
     message.error('폼 입력값을 확인하세요');
   };
+
+  if (isLoading) {
+    return <Loading />;
+  }
 
   return (
     <section className={styles.page}>
@@ -63,10 +113,7 @@ export default function FaqEditPage() {
       <Card className={styles.panel}>
         <Form
           form={form}
-          initialValues={{
-            category: 'default',
-            is_visible: true,
-          }}
+          initialValues={initialValues}
           layout="vertical"
           requiredMark={false}
           onFinish={handleFinish}
@@ -89,7 +136,9 @@ export default function FaqEditPage() {
           <Form.Item
             label="질문"
             name="question"
-            rules={[{ required: true }]}
+            rules={[
+              { required: true, message: '질문을 입력해주세요' },
+            ]}
           >
             <Input
               placeholder="질문을 입력하세요"
@@ -101,7 +150,9 @@ export default function FaqEditPage() {
           <Form.Item
             label="답변"
             name="answer"
-            rules={[{ required: true }]}
+            rules={[
+              { required: true, message: '답변을 입력해주세요' },
+            ]}
           >
             <Input.TextArea
               autoSize={{ minRows: 8, maxRows: 14 }}
@@ -131,7 +182,13 @@ export default function FaqEditPage() {
               <Button>취소</Button>
             </Link>
             <Space>
-              <Button type="primary">저장</Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={updateFaqMutation.isPending}
+              >
+                저장
+              </Button>
             </Space>
           </Flex>
         </Form>

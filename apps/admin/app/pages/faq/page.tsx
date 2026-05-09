@@ -33,6 +33,27 @@ const { Text, Title } = Typography;
 type CategoryFilter = 'all' | 'contact' | 'default';
 type VisibilityFilter = 'all' | 'hidden' | 'visible';
 
+const getCreatedTime = (faq: IFaq) => {
+  const value = faq.created_at ?? faq.createdAt;
+  const time = value ? new Date(value).getTime() : 0;
+
+  return Number.isNaN(time) ? 0 : time;
+};
+
+const sortByNewest = (faqs: IFaq[]) => {
+  return [...faqs].sort((a, b) => {
+    const createdDiff = getCreatedTime(b) - getCreatedTime(a);
+
+    if (createdDiff !== 0) {
+      return createdDiff;
+    }
+
+    return String(b.id ?? '').localeCompare(String(a.id ?? ''), undefined, {
+      numeric: true,
+    });
+  });
+};
+
 export default function FaqPage() {
   const { data: faqs = [], isLoading } = useFaqListQuery();
   const [keyword, setKeyword] = useState('');
@@ -44,34 +65,36 @@ export default function FaqPage() {
   const filteredFaqs = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
-    return faqs.filter((faq) => {
-      if (
-        normalizedKeyword &&
-        !(
-          faq.question.toLowerCase().includes(normalizedKeyword) ||
-          faq.answer.toLowerCase().includes(normalizedKeyword)
-        )
-      ) {
-        return false;
-      }
+    return sortByNewest(
+      faqs.filter((faq) => {
+        if (
+          normalizedKeyword &&
+          !(
+            faq.question.toLowerCase().includes(normalizedKeyword) ||
+            faq.answer.toLowerCase().includes(normalizedKeyword)
+          )
+        ) {
+          return false;
+        }
 
-      if (
-        categoryFilter !== 'all' &&
-        faq.category !== categoryFilter
-      ) {
-        return false;
-      }
+        if (
+          categoryFilter !== 'all' &&
+          faq.category !== categoryFilter
+        ) {
+          return false;
+        }
 
-      if (visibilityFilter === 'visible' && faq.is_visible !== true) {
-        return false;
-      }
+        if (visibilityFilter === 'visible' && faq.is_visible !== true) {
+          return false;
+        }
 
-      if (visibilityFilter === 'hidden' && faq.is_visible === true) {
-        return false;
-      }
+        if (visibilityFilter === 'hidden' && faq.is_visible === true) {
+          return false;
+        }
 
-      return true;
-    });
+        return true;
+      }),
+    );
   }, [categoryFilter, faqs, keyword, visibilityFilter]);
 
   const columnDefs = useMemo<ColDef<IFaq>[]>(
