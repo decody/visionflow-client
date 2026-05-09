@@ -54,7 +54,11 @@ export function FaqPage({
   isOpen?: number
 }) {
   const filteredFaqs = sortFaqs(
-    faqs.filter(faq => faq.category?.trim() === category)
+    faqs.filter((faq) => {
+      const isVisible = faq.is_visible ?? faq.isVisible;
+
+      return isVisible === true && faq.category?.trim() === category;
+    })
   );
 
   const defaultHeader = (

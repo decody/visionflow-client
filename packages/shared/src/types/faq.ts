@@ -16,7 +16,12 @@ interface ICreateFaqRequest {
   category?: string | null;
   question: string;
   answer: string;
+  isVisible?: boolean;
   is_visible?: boolean;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
 }
 
 export type { ICreateFaqRequest, IFaq };

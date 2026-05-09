@@ -14,6 +14,7 @@ import {
   message,
 } from 'antd';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { useCreateFaqMutation } from '@/hooks/faq/useCreateFaqMutation';
 import styles from '../page.module.css';
@@ -21,16 +22,28 @@ import styles from '../page.module.css';
 const { Text, Title } = Typography;
 
 export default function FaqWritePage() {
-  const { data } = useCreateFaqMutation();
+  const router = useRouter();
+  const createFaqMutation = useCreateFaqMutation();
   const [form] = Form.useForm();
 
-  const handleFinish = (values: any) => {
-    // 서버 전송 로직을 추가하세요.
-    // 예시: await api.createFaq(values);
+  const saveFaq = async (values: any) => {
+    const result = await createFaqMutation.mutateAsync(values);
 
-    // 메시지입니다.
-    message.success('폼이 전송되었습니다: ' + JSON.stringify(values));
-    // 성공 후 페이지 이동 등 처리
+    message.success('폼이 전송되었습니다');
+
+    if (result?.id) {
+      router.push(ROUTES.ADMIN.FAQ.DETAIL(result.id));
+    } else {
+      router.push(ROUTES.ADMIN.FAQ.ROOT);
+    }
+  };
+
+  const handleFinish = async (values: any) => {
+    try {
+      await saveFaq(values);
+    } catch (error) {
+      message.error(`FAQ 등록 중 오류가 발생했습니다.`);
+    }
   };
 
   const handleFinishFailed = (errorInfo: any) => {
@@ -129,18 +142,10 @@ export default function FaqWritePage() {
             </Link>
             <Space>
               <Button
-                type="default"
-                htmlType="button"
-                onClick={() => {
-                  // 임시저장 로직 샘플
-                  message.info(
-                    '임시저장 기능은 아직 구현되지 않았습니다.',
-                  );
-                }}
+                loading={createFaqMutation.isPending}
+                type="primary"
+                htmlType="submit"
               >
-                임시저장
-              </Button>
-              <Button type="primary" htmlType="submit">
                 저장
               </Button>
             </Space>
