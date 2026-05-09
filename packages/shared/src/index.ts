@@ -8,4 +8,5 @@ export type { ICreateFaqRequest, IFaq } from './types/faq';
 export type { CreateNoticeInput, INotice } from './types/notice';
 
 export { formatPostDate, getPostDateTime, sortPostsByLatest } from './utils/date';
+export { sanitizeContentHtml } from './utils/html';
 export { maskString } from './utils/masking';

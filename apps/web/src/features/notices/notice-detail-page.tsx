@@ -2,6 +2,7 @@
 
 import { Container } from '@/components/common/container';
 import { ROUTES } from '@visionflow/routes';
+import { sanitizeContentHtml } from '@visionflow/shared';
 import { ArrowLeft, CalendarDays, Pin } from 'lucide-react';
 import Link from 'next/link';
 
@@ -70,7 +71,10 @@ export function NoticeDetailPage({
     );
   }
 
-  const hasContentHtml = Boolean(notice.contentHtml?.trim());
+  const sanitizedContentHtml = sanitizeContentHtml(
+    notice.contentHtml ?? '',
+  );
+  const hasContentHtml = Boolean(sanitizedContentHtml.trim());
 
   return (
     <main className={styles.page}>
@@ -116,7 +120,7 @@ export function NoticeDetailPage({
             <div
               className={styles.content}
               dangerouslySetInnerHTML={{
-                __html: notice.contentHtml ?? '',
+                __html: sanitizedContentHtml,
               }}
             />
           ) : (

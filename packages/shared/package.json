@@ -10,7 +10,11 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json"
   },
+  "dependencies": {
+    "sanitize-html": "^2.17.3"
+  },
   "devDependencies": {
+    "@types/sanitize-html": "^2.16.1",
     "typescript": "6.0.3"
   }
 }
