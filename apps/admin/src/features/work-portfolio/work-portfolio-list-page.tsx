@@ -31,6 +31,7 @@ type WorkCase = {
   slug: string;
   starred: boolean;
   status: StatusKey;
+  thumbColor: string;
   title: string;
   version: string;
   year: number;
@@ -47,13 +48,14 @@ const WORK_CASES: ReadonlyArray<WorkCase> = [
     slug: '/work/brand-15-season-campaign',
     starred: true,
     status: 'draft',
+    thumbColor: '#fce7f3',
     title: 'Brand 1.5 — 시즌 캠페인 광고 이미지',
     version: 'v3',
     year: 2026,
   },
   {
     author: { color: 'green', initials: 'PS', name: '박서준' },
-    category: '인테리어',
+    category: '웹 3D',
     categoryKey: 'brand',
     client: 'Furniro Living',
     id: '2',
@@ -61,13 +63,14 @@ const WORK_CASES: ReadonlyArray<WorkCase> = [
     slug: '/work/furniro-3d-configurator',
     starred: true,
     status: 'draft',
+    thumbColor: '#e2e8f0',
     title: 'Furniro 3D 컨피규레이터 — 인테리어 미리보기',
     version: 'v1',
     year: 2025,
   },
   {
     author: { initials: 'KJ', name: '김진자' },
-    category: 'B2B SaaS',
+    category: '앱 개발',
     categoryKey: 'dashboard',
     client: 'TechCo',
     id: '3',
@@ -75,13 +78,14 @@ const WORK_CASES: ReadonlyArray<WorkCase> = [
     slug: '/work/techco-admin-localization',
     starred: false,
     status: 'review',
+    thumbColor: '#fef3c7',
     title: 'TechCo 어드민 — 운영 효율화',
     version: 'v2',
     year: 2025,
   },
   {
     author: { color: 'green', initials: 'JB', name: '진보람' },
-    category: '데이터 분석',
+    category: '데이터 대시보드',
     categoryKey: 'dashboard',
     client: 'Greenday Logis...',
     id: '4',
@@ -89,13 +93,14 @@ const WORK_CASES: ReadonlyArray<WorkCase> = [
     slug: '/work/greenday-logistics-dashboard',
     starred: false,
     status: 'review',
+    thumbColor: '#dbeafe',
     title: 'Greenday 물류 대시보드',
     version: 'v4',
     year: 2025,
   },
   {
     author: { initials: 'KJ', name: '김진자' },
-    category: '광고 이미지',
+    category: '웹 3D',
     categoryKey: 'ad',
     client: 'Studio M',
     id: '5',
@@ -103,6 +108,7 @@ const WORK_CASES: ReadonlyArray<WorkCase> = [
     slug: '/work/studio-m-portfolio',
     starred: true,
     status: 'publish',
+    thumbColor: '#ede9fe',
     title: 'Studio M — 인터랙티브 포트폴리오',
     version: 'v9 publish',
     year: 2025,
@@ -117,13 +123,14 @@ const WORK_CASES: ReadonlyArray<WorkCase> = [
     slug: '/work/pharma-co-campaign',
     starred: false,
     status: 'publish',
+    thumbColor: '#fce7f3',
     title: 'Pharma Co — 의약품 광고 캠페인',
     version: 'v3',
     year: 2025,
   },
   {
     author: { initials: 'KJ', name: '김진자' },
-    category: '랜딩페이지',
+    category: '앱 개발',
     categoryKey: 'landing',
     client: 'Brand Story Co.',
     id: '7',
@@ -131,13 +138,14 @@ const WORK_CASES: ReadonlyArray<WorkCase> = [
     slug: '/work/brand-story-mobile-app',
     starred: false,
     status: 'publish',
+    thumbColor: '#fef9c3',
     title: 'Brand Story Co. 모바일 앱',
     version: 'v3',
     year: 2025,
   },
   {
     author: { color: 'green', initials: 'PS', name: '박서준' },
-    category: '데이터 분석',
+    category: '데이터 대시보드',
     categoryKey: 'dashboard',
     client: 'Northern Insights',
     id: '8',
@@ -145,13 +153,14 @@ const WORK_CASES: ReadonlyArray<WorkCase> = [
     slug: '/work/northern-insights-bi',
     starred: false,
     status: 'publish',
-    title: 'Northern Insights — BI 통합 데이터 시보드',
+    thumbColor: '#dbeafe',
+    title: 'Northern Insights — BI 통합 데이터 대시보드',
     version: 'v6',
     year: 2024,
   },
   {
     author: { initials: 'KJ', name: '김진자' },
-    category: '자체 IP',
+    category: '웹 3D',
     categoryKey: 'brand',
     client: 'VisionFlow 자체 IP',
     id: '9',
@@ -159,6 +168,7 @@ const WORK_CASES: ReadonlyArray<WorkCase> = [
     slug: '/work/sentry-house-self-ip',
     starred: false,
     status: 'publish',
+    thumbColor: '#fef3c7',
     title: 'Sentry House — 자체 IP 케이스',
     version: 'v8',
     year: 2024,
@@ -343,7 +353,7 @@ export function WorkPortfolioListPage() {
                     <span
                       aria-hidden="true"
                       className={styles.caseThumb}
-                      style={{ background: item.starred ? '#fce7f3' : undefined }}
+                      style={{ background: item.thumbColor }}
                     />
                     <div className={styles.caseText}>
                       <Link
