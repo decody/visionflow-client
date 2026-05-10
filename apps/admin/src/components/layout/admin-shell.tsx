@@ -1,15 +1,23 @@
 import type { ReactNode } from 'react';
 
-import { AdminFooter } from './admin-footer';
 import { AdminHeader } from './admin-header';
 import styles from './admin-shell.module.css';
+import { AdminTopbar } from './admin-topbar';
+import { TopbarProvider } from './topbar-context';
 
-export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
+export function AdminShell({
+  children,
+  hideTopbar,
+}: Readonly<{ children: ReactNode; hideTopbar?: boolean }>) {
   return (
-    <div className={styles.shell}>
-      <AdminHeader />
-      <main className={styles.main}>{children}</main>
-      <AdminFooter />
-    </div>
+    <TopbarProvider>
+      <div className={styles.shell}>
+        <AdminHeader />
+        <div className={styles.contentColumn}>
+          {hideTopbar ? null : <AdminTopbar />}
+          <main className={styles.main}>{children}</main>
+        </div>
+      </div>
+    </TopbarProvider>
   );
 }

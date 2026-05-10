@@ -10,7 +10,7 @@ import { Inter } from 'next/font/google';
 import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
 
-import { AdminShell } from '../src/components/layout/admin-shell';
+import { AdminShellConditional } from '../src/components/layout/admin-shell-conditional';
 import { QueryProvider } from '../src/components/query-provider';
 
 const inter = Inter({
@@ -37,7 +37,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html className={`${inter.variable} ${pretendard.variable}`} lang="ko">
       <body>
         <QueryProvider>
-          <AdminShell>{children}</AdminShell>
+          <AdminShellConditional>{children}</AdminShellConditional>
         </QueryProvider>
       </body>
     </html>
