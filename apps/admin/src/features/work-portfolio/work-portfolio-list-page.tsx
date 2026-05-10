@@ -2,7 +2,10 @@
 
 import { ROUTES } from '@visionflow/routes';
 import {
+  AlertTriangle,
+  BarChart3,
   Briefcase,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -233,29 +236,44 @@ export function WorkPortfolioListPage() {
       {/* KPI */}
       <div className={styles.kpiRow}>
         <div className={`${styles.kpiCard} ${styles.kpiAccentDraft}`}>
-          <span className={styles.kpiIcon}>
-            <Briefcase size={20} />
-          </span>
-          <p className={styles.kpiLabel}>DRAFT 작업중</p>
+          <div className={styles.kpiTopRow}>
+            <p className={styles.kpiLabel}>DRAFT 작업중</p>
+            <span className={`${styles.kpiIconBadge} ${styles.kpiIconDraft}`}>
+              <Briefcase aria-hidden="true" size={16} strokeWidth={2} />
+            </span>
+          </div>
           <p className={styles.kpiValue}>4</p>
-          <p className={styles.kpiSub}>리뷰 대기 2</p>
+          <p className={styles.kpiSub}>오늘 작업 중 2건</p>
         </div>
         <div className={`${styles.kpiCard} ${styles.kpiAccentReview}`}>
-          <p className={styles.kpiLabel}>검토 대기</p>
+          <div className={styles.kpiTopRow}>
+            <p className={styles.kpiLabel}>검토 대기</p>
+            <span className={`${styles.kpiIconBadge} ${styles.kpiIconReview}`}>
+              <AlertTriangle aria-hidden="true" size={16} strokeWidth={2} />
+            </span>
+          </div>
           <p className={styles.kpiValue}>2</p>
-          <p className={styles.kpiSub}>
-            SuperAdmin 2인 검토
-          </p>
+          <p className={`${styles.kpiSub} ${styles.kpiSubReview}`}>SuperAdmin 승인 대기</p>
         </div>
         <div className={`${styles.kpiCard} ${styles.kpiAccentPublish}`}>
-          <p className={styles.kpiLabel}>리뷰 중 발행</p>
+          <div className={styles.kpiTopRow}>
+            <p className={styles.kpiLabel}>리뷰 후 발행</p>
+            <span className={`${styles.kpiIconBadge} ${styles.kpiIconPublish}`}>
+              <CheckCircle2 aria-hidden="true" size={16} strokeWidth={2} />
+            </span>
+          </div>
           <p className={styles.kpiValue}>3</p>
-          <p className={styles.kpiSub}>일정: 5/10·5/13·5/14</p>
+          <p className={`${styles.kpiSub} ${styles.kpiSubPublish}`}>예정 5/10 · 5/12 · 5/14</p>
         </div>
         <div className={`${styles.kpiCard} ${styles.kpiAccentTotal}`}>
-          <p className={styles.kpiLabel}>총 실행 케이스</p>
+          <div className={styles.kpiTopRow}>
+            <p className={styles.kpiLabel}>총 실행 케이스</p>
+            <span className={`${styles.kpiIconBadge} ${styles.kpiIconTotal}`}>
+              <BarChart3 aria-hidden="true" size={16} strokeWidth={2} />
+            </span>
+          </div>
           <p className={styles.kpiValue}>47</p>
-          <p className={styles.kpiSub}>평균 3.2 생성일 리타이드</p>
+          <p className={styles.kpiSub}>평균 3.2일 생산 리드타임</p>
         </div>
       </div>
 
