@@ -14,10 +14,6 @@ const fetchNotice = async (
 ): Promise<INotice | null> => {
   const { data } = await apiClient.get<INotice | null>(
     `notices/${noticeId}`,
-    {
-      p_limit: 5,
-      p_offset: 0,
-    },
   );
 
   return data ?? null;

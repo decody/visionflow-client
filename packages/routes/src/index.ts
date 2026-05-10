@@ -23,6 +23,12 @@ export const ROUTES = {
   ADMIN: {
     HOME: '/',
     NOTICES: '/pages/notice',
+    NOTICE: {
+      ROOT: '/pages/notice',
+      DETAIL: (id: string | number) => `/pages/notice/${id}`,
+      EDIT: (id: string | number) => `/pages/notice/${id}/edit`,
+      WRITE: () => '/pages/notice/write',
+    },
     DASHBOARD: '/pages/dashboard',
 
     FAQ: {

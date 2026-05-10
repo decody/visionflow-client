@@ -1,13 +1,31 @@
 'use client';
 
-import type { ColDef, ICellRendererParams } from 'ag-grid-community';
+import Loading from '@/components/loading/page';
+import { useNoticeListQuery } from '@/hooks/notices/useNoticeQuery';
+import { getNoticeDisplayNumberMap } from '@/utils/notices';
+import { ROUTES } from '@visionflow/routes';
+import type { INotice } from '@visionflow/shared';
+import type {
+  ColDef,
+  ICellRendererParams,
+  ValueGetterParams,
+} from 'ag-grid-community';
 import {
   AllCommunityModule,
   ModuleRegistry,
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
-import { Card, Flex, Input, Select, Space, Tag, Typography } from 'antd';
-import { Megaphone, Search } from 'lucide-react';
+import {
+  Button,
+  Card,
+  Flex,
+  Input,
+  Select,
+  Space,
+  Tag,
+  Typography,
+} from 'antd';
+import Link from 'next/link';
 import { useMemo } from 'react';
 
 import styles from './page.module.css';
@@ -16,131 +34,57 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const { Text, Title } = Typography;
 
-type NoticeCategory =
-  | 'announcement'
-  | 'event'
-  | 'maintenance'
-  | 'update';
-
-type NoticeStatus = 'published' | 'hidden';
-
-interface Notice {
-  category: NoticeCategory;
-  createdAt: string;
-  createdBy: string | null;
-  date: string;
-  description: string | null;
-  id: string;
-  isImportant: boolean;
-  isPublished: boolean;
-  title: string;
-  updatedAt: string;
-}
-
-const categoryLabels: Record<NoticeCategory, string> = {
+const categoryLabels: Record<string, string> = {
+  Guide: '공지',
+  Service: '서비스',
+  Update: '업데이트',
+  Event: '이벤트',
   announcement: '공지',
   event: '이벤트',
   maintenance: '점검',
   update: '업데이트',
 };
 
-const statusLabels: Record<NoticeStatus, string> = {
-  hidden: '비공개',
-  published: '공개',
+const getCategoryLabel = (category?: string) => {
+  if (!category) {
+    return '-';
+  }
+
+  return categoryLabels[category] ?? category;
 };
 
-const statusColors: Record<NoticeStatus, string> = {
-  hidden: 'default',
-  published: 'green',
+const formatDateTime = (value?: string | null) => {
+  if (!value) {
+    return '-';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
 };
-
-const statusOptions = [
-  { label: '전체 상태', value: 'all' },
-  { label: '공개', value: 'published' },
-  { label: '비공개', value: 'hidden' },
-];
-
-const categoryOptions = [
-  { label: '전체 카테고리', value: 'all' },
-  { label: '공지', value: 'announcement' },
-  { label: '이벤트', value: 'event' },
-  { label: '점검', value: 'maintenance' },
-  { label: '업데이트', value: 'update' },
-];
-
-const notices: Notice[] = [
-  {
-    id: '1042',
-    category: 'announcement',
-    date: '2026-05-08',
-    title: 'VisionFlow 관리자 콘솔 개편 안내',
-    description:
-      '공지사항 관리 화면에서 공개 여부와 중요 공지 상태를 확인할 수 있습니다.',
-    isImportant: true,
-    isPublished: true,
-    createdBy: '운영팀',
-    createdAt: '2026-05-08 10:30',
-    updatedAt: '2026-05-08 10:30',
-  },
-  {
-    id: '1041',
-    category: 'update',
-    date: '2026-05-06',
-    title: '3D 제작 문의 접수 프로세스 변경',
-    description: '문의 접수 플로우의 사전 확인 문항이 변경됩니다.',
-    isImportant: true,
-    isPublished: true,
-    createdBy: '프로덕트팀',
-    createdAt: '2026-05-06 14:00',
-    updatedAt: '2026-05-06 14:00',
-  },
-  {
-    id: '1040',
-    category: 'maintenance',
-    date: '2026-05-12',
-    title: '5월 정기 시스템 점검 사전 안내',
-    description:
-      '점검 시간 동안 일부 화면 이용이 일시적으로 제한될 수 있습니다.',
-    isImportant: false,
-    isPublished: true,
-    createdBy: '인프라팀',
-    createdAt: '2026-05-05 09:00',
-    updatedAt: '2026-05-05 09:00',
-  },
-  {
-    id: '1039',
-    category: 'event',
-    date: '2026-05-02',
-    title: '신규 포트폴리오 템플릿 공개',
-    description: '프로젝트 사례 페이지에 새 템플릿이 추가됩니다.',
-    isImportant: false,
-    isPublished: true,
-    createdBy: '마케팅팀',
-    createdAt: '2026-05-02 09:15',
-    updatedAt: '2026-05-02 09:15',
-  },
-  {
-    id: '1038',
-    category: 'update',
-    date: '2026-05-01',
-    title: '광고 비주얼 제작 패키지 업데이트 초안',
-    description: '공개 전 검토 중인 공지사항 예시입니다.',
-    isImportant: false,
-    isPublished: false,
-    createdBy: '운영팀',
-    createdAt: '2026-05-01 11:20',
-    updatedAt: '2026-05-01 11:20',
-  },
-];
 
 export default function NoticePage() {
-  const columnDefs = useMemo<ColDef<Notice>[]>(
+  const { data: notices = [], isLoading } = useNoticeListQuery();
+
+  const noticeNumberById = useMemo(() => {
+    return getNoticeDisplayNumberMap(notices);
+  }, [notices]);
+
+  const columnDefs = useMemo<ColDef<INotice>[]>(
     () => [
       {
-        field: 'id',
+        colId: 'displayNumber',
         headerName: '번호',
         maxWidth: 92,
         minWidth: 80,
+        valueGetter: ({
+          data,
+        }: ValueGetterParams<INotice>) =>
+          data ? (noticeNumberById.get(data.id) ?? '-') : '-',
       },
       {
         field: 'title',
@@ -150,24 +94,43 @@ export default function NoticePage() {
         cellRenderer: ({
           value,
           data,
-        }: ICellRendererParams<Notice, string>) => (
-          <Space size={8} wrap>
-            {data?.isImportant ? <Tag color="red">중요</Tag> : null}
-            <Text strong>{value}</Text>
-          </Space>
-        ),
+        }: ICellRendererParams<INotice, string>) => {
+          if (!data) {
+            return null;
+          }
+
+          return (
+            <Link
+              href={ROUTES.ADMIN.NOTICE.DETAIL(data.id)}
+              style={{
+                display: 'block',
+                height: '100%',
+                width: '100%',
+              }}
+            >
+              <Space size={8} wrap>
+                {data.isImportant ? (
+                  <Tag color="red">중요</Tag>
+                ) : null}
+                <Text strong>{value}</Text>
+              </Space>
+            </Link>
+          );
+        },
       },
       {
         field: 'category',
         headerName: '카테고리',
-        maxWidth: 130,
+        maxWidth: 140,
         minWidth: 120,
         cellRenderer: ({
           value,
-        }: ICellRendererParams<Notice, NoticeCategory>) =>
+        }: ICellRendererParams<INotice, string>) =>
           value ? (
-            <Tag color="blue">{categoryLabels[value]}</Tag>
-          ) : null,
+            <Tag color="blue">{getCategoryLabel(value)}</Tag>
+          ) : (
+            '-'
+          ),
       },
       {
         field: 'isPublished',
@@ -176,15 +139,8 @@ export default function NoticePage() {
         minWidth: 110,
         cellRenderer: ({
           value,
-        }: ICellRendererParams<Notice, boolean>) => {
-          const status: NoticeStatus = value ? 'published' : 'hidden';
-
-          return (
-            <Tag color={statusColors[status]}>
-              {statusLabels[status]}
-            </Tag>
-          );
-        },
+        }: ICellRendererParams<INotice, boolean>) =>
+          value ? <Tag color="green">공개</Tag> : <Tag>비공개</Tag>,
       },
       {
         field: 'isImportant',
@@ -193,32 +149,56 @@ export default function NoticePage() {
         minWidth: 90,
         cellRenderer: ({
           value,
-        }: ICellRendererParams<Notice, boolean>) =>
+        }: ICellRendererParams<INotice, boolean>) =>
           value ? <Tag color="red">Y</Tag> : <Tag>N</Tag>,
       },
       {
         field: 'date',
-        headerName: '노출일',
+        headerName: '게시일',
         maxWidth: 140,
         minWidth: 130,
       },
-      {
-        field: 'createdBy',
-        headerName: '작성자',
-        maxWidth: 120,
-        minWidth: 110,
-      },
+      // {
+      //   field: 'createdBy',
+      //   headerName: '작성자',
+      //   maxWidth: 120,
+      //   minWidth: 110,
+      //   valueFormatter: ({ value }) => value ?? '-',
+      // },
       {
         field: 'updatedAt',
         headerName: '수정일',
         maxWidth: 180,
         minWidth: 170,
+        valueFormatter: ({ value }) => formatDateTime(value),
+      },
+      {
+        colId: 'action',
+        headerName: '관리',
+        maxWidth: 150,
+        minWidth: 140,
+        cellRenderer: ({ data }: ICellRendererParams<INotice>) => {
+          if (!data) {
+            return null;
+          }
+
+          return (
+            <Space size="small">
+              <Link href={ROUTES.ADMIN.NOTICE.DETAIL(data.id)}>
+                상세
+              </Link>
+              <Link href={ROUTES.ADMIN.NOTICE.EDIT(data.id)}>
+                수정
+              </Link>
+            </Space>
+          );
+        },
       },
     ],
-    [],
+    [noticeNumberById],
   );
 
-  const defaultColDef = useMemo<ColDef<Notice>>(
+  const defaultColDef = useMemo<ColDef<INotice>>(
     () => ({
       filter: false,
       resizable: true,
@@ -228,6 +208,10 @@ export default function NoticePage() {
     [],
   );
 
+  if (isLoading) {
+    return <Loading />;
+  }
+
   return (
     <section className={styles.page}>
       <Flex align="flex-start" justify="space-between" gap={16} wrap>
@@ -236,9 +220,12 @@ export default function NoticePage() {
             공지사항 관리
           </Title>
           <Text type="secondary">
-            검색, 필터, 등록 기능을 붙이기 전의 UI 예시입니다.
+            등록된 공지사항의 공개 상태와 내용을 확인합니다.
           </Text>
         </div>
+        <Link href={ROUTES.ADMIN.NOTICE.WRITE()}>
+          <Button type="primary">공지 등록</Button>
+        </Link>
       </Flex>
 
       <div className={styles.summaryGrid}>
@@ -268,21 +255,40 @@ export default function NoticePage() {
 
       <Card className={styles.panel}>
         <Flex gap={12} wrap>
-          <Input
+          <Input.Search
             allowClear
             className={styles.search}
-            placeholder="공지 제목 검색"
-            prefix={<Search size={16} />}
+            placeholder="공지 제목 또는 내용을 검색"
           />
           <Select
             className={styles.select}
             defaultValue="all"
-            options={statusOptions}
+            options={[
+              { label: '전체 카테고리', value: 'all' },
+              { label: '공지', value: 'Guide' },
+              { label: '서비스', value: 'Service' },
+              { label: '업데이트', value: 'Update' },
+              { label: '이벤트', value: 'Event' },
+              { label: '점검', value: 'maintenance' },
+            ]}
           />
           <Select
             className={styles.select}
             defaultValue="all"
-            options={categoryOptions}
+            options={[
+              { label: '전체 공개상태', value: 'all' },
+              { label: '공개', value: 'published' },
+              { label: '비공개', value: 'private' },
+            ]}
+          />
+          <Select
+            className={styles.select}
+            defaultValue="all"
+            options={[
+              { label: '전체 중요상태', value: 'all' },
+              { label: '중요', value: 'important' },
+              { label: '일반', value: 'normal' },
+            ]}
           />
         </Flex>
       </Card>
@@ -292,20 +298,16 @@ export default function NoticePage() {
         styles={{ body: { padding: 0 } }}
       >
         <div className={styles.tableHeader}>
-          <Flex align="center" gap={10}>
-            <span className={styles.tableIcon}>
-              <Megaphone size={17} />
-            </span>
-            <Text strong>공지 목록</Text>
-          </Flex>
+          <Text strong>공지 목록</Text>
           <Text type="secondary">총 {notices.length}건</Text>
         </div>
         <div className={`ag-theme-quartz ${styles.grid}`}>
-          <AgGridReact<Notice>
+          <AgGridReact<INotice>
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
             pagination
             paginationPageSize={10}
+            paginationPageSizeSelector={[10, 20, 50, 100]}
             rowData={notices}
             rowHeight={48}
             theme="legacy"

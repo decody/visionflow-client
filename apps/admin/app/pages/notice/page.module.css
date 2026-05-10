@@ -72,6 +72,55 @@
   width: 100%;
 }
 
+.article {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.label {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.answer {
+  margin: 0 !important;
+  padding: 16px 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.contentPreview {
+  padding: 20px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  line-height: 1.8;
+}
+
+.contentPreview :global(p) {
+  margin: 0 0 12px;
+}
+
+.contentPreview :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.contentPreview :global(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.formActions {
+  margin-top: 24px;
+}
+
 @media (max-width: 1023px) {
   .summaryGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
