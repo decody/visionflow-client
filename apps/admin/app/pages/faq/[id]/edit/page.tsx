@@ -119,7 +119,9 @@ export default function FaqEditPage() {
           <Form.Item
             label="카테고리"
             name="category"
-            rules={[{ required: true }]}
+            rules={[
+              { required: true, message: '카테고리를 선택해주세요' },
+            ]}
           >
             <Select
               options={[

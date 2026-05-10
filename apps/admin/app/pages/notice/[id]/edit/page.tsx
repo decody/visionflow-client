@@ -6,25 +6,95 @@ import { ROUTES } from '@visionflow/routes';
 import {
   Button,
   Card,
+  DatePicker,
   Flex,
   Form,
   Input,
+  message,
   Select,
   Space,
   Switch,
   Typography,
 } from 'antd';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
+import { useUpdateNoticeMutation } from '@/hooks/notices/useUpdateNoticeMutation';
+import { ICreateNoticeRequest } from '@visionflow/shared';
+import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
+import { useEffect } from 'react';
 import styles from '../../page.module.css';
-
 const { Text, Title } = Typography;
 
+type NoticeFormValues = Pick<
+  ICreateNoticeRequest,
+  | 'category'
+  | 'contentHtml'
+  | 'description'
+  | 'isImportant'
+  | 'isPublished'
+  | 'title'
+> & {
+  date?: Dayjs;
+};
+
 export default function NoticeEditPage() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = String(params.id);
   const { data: notice, isLoading } = useNoticeViewQuery(id);
+  const [form] = Form.useForm<NoticeFormValues>();
+  const updateNoticeMutation = useUpdateNoticeMutation();
+
+  useEffect(() => {
+    if (!notice) {
+      return;
+    }
+
+    form.setFieldsValue({
+      category: notice.category,
+      contentHtml: notice.contentHtml ?? '',
+      date: notice.date ? dayjs(notice.date) : undefined,
+      description: notice.description ?? '',
+      isImportant: notice.isImportant,
+      isPublished: notice.isPublished,
+      title: notice.title,
+    });
+  }, [form, notice]);
+
+  const handleFinish = async (values: NoticeFormValues) => {
+    try {
+      const payload: ICreateNoticeRequest = {
+        category: values.category,
+        contentHtml: values.contentHtml ?? null,
+        date: values.date?.format('YYYY-MM-DD'),
+        description: values.description,
+        isImportant: values.isImportant ?? false,
+        isPublished: values.isPublished ?? true,
+        title: values.title,
+      };
+
+      const result = await updateNoticeMutation.mutateAsync({
+        noticeId: id,
+        values: payload,
+      });
+
+      message.success('공지사항이 수정 되었습니다.');
+
+      if (result?.id) {
+        router.push(ROUTES.ADMIN.NOTICE.DETAIL(result.id));
+      } else {
+        router.push(ROUTES.ADMIN.NOTICE.ROOT);
+      }
+    } catch {
+      message.error('공지사항 수정 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleFinishFailed = () => {
+    message.error('입력값을 확인해주세요.');
+  };
 
   if (isLoading) {
     return <Loading />;
@@ -49,7 +119,7 @@ export default function NoticeEditPage() {
             공지사항 수정
           </Title>
           <Text type="secondary">
-            공지사항 수정 화면 UI입니다. 저장 기능은 아직 연결하지 않습니다.
+            등록된 공지사항 내용을 수정합니다.
           </Text>
         </div>
         <Space>
@@ -64,19 +134,24 @@ export default function NoticeEditPage() {
 
       <Card className={styles.panel}>
         <Form
+          form={form}
           initialValues={{
-            category: notice.category,
-            contentHtml: notice.contentHtml,
-            date: notice.date,
-            description: notice.description,
-            isImportant: notice.isImportant,
-            isPublished: notice.isPublished,
-            title: notice.title,
+            category: 'Guide', // 카테고리 기본값을 'Guide'로 설정
+            isImportant: false, // 중요 여부 기본값을 false(중요하지 않음)로 설정
+            isPublished: true, // 공개 여부 기본값을 true(공개)로 설정
           }}
           layout="vertical"
           requiredMark={false}
+          onFinish={handleFinish}
+          onFinishFailed={handleFinishFailed}
         >
-          <Form.Item label="카테고리" name="category">
+          <Form.Item
+            label="카테고리"
+            name="category"
+            rules={[
+              { required: true, message: '카테고리를 선택해주세요.' },
+            ]}
+          >
             <Select
               options={[
                 { label: '공지', value: 'Guide' },
@@ -85,42 +160,75 @@ export default function NoticeEditPage() {
                 { label: '이벤트', value: 'Event' },
                 { label: '점검', value: 'maintenance' },
               ]}
+              placeholder="카테고리를 선택해주세요."
             />
           </Form.Item>
 
-          <Form.Item label="제목" name="title">
-            <Input showCount maxLength={120} />
+          <Form.Item
+            label="제목"
+            name="title"
+            rules={[
+              { required: true, message: '제목을 입력해주세요.' },
+            ]}
+          >
+            <Input
+              placeholder="공지사항 제목을 입력해주세요."
+              showCount
+              maxLength={120}
+            />
           </Form.Item>
 
-          <Form.Item label="설명" name="description">
+          <Form.Item
+            label="설명"
+            name="description"
+            rules={[
+              { required: true, message: '설명을 입력해주세요.' },
+            ]}
+          >
             <Input.TextArea
               autoSize={{ minRows: 3, maxRows: 6 }}
+              placeholder="목록과 상세 상단에 노출할 설명을 입력해주세요."
               showCount
               maxLength={500}
             />
           </Form.Item>
 
-          <Form.Item label="내용" name="contentHtml">
-            <Input.TextArea autoSize={{ minRows: 10, maxRows: 18 }} />
+          <Form.Item
+            label="내용"
+            name="contentHtml"
+            rules={[
+              { required: true, message: '내용을 입력해주세요.' },
+            ]}
+          >
+            <Input.TextArea
+              autoSize={{ minRows: 10, maxRows: 18 }}
+              placeholder="공지사항 내용을 입력해주세요."
+            />
           </Form.Item>
 
           <Flex gap={24} wrap>
             <Form.Item label="게시일" name="date">
-              <Input placeholder="YYYY-MM-DD" />
+              <DatePicker />
             </Form.Item>
             <Form.Item
               label="공개 여부"
               name="isPublished"
               valuePropName="checked"
             >
-              <Switch checkedChildren="공개" unCheckedChildren="비공개" />
+              <Switch
+                checkedChildren="공개"
+                unCheckedChildren="비공개"
+              />
             </Form.Item>
             <Form.Item
               label="중요 공지"
               name="isImportant"
               valuePropName="checked"
             >
-              <Switch checkedChildren="중요" unCheckedChildren="일반" />
+              <Switch
+                checkedChildren="중요"
+                unCheckedChildren="일반"
+              />
             </Form.Item>
           </Flex>
 
@@ -133,7 +241,11 @@ export default function NoticeEditPage() {
               <Button>취소</Button>
             </Link>
             <Space>
-              <Button type="primary" disabled>
+              <Button
+                loading={updateNoticeMutation.isPending}
+                type="primary"
+                htmlType="submit"
+              >
                 저장
               </Button>
             </Space>

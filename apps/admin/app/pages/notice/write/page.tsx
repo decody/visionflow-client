@@ -91,9 +91,9 @@ export default function NoticeWritePage() {
         <Form
           form={form}
           initialValues={{
-            category: 'Guide',
-            isImportant: false,
-            isPublished: true,
+            category: 'Guide', // 카테고리 기본값을 'Guide'로 설정
+            isImportant: false, // 중요 여부 기본값을 false(중요하지 않음)로 설정
+            isPublished: true, // 공개 여부 기본값을 true(공개)로 설정
           }}
           layout="vertical"
           requiredMark={false}
