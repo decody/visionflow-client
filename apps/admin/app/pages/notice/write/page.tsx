@@ -1,6 +1,8 @@
 'use client';
 
+import { useCreateNoticeMutation } from '@/hooks/notices/useCreateNoticeMutation';
 import { ROUTES } from '@visionflow/routes';
+import type { ICreateNoticeRequest } from '@visionflow/shared';
 import {
   Button,
   Card,
@@ -12,14 +14,63 @@ import {
   Space,
   Switch,
   Typography,
+  message,
 } from 'antd';
+import type { Dayjs } from 'dayjs';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import styles from '../page.module.css';
 
 const { Text, Title } = Typography;
 
+type NoticeFormValues = Pick<
+  ICreateNoticeRequest,
+  | 'category'
+  | 'contentHtml'
+  | 'description'
+  | 'isImportant'
+  | 'isPublished'
+  | 'title'
+> & {
+  date?: Dayjs;
+};
+
 export default function NoticeWritePage() {
+  const router = useRouter();
+  const createNoticeMutation = useCreateNoticeMutation();
+  const [form] = Form.useForm<NoticeFormValues>();
+
+  const handleFinish = async (values: NoticeFormValues) => {
+    try {
+      const payload: ICreateNoticeRequest = {
+        category: values.category,
+        contentHtml: values.contentHtml ?? null,
+        date: values.date?.format('YYYY-MM-DD'),
+        description: values.description,
+        isImportant: values.isImportant ?? false,
+        isPublished: values.isPublished ?? true,
+        title: values.title,
+      };
+
+      const result = await createNoticeMutation.mutateAsync(payload);
+
+      message.success('공지사항이 등록되었습니다.');
+
+      if (result?.id) {
+        router.push(ROUTES.ADMIN.NOTICE.DETAIL(result.id));
+      } else {
+        router.push(ROUTES.ADMIN.NOTICE.ROOT);
+      }
+    } catch {
+      message.error('공지사항 등록 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleFinishFailed = () => {
+    message.error('입력값을 확인해주세요.');
+  };
+
   return (
     <section className={styles.page}>
       <Flex align="flex-start" justify="space-between" gap={16} wrap>
@@ -28,7 +79,7 @@ export default function NoticeWritePage() {
             공지사항 등록
           </Title>
           <Text type="secondary">
-            공지사항 등록 화면 UI입니다. 저장 기능은 아직 연결하지 않습니다.
+            사용자에게 노출할 공지사항 내용을 작성합니다.
           </Text>
         </div>
         <Link href={ROUTES.ADMIN.NOTICE.ROOT}>
@@ -38,6 +89,7 @@ export default function NoticeWritePage() {
 
       <Card className={styles.panel}>
         <Form
+          form={form}
           initialValues={{
             category: 'Guide',
             isImportant: false,
@@ -45,8 +97,16 @@ export default function NoticeWritePage() {
           }}
           layout="vertical"
           requiredMark={false}
+          onFinish={handleFinish}
+          onFinishFailed={handleFinishFailed}
         >
-          <Form.Item label="카테고리" name="category">
+          <Form.Item
+            label="카테고리"
+            name="category"
+            rules={[
+              { required: true, message: '카테고리를 선택해주세요.' },
+            ]}
+          >
             <Select
               options={[
                 { label: '공지', value: 'Guide' },
@@ -54,26 +114,49 @@ export default function NoticeWritePage() {
                 { label: '업데이트', value: 'Update' },
                 { label: '이벤트', value: 'Event' },
               ]}
+              placeholder="카테고리를 선택해주세요."
             />
           </Form.Item>
 
-          <Form.Item label="제목" name="title">
-            <Input placeholder="공지 제목을 입력하세요" showCount maxLength={120} />
+          <Form.Item
+            label="제목"
+            name="title"
+            rules={[
+              { required: true, message: '제목을 입력해주세요.' },
+            ]}
+          >
+            <Input
+              placeholder="공지사항 제목을 입력해주세요."
+              showCount
+              maxLength={120}
+            />
           </Form.Item>
 
-          <Form.Item label="설명" name="description">
+          <Form.Item
+            label="설명"
+            name="description"
+            rules={[
+              { required: true, message: '설명을 입력해주세요.' },
+            ]}
+          >
             <Input.TextArea
               autoSize={{ minRows: 3, maxRows: 6 }}
-              placeholder="목록과 상세 상단에 노출할 설명을 입력하세요"
+              placeholder="목록과 상세 상단에 노출할 설명을 입력해주세요."
               showCount
               maxLength={500}
             />
           </Form.Item>
 
-          <Form.Item label="내용" name="contentHtml">
+          <Form.Item
+            label="내용"
+            name="contentHtml"
+            rules={[
+              { required: true, message: '내용을 입력해주세요.' },
+            ]}
+          >
             <Input.TextArea
               autoSize={{ minRows: 10, maxRows: 18 }}
-              placeholder="공지 내용을 입력하세요"
+              placeholder="공지사항 내용을 입력해주세요."
             />
           </Form.Item>
 
@@ -86,14 +169,20 @@ export default function NoticeWritePage() {
               name="isPublished"
               valuePropName="checked"
             >
-              <Switch checkedChildren="공개" unCheckedChildren="비공개" />
+              <Switch
+                checkedChildren="공개"
+                unCheckedChildren="비공개"
+              />
             </Form.Item>
             <Form.Item
               label="중요 공지"
               name="isImportant"
               valuePropName="checked"
             >
-              <Switch checkedChildren="중요" unCheckedChildren="일반" />
+              <Switch
+                checkedChildren="중요"
+                unCheckedChildren="일반"
+              />
             </Form.Item>
           </Flex>
 
@@ -106,7 +195,11 @@ export default function NoticeWritePage() {
               <Button>취소</Button>
             </Link>
             <Space>
-              <Button type="primary" disabled>
+              <Button
+                loading={createNoticeMutation.isPending}
+                type="primary"
+                htmlType="submit"
+              >
                 저장
               </Button>
             </Space>

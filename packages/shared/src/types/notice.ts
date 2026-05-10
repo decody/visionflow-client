@@ -13,7 +13,16 @@ export interface INotice {
   updatedAt: string;
 }
 
-export type CreateNoticeInput = Omit<
-  INotice,
-  'id' | 'createdAt' | 'updatedAt'
->;
+export interface ICreateNoticeRequest {
+  category?: string | null;
+  date?: string;
+  title: string;
+  description: string;
+  contentHtml: string | null;
+  contentJson?: Record<string, unknown> | null;
+  isImportant?: boolean;
+  isPublished?: boolean;
+  createdBy?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}

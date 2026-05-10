@@ -293,6 +293,7 @@ export default function FaqPage() {
             defaultColDef={defaultColDef}
             pagination
             paginationPageSize={10}
+            paginationPageSizeSelector={[10, 20, 50, 100]}
             rowData={filteredFaqs}
             rowHeight={48}
             theme="legacy"
