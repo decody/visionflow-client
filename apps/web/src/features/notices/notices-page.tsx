@@ -2,7 +2,7 @@
 
 import { Container } from '@/components/common/container';
 import type { INotice } from '@visionflow/shared';
-import { ChevronDown, Megaphone, Search, X } from 'lucide-react';
+import { Megaphone, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { useNoticeListQuery } from '@/hooks/notices/useNoticeQuery';
@@ -63,7 +63,8 @@ export function NoticesPage() {
             <span className={styles.eyebrow}>Notice</span>
             <h1 className={styles.title}>공지사항</h1>
             <p className={styles.description}>
-              VisionFlow의 서비스 운영 소식과 업데이트 안내를 확인하세요.
+              VisionFlow의 서비스 운영 소식과 업데이트 안내를
+              확인하세요.
             </p>
             <div
               aria-label="공지 요약"
@@ -136,17 +137,17 @@ export function NoticesPage() {
             notices={filteredNotices}
           />
 
-          {!isLoading && filteredNotices.length > 0 ? (
+          {/* {!isLoading && filteredNotices.length > 0 ? (
             <div className={styles.loadMoreWrap}>
               <button className={styles.loadMore} type="button">
                 <ChevronDown aria-hidden="true" size={18} />
                 더보기
                 <span className={styles.loadMoreMeta}>
-                  {currentPage}페이지 · 총 {totalCount}건
+                  {currentPage} / {totalCount}
                 </span>
               </button>
             </div>
-          ) : null}
+          ) : null} */}
         </Container>
       </section>
     </>

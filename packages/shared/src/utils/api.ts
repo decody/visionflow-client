@@ -115,6 +115,16 @@ const createUrl = (path: string, query?: ApiQueryParams) => {
   return { id, url: url.toString() };
 };
 
+const createRpcUrl = (functionName: string) => {
+  const normalizedFunctionName = functionName.trim().replace(/^\/+|\/+$/g, '');
+
+  if (!normalizedFunctionName) {
+    throw new Error('Supabase RPC function name is required.');
+  }
+
+  return `${getRestBaseUrl()}/rpc/${normalizedFunctionName}`;
+};
+
 // 응답 body는 JSON이면 파싱하고, 비어 있으면 null로 처리합니다.
 const parseBody = async (response: Response) => {
   const text = await response.text();
@@ -207,6 +217,13 @@ export const apiClient = {
       method: 'DELETE',
       returnRepresentation: true,
       singleRow: true,
+    });
+  },
+
+  rpc<T>(functionName: string, payload: ApiPayload = {}) {
+    return request<T>(createRpcUrl(functionName), {
+      body: payload,
+      method: 'POST',
     });
   },
 };
