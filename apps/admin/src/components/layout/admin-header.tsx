@@ -45,8 +45,8 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
       { badge: 12, href: ROUTES.ADMIN.QNA.ROOT, icon: MessageCircle, label: 'Q&A' },
       { badge: 5, href: ROUTES.ADMIN.PARTNERSHIP.ROOT, icon: Handshake, label: 'Partnership' },
       { badge: 8, href: ROUTES.ADMIN.GENERAL_INQUIRY.ROOT, icon: MessagesSquare, label: 'General Inquiry' },
-      { badge: 3, href: '#quote-request', icon: FileText, label: 'Quote Request' },
-      { href: '#work-portfolio', icon: Briefcase, label: 'Work Portfolio' },
+      { badge: 3, href: ROUTES.ADMIN.QUOTE_REQUEST.ROOT, icon: FileText, label: 'Quote Request' },
+      { href: ROUTES.ADMIN.WORK_PORTFOLIO.ROOT, icon: Briefcase, label: 'Work Portfolio' },
     ],
   },
   {

@@ -58,8 +58,15 @@ export const ROUTES = {
       ROOT: '/pages/general-inquiry',
       DETAIL: (id: string | number) => `/pages/general-inquiry/${id}`,
     },
-    QUOTE_REQUEST: '/pages/quote-request',
-    WORK_PORTFOLIO: '/pages/work-portfolio',
+    QUOTE_REQUEST: {
+      ROOT: '/pages/quote-request',
+      DETAIL: (id: string | number) => `/pages/quote-request/${id}`,
+    },
+    WORK_PORTFOLIO: {
+      ROOT: '/pages/work-portfolio',
+      DETAIL: (id: string | number) => `/pages/work-portfolio/${id}`,
+      CREATE: '/pages/work-portfolio/new',
+    },
 
     // 사이드바 SYSTEM (계획됨)
     USERS: '/pages/users',
