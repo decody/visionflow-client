@@ -52,7 +52,7 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
   {
     title: 'SYSTEM',
     items: [
-      { href: '#users', icon: Users, label: 'Users' },
+      { href: ROUTES.ADMIN.USERS.ROOT, icon: Users, label: '사용자 관리' },
       { href: '#settings', icon: Settings, label: 'Settings' },
     ],
   },

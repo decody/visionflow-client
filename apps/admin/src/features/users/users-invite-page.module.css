@@ -1,0 +1,916 @@
+.page {
+  display: grid;
+  gap: 20px;
+}
+
+/* ─────────── Top action bar */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  background: #eef0f4;
+}
+
+.pageTitle {
+  margin: 0;
+  color: #171a1a;
+  font-size: 16px;
+  font-weight: var(--fw-bold);
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: var(--radius-pill);
+  color: #f59e0b;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+.topbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.ghostButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+}
+
+.ghostButton:hover {
+  background: var(--color-surface);
+}
+
+.cancelLink {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+}
+
+.cancelLink:hover {
+  color: var(--color-text);
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  background: var(--color-primary);
+  border: 0;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--fw-bold);
+}
+
+.primaryButton:hover {
+  background: var(--color-primary-dark);
+}
+
+.topbarPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  background: var(--color-primary);
+  border: 0;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+}
+
+.topbarPrimary:hover {
+  background: var(--color-primary-dark);
+}
+
+/* ─────────── Layout */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 460px;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+@media (max-width: 1280px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.formColumn {
+  display: grid;
+  gap: 16px;
+}
+
+/* ─────────── Step blocks */
+.step {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.stepHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.stepNumber {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  background: var(--color-text);
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+  flex-shrink: 0;
+}
+
+.stepTitle {
+  margin: 0;
+  color: #171a1a;
+  font-size: 16px;
+  font-weight: var(--fw-bold);
+}
+
+.stepHint {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.stepBody {
+  display: grid;
+  gap: 12px;
+}
+
+/* ─────────── Email field */
+.emailField {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.emailField:focus-within {
+  border-color: var(--color-primary);
+  background: #ffffff;
+}
+
+.emailFieldIcon {
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.emailChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.emailChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 10px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+}
+
+.ssoTag {
+  padding: 1px 6px;
+  background: rgba(0, 79, 255, 0.1);
+  border-radius: var(--radius-xs);
+  color: var(--color-primary);
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+}
+
+.chipRemove {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.chipRemove:hover {
+  background: var(--color-surface);
+}
+
+.emailInput {
+  flex: 1;
+  min-width: 160px;
+  padding: 4px 6px;
+  background: transparent;
+  border: 0;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.fieldStatus {
+  display: grid;
+  gap: 6px;
+  padding-left: 26px;
+}
+
+.fieldStatusOk {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #03c75a;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+}
+
+.fieldHints {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+/* ─────────── Role grid */
+.roleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.roleCard {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.roleCard:hover {
+  background: var(--color-surface);
+}
+
+.roleCardActive {
+  background: #eff4ff;
+  border-color: var(--color-primary);
+}
+
+.roleHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roleEmoji {
+  font-size: 16px;
+}
+
+.roleLabel {
+  color: #171a1a;
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+}
+
+.roleNotice {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+}
+
+.roleCardActive .roleNotice {
+  color: var(--color-primary);
+}
+
+.roleDesc {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.roleBullets {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+.roleBullets li {
+  margin-top: 2px;
+}
+
+.roleWarn {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-xs);
+  color: var(--color-danger);
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+}
+
+.roleCheck {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  background: var(--color-primary);
+  border-radius: 50%;
+  color: #ffffff;
+}
+
+.linkButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  color: var(--color-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  align-self: flex-start;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+/* ─────────── Auth */
+.authStack {
+  display: grid;
+  gap: 10px;
+}
+
+.authRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.authRowOk {
+  background: #eff4ff;
+  border-color: rgba(0, 79, 255, 0.3);
+}
+
+.authIcon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  background: linear-gradient(135deg, #4285f4 0%, #ea4335 100%);
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+  flex-shrink: 0;
+}
+
+.authIconSecure {
+  background: var(--color-text);
+}
+
+.authBody {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.authBody strong {
+  color: #171a1a;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+}
+
+.authBody p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.authBadge {
+  padding: 4px 10px;
+  background: var(--color-primary);
+  border-radius: var(--radius-pill);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.5px;
+}
+
+/* ─────────── Welcome */
+.welcomeTextarea {
+  width: 100%;
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
+.welcomeTextarea:focus {
+  border-color: var(--color-primary);
+  background: #ffffff;
+}
+
+.welcomeMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.welcomeHint {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.welcomeCount {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+}
+
+/* ─────────── Preview column */
+.previewColumn {
+  display: grid;
+  gap: 12px;
+  position: sticky;
+  top: 84px;
+}
+
+.previewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+}
+
+.previewTitle {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+}
+
+.syncBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(3, 199, 90, 0.1);
+  border-radius: var(--radius-pill);
+  color: #03c75a;
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+}
+
+.previewTabs {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.previewTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 12px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+}
+
+.previewTabActive {
+  background: var(--color-text);
+  color: #ffffff;
+}
+
+/* ─────────── Email preview */
+.emailPreview {
+  display: grid;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.emailPreviewHead {
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.emailPreviewHead p {
+  margin: 0;
+}
+
+.emailService {
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.5px;
+}
+
+.emailSubject {
+  margin: 4px 0 !important;
+  color: #171a1a;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+}
+
+.emailMeta {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.emailBody {
+  padding: 20px 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.emailBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.emailLogo {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  background: var(--color-primary);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+}
+
+.emailBrand strong {
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 1px;
+}
+
+.emailGreeting {
+  margin: 0;
+  color: #171a1a;
+  font-size: 16px;
+  font-weight: var(--fw-bold);
+}
+
+.emailIntro {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.emailFacts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+}
+
+.emailFacts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.emailFacts dt {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.emailFacts dd {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: var(--fw-bold);
+}
+
+.emailCta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  background: var(--color-primary);
+  border: 0;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+}
+
+.emailCta:hover {
+  background: var(--color-primary-dark);
+}
+
+.emailLink {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.emailLink code {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 6px;
+  background: var(--color-surface);
+  border-radius: 4px;
+  color: var(--color-primary);
+  font-size: 10px;
+  word-break: break-all;
+}
+
+.emailNote {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  background: #fffbe6;
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+}
+
+.emailNoteTitle {
+  margin: 0;
+  color: #f59e0b;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+}
+
+.emailNoteBody {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* ─────────── Audit */
+.auditCard {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-md);
+}
+
+.auditHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #03995f;
+  font-size: 12px;
+}
+
+.auditDot {
+  width: 8px;
+  height: 8px;
+  background: #03c75a;
+  border-radius: 50%;
+}
+
+.auditHeader strong {
+  font-weight: var(--fw-bold);
+}
+
+.auditCode {
+  padding: 8px 10px;
+  background: #ffffff;
+  border-radius: 4px;
+  color: var(--color-text);
+  font-family: var(--font-family-mono, ui-monospace, monospace);
+  font-size: 10px;
+  word-break: break-all;
+}
+
+.auditNote {
+  margin: 0;
+  color: #03995f;
+  font-size: 11px;
+}
+
+/* ─────────── Timeline */
+.timelineCard {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.timelineHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+.timelineHeader strong {
+  font-weight: var(--fw-bold);
+}
+
+.timelineList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timelineItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timelineMarker {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+}
+
+.timelineMarker_primary {
+  background: var(--color-primary);
+}
+
+.timelineMarker_amber {
+  background: #f59e0b;
+}
+
+.timelineMarker_danger {
+  background: var(--color-danger);
+}
+
+.timelineBody {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.timelineBody strong {
+  color: var(--color-text);
+  font-weight: var(--fw-bold);
+}
+
+.timelineBody span {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.timelineItemActive .timelineBody strong {
+  color: var(--color-primary);
+}
+
+.timelineHint {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--color-surface);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}

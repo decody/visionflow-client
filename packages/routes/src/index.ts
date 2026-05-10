@@ -68,8 +68,12 @@ export const ROUTES = {
       CREATE: '/pages/work-portfolio/new',
     },
 
-    // 사이드바 SYSTEM (계획됨)
-    USERS: '/pages/users',
+    // 사이드바 SYSTEM
+    USERS: {
+      ROOT: '/pages/users',
+      DETAIL: (id: string) => `/pages/users/${id}`,
+      INVITE: '/pages/users/new',
+    },
     SETTINGS: '/pages/settings',
 
     // 구 라우트 (제거 검토 — HOME과 동일한 대시보드를 가리킴, 사용처 없음)
