@@ -18,7 +18,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 
-import Loading from '@/components/common/loading/page';
+import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
 import { useUpdateFaqMutation } from '@/hooks/faq/useUpdateFaqMutation';
 import styles from '../../page.module.css';

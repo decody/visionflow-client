@@ -4,8 +4,6 @@ import { apiClient, type INotice } from '@visionflow/shared';
 const fetchNoticeList = async (): Promise<INotice[]> => {
   const { data } = await apiClient.get<INotice[] | null>('notices', {
     order: 'is_important.desc,date.desc',
-    // p_limit: 5,
-    // p_offset: 0,
   });
 
   return data ?? [];
@@ -16,6 +14,10 @@ const fetchNotice = async (
 ): Promise<INotice | null> => {
   const { data } = await apiClient.get<INotice | null>(
     `notices/${noticeId}`,
+    {
+      p_limit: 5,
+      p_offset: 0,
+    },
   );
 
   return data ?? null;

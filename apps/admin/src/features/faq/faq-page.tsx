@@ -1,4 +1,4 @@
-import { Container } from '@/components/common/container';
+import { Container } from '@/components/container';
 import { ROUTES } from '@visionflow/routes';
 import type { IFaq } from '@visionflow/shared';
 import Link from 'next/link';
@@ -33,7 +33,7 @@ import styles from './faq-page.module.css';
 // FAQ를 question 기준으로 오름차순 정렬
 function sortFaqs(faqs: IFaq[]) {
   return [...faqs].sort((a, b) =>
-    (a.question ?? '').localeCompare(b.question ?? '', 'ko')
+    (a.question ?? '').localeCompare(b.question ?? '', 'ko'),
   );
 }
 
@@ -42,7 +42,7 @@ export function FaqPage({
   category = 'default',
   description = '미팅 전에 미리 답변해 드립니다. 더 궁금한 점은 카카오톡 채널로 바로 문의 가능합니다.',
   headerSlot,
-  helpSlot
+  helpSlot,
 }: {
   faqs: IFaq[];
   category?: string;
@@ -51,14 +51,16 @@ export function FaqPage({
   helpSlot?: ReactNode;
 }) {
   const filteredFaqs = sortFaqs(
-    faqs.filter(faq => faq.category?.trim() === category)
+    faqs.filter((faq) => faq.category?.trim() === category),
   );
 
   const defaultHeader = (
     <header className={styles.sectionHead}>
       <span className={styles.eyebrow}>FAQ</span>
       <h2 className={styles.sectionTitle}>자주 묻는 질문</h2>
-      {description && <p className={styles.sectionSub}>{description}</p>}
+      {description && (
+        <p className={styles.sectionSub}>{description}</p>
+      )}
     </header>
   );
 
@@ -91,8 +93,13 @@ export function FaqPage({
                   <span className={styles.faqNum}>
                     Q{String(i + 1).padStart(2, '0')}
                   </span>
-                  <span className={styles.faqQText}>{f.question}</span>
-                  <span aria-hidden="true" className={styles.faqToggle} />
+                  <span className={styles.faqQText}>
+                    {f.question}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={styles.faqToggle}
+                  />
                 </summary>
                 {f.answer ? (
                   <div className={styles.faqA}>

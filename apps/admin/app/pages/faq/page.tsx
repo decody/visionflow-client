@@ -22,7 +22,7 @@ import { useMemo, useState } from 'react';
 
 import type { IFaq } from '@visionflow/shared';
 
-import Loading from '@/components/common/loading/page';
+import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
 import styles from './page.module.css';
 

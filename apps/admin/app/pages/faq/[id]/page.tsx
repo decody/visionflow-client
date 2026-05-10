@@ -14,7 +14,7 @@ import {
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
-import Loading from '@/components/common/loading/page';
+import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
 import styles from '../page.module.css';
 
