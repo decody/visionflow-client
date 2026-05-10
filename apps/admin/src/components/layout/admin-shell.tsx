@@ -4,12 +4,15 @@ import { AdminHeader } from './admin-header';
 import styles from './admin-shell.module.css';
 import { AdminTopbar } from './admin-topbar';
 
-export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
+export function AdminShell({
+  children,
+  hideTopbar,
+}: Readonly<{ children: ReactNode; hideTopbar?: boolean }>) {
   return (
     <div className={styles.shell}>
       <AdminHeader />
       <div className={styles.contentColumn}>
-        <AdminTopbar />
+        {hideTopbar ? null : <AdminTopbar />}
         <main className={styles.main}>{children}</main>
       </div>
     </div>
