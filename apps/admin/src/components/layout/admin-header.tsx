@@ -4,11 +4,13 @@ import { ROUTES } from '@visionflow/routes';
 import {
   BarChart3,
   Briefcase,
+  FileQuestionMarkIcon,
   FileText,
   Handshake,
   LayoutDashboard,
   type LucideIcon,
-  MessageCircle,
+  MessageCircleQuestionMarkIcon,
+  MessageSquareWarningIcon,
   MessagesSquare,
   Settings,
   Users,
@@ -35,24 +37,66 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
   {
     title: 'OVERVIEW',
     items: [
-      { href: ROUTES.ADMIN.HOME, icon: LayoutDashboard, label: 'Dashboard' },
+      {
+        href: ROUTES.ADMIN.HOME,
+        icon: LayoutDashboard,
+        label: 'Dashboard',
+      },
       { href: '#analytics', icon: BarChart3, label: 'Analytics' },
     ],
   },
   {
     title: 'CONTENTS',
     items: [
-      { badge: 12, href: ROUTES.ADMIN.QNA.ROOT, icon: MessageCircle, label: 'Q&A' },
-      { badge: 5, href: ROUTES.ADMIN.PARTNERSHIP.ROOT, icon: Handshake, label: 'Partnership' },
-      { badge: 8, href: ROUTES.ADMIN.GENERAL_INQUIRY.ROOT, icon: MessagesSquare, label: 'General Inquiry' },
-      { badge: 3, href: ROUTES.ADMIN.QUOTE_REQUEST.ROOT, icon: FileText, label: 'Quote Request' },
-      { href: ROUTES.ADMIN.WORK_PORTFOLIO.ROOT, icon: Briefcase, label: 'Work Portfolio' },
+      {
+        badge: 12,
+        href: ROUTES.ADMIN.QNA.ROOT,
+        icon: MessageCircleQuestionMarkIcon,
+        label: 'Q&A',
+      },
+      {
+        badge: 5,
+        href: ROUTES.ADMIN.PARTNERSHIP.ROOT,
+        icon: Handshake,
+        label: 'Partnership',
+      },
+      {
+        badge: 8,
+        href: ROUTES.ADMIN.GENERAL_INQUIRY.ROOT,
+        icon: MessagesSquare,
+        label: 'General Inquiry',
+      },
+      {
+        badge: 3,
+        href: ROUTES.ADMIN.QUOTE_REQUEST.ROOT,
+        icon: FileText,
+        label: 'Quote Request',
+      },
+      {
+        href: ROUTES.ADMIN.WORK_PORTFOLIO.ROOT,
+        icon: Briefcase,
+        label: 'Work Portfolio',
+      },
+      {
+        href: ROUTES.ADMIN.FAQ.ROOT,
+        icon: FileQuestionMarkIcon,
+        label: 'FAQ',
+      },
+      {
+        href: ROUTES.ADMIN.NOTICE.ROOT,
+        icon: MessageSquareWarningIcon,
+        label: 'Notice',
+      },
     ],
   },
   {
     title: 'SYSTEM',
     items: [
-      { href: ROUTES.ADMIN.USERS.ROOT, icon: Users, label: '사용자 관리' },
+      {
+        href: ROUTES.ADMIN.USERS.ROOT,
+        icon: Users,
+        label: '사용자 관리',
+      },
       { href: '#settings', icon: Settings, label: 'Settings' },
     ],
   },
@@ -71,7 +115,9 @@ export function AdminHeader() {
           </div>
           <div className={styles.brandSubRow}>
             <span className={styles.brandBadge}>CMS</span>
-            <span className={styles.brandSubtitle}>Content Manager</span>
+            <span className={styles.brandSubtitle}>
+              Content Manager
+            </span>
           </div>
         </Link>
 
@@ -87,7 +133,8 @@ export function AdminHeader() {
                   const isActive =
                     item.href === ROUTES.ADMIN.HOME
                       ? pathname === ROUTES.ADMIN.HOME
-                      : typeof pathname === 'string' && pathname.startsWith(item.href);
+                      : typeof pathname === 'string' &&
+                        pathname.startsWith(item.href);
 
                   return (
                     <li key={item.href}>
@@ -96,10 +143,18 @@ export function AdminHeader() {
                         className={styles.navLink}
                         href={item.href}
                       >
-                        <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
-                        <span className={styles.navLabel}>{item.label}</span>
+                        <Icon
+                          aria-hidden="true"
+                          size={18}
+                          strokeWidth={1.8}
+                        />
+                        <span className={styles.navLabel}>
+                          {item.label}
+                        </span>
                         {item.badge ? (
-                          <span className={styles.navBadge}>{item.badge}</span>
+                          <span className={styles.navBadge}>
+                            {item.badge}
+                          </span>
                         ) : null}
                       </Link>
                     </li>
@@ -118,7 +173,9 @@ export function AdminHeader() {
           </span>
           <span className={styles.profileText}>
             <strong className={styles.profileName}>Admin Kim</strong>
-            <span className={styles.profileEmail}>admin@visionflow.kr</span>
+            <span className={styles.profileEmail}>
+              admin@visionflow.kr
+            </span>
           </span>
         </div>
       </aside>
