@@ -213,8 +213,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-6);
-  height: 72px;
-  padding: 0 40px;
+  height: 64px;
+  padding: 0 32px;
   background: #ffffff;
   border-bottom: 1px solid var(--color-border);
   position: sticky;
@@ -222,47 +222,33 @@
   z-index: 10;
 }
 
-.search {
+.breadcrumb {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  width: 360px;
-  max-width: 100%;
-  height: 40px;
-  padding: 0 14px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  transition:
-    border-color var(--transition-fast),
-    background var(--transition-fast);
-}
-
-.search:focus-within {
-  background: #ffffff;
-  border-color: var(--color-primary);
-}
-
-.searchIcon {
-  flex-shrink: 0;
-}
-
-.searchInput {
-  flex: 1;
+  gap: 8px;
   min-width: 0;
-  height: 100%;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  color: var(--color-text);
-  font: inherit;
+  color: var(--color-text-secondary);
   font-size: var(--fs-small);
-  outline: none;
 }
 
-.searchInput::placeholder {
+.breadcrumbStep {
   color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.breadcrumbStep:hover {
+  color: var(--color-text);
+}
+
+.breadcrumbCurrent {
+  color: var(--color-text);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+}
+
+.breadcrumbSep {
+  color: #c9d3df;
 }
 
 .topActions {
@@ -278,7 +264,7 @@
   height: 40px;
   place-items: center;
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 0;
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -351,14 +337,6 @@
 
   .topbar {
     padding: 0 16px;
-  }
-
-  .search {
-    width: 100%;
-  }
-
-  .writeButton span {
-    display: none;
   }
 
   .main {

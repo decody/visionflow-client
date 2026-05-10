@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './qna-list-page.module.css';
 
 type StatusKey = 'pending' | 'done';
@@ -176,27 +177,33 @@ const INQUIRIES: ReadonlyArray<Inquiry> = [
 const PAGINATION_PAGES = ['1', '2', '3', '4', '5', '⋯', '13'];
 
 export function QnaListPage() {
+  useTopbar(
+    () => ({
+      action: (
+        <button className={styles.topbarPrimary} type="button">
+          <Plus aria-hidden="true" size={14} strokeWidth={2.4} />
+          공지 등록
+        </button>
+      ),
+      breadcrumb: [
+        { href: ROUTES.ADMIN.HOME, label: '대시보드' },
+        { label: '인박스' },
+        { label: 'Q&A 게시판' },
+      ],
+    }),
+    [],
+  );
+
   return (
     <div className={styles.page}>
       <header className={styles.pageHeader}>
         <div className={styles.headerLeft}>
-          <p className={styles.breadcrumb}>
-            <span>대시보드</span>
-            <span aria-hidden="true">/</span>
-            <span>인박스</span>
-            <span aria-hidden="true">/</span>
-            <span className={styles.breadcrumbCurrent}>Q&amp;A 게시판</span>
-          </p>
           <h1 className={styles.pageTitle}>
             Q&amp;A 게시판
             <span className={styles.totalCount}>247건</span>
           </h1>
         </div>
         <div className={styles.headerActions}>
-          <button className={styles.secondaryButton} type="button">
-            <Plus aria-hidden="true" size={14} strokeWidth={2.4} />
-            공지 등록
-          </button>
           <button className={styles.secondaryButton} type="button">
             <Download aria-hidden="true" size={14} strokeWidth={2} />
             CSV 내보내기

@@ -20,6 +20,7 @@ import {
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './work-portfolio-list-page.module.css';
 
 type StatusKey = 'draft' | 'review' | 'publish' | 'archive';
@@ -213,20 +214,28 @@ export function WorkPortfolioListPage() {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [view, setView] = useState<'table' | 'gallery'>('table');
 
+  useTopbar(
+    () => ({
+      action: (
+        <Link className={styles.createBtn} href={ROUTES.ADMIN.WORK_PORTFOLIO.CREATE}>
+          <Plus size={14} />+ 새 케이스 작성
+        </Link>
+      ),
+      breadcrumb: [
+        { href: ROUTES.ADMIN.HOME, label: '대시보드' },
+        { label: '콘텐츠' },
+        { label: 'Work 케이스' },
+      ],
+    }),
+    [],
+  );
+
   const filtered =
     filter === 'all' ? WORK_CASES : WORK_CASES.filter((c) => c.status === filter);
 
   return (
     <div className={styles.page}>
       <header className={styles.pageHeader}>
-        <p className={styles.breadcrumb}>
-          <span>대시보드</span>
-          <span aria-hidden="true">/</span>
-          <span>콘텐츠</span>
-          <span aria-hidden="true">/</span>
-          <span className={styles.breadcrumbCurrent}>Work 케이스</span>
-        </p>
-
         <h1 className={styles.pageTitle}>
           Work 케이스
           <span className={styles.pageCount}>53건</span>
@@ -320,9 +329,6 @@ export function WorkPortfolioListPage() {
             <Download size={13} />
             CSV
           </button>
-          <Link className={styles.createBtn} href={ROUTES.ADMIN.WORK_PORTFOLIO.CREATE}>
-            <Plus size={14} />+ 새 케이스 작성
-          </Link>
         </div>
       </div>
 

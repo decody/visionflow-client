@@ -1,5 +1,6 @@
 'use client';
 
+import { ROUTES } from '@visionflow/routes';
 import {
   ArrowDownRight,
   ArrowRight,
@@ -17,6 +18,8 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useState } from 'react';
+
+import { useTopbar } from '../../components/layout/topbar-context';
 import {
   CartesianGrid,
   Cell,
@@ -249,6 +252,16 @@ export function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRange>('7d');
   const [inquiryFilter, setInquiryFilter] = useState<InquiryFilter>('all');
 
+  useTopbar(
+    () => ({
+      breadcrumb: [
+        { href: ROUTES.ADMIN.HOME, label: '대시보드' },
+        { label: 'Dashboard' },
+      ],
+    }),
+    [],
+  );
+
   const filteredInquiries =
     inquiryFilter === 'all'
       ? INQUIRIES
@@ -258,11 +271,6 @@ export function DashboardPage() {
     <div className={styles.page}>
       <header className={styles.pageHeader}>
         <div className={styles.headerLeft}>
-          <p className={styles.breadcrumb}>
-            <span>CMS</span>
-            <span aria-hidden="true">/</span>
-            <span className={styles.breadcrumbCurrent}>Dashboard</span>
-          </p>
           <h1 className={styles.pageTitle}>대시보드</h1>
           <p className={styles.greeting}>
             2026년 5월 10일 일요일 · 안녕하세요, Admin Kim님 <span aria-hidden="true">👋</span>

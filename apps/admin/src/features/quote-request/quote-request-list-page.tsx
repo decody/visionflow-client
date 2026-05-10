@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './quote-request-list-page.module.css';
 
 type StatusKey = 'new' | 'review' | 'sent' | 'negotiating' | 'won' | 'rejected';
@@ -232,20 +233,19 @@ const ROWS: ReadonlyArray<Row> = [
 const PAGINATION = ['1', '2', '3', '4', '5', '⋯', '18'];
 
 export function QuoteRequestListPage() {
+  useTopbar(
+    () => ({
+      breadcrumb: [
+        { href: ROUTES.ADMIN.HOME, label: '대시보드' },
+        { label: '인박스' },
+        { label: '견적 문의' },
+      ],
+    }),
+    [],
+  );
+
   return (
     <div className={styles.page}>
-      <header className={styles.pageHeader}>
-        <div className={styles.headerLeft}>
-          <p className={styles.breadcrumb}>
-            <span>대시보드</span>
-            <span aria-hidden="true">/</span>
-            <span>인박스</span>
-            <span aria-hidden="true">/</span>
-            <span className={styles.breadcrumbCurrent}>견적 문의</span>
-          </p>
-        </div>
-      </header>
-
       <section aria-label="요약 지표" className={styles.kpiRow}>
         {KPIS.map((kpi) => (
           <article
