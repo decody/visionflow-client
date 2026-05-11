@@ -26,13 +26,23 @@ import {
   Typography,
 } from 'antd';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import styles from './page.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const { Text, Title } = Typography;
+
+type CategoryFilter =
+  | 'all'
+  | 'Guide'
+  | 'Service'
+  | 'Update'
+  | 'Event'
+  | 'maintenance';
+type PublishFilter = 'all' | 'published' | 'private';
+type ImportantFilter = 'all' | 'important' | 'normal';
 
 const categoryLabels: Record<string, string> = {
   Guide: '공지',
@@ -45,13 +55,8 @@ const categoryLabels: Record<string, string> = {
   update: '업데이트',
 };
 
-const getCategoryLabel = (category?: string) => {
-  if (!category) {
-    return '-';
-  }
-
-  return categoryLabels[category] ?? category;
-};
+const getCategoryLabel = (category?: string) =>
+  category ? (categoryLabels[category] ?? category) : '-';
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -60,19 +65,61 @@ const formatDateTime = (value?: string | null) => {
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
-    return value;
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+};
+
+const includesKeyword = (notice: INotice, keyword: string) => {
+  if (!keyword) {
+    return true;
   }
 
-  return date.toLocaleString();
+  return [
+    getCategoryLabel(notice.category),
+    notice.category,
+    notice.title,
+    notice.description ?? '',
+  ]
+    .join(' ')
+    .toLowerCase()
+    .includes(keyword);
 };
 
 export default function NoticePage() {
   const { data: notices = [], isLoading } = useNoticeListQuery();
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [categoryFilter, setCategoryFilter] =
+    useState<CategoryFilter>('all');
+  const [publishFilter, setPublishFilter] =
+    useState<PublishFilter>('all');
+  const [importantFilter, setImportantFilter] =
+    useState<ImportantFilter>('all');
 
-  const noticeNumberById = useMemo(() => {
-    return getNoticeDisplayNumberMap(notices);
-  }, [notices]);
+  const filteredNotices = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase();
+
+    return notices.filter((notice) => {
+      const matchesCategory =
+        categoryFilter === 'all' || notice.category === categoryFilter;
+      const matchesPublish =
+        publishFilter === 'all' ||
+        notice.isPublished === (publishFilter === 'published');
+      const matchesImportant =
+        importantFilter === 'all' ||
+        notice.isImportant === (importantFilter === 'important');
+
+      return (
+        includesKeyword(notice, keyword) &&
+        matchesCategory &&
+        matchesPublish &&
+        matchesImportant
+      );
+    });
+  }, [categoryFilter, importantFilter, notices, publishFilter, searchKeyword]);
+
+  const noticeNumberById = useMemo(
+    () => getNoticeDisplayNumberMap(notices),
+    [notices],
+  );
 
   const columnDefs = useMemo<ColDef<INotice>[]>(
     () => [
@@ -158,13 +205,6 @@ export default function NoticePage() {
         maxWidth: 140,
         minWidth: 130,
       },
-      // {
-      //   field: 'createdBy',
-      //   headerName: '작성자',
-      //   maxWidth: 120,
-      //   minWidth: 110,
-      //   valueFormatter: ({ value }) => value ?? '-',
-      // },
       {
         field: 'updatedAt',
         headerName: '수정일',
@@ -220,7 +260,7 @@ export default function NoticePage() {
             공지사항 관리
           </Title>
           <Text type="secondary">
-            등록된 공지사항의 공개 상태와 내용을 확인합니다.
+            등록된 공지사항과 공개 상태를 확인합니다.
           </Text>
         </div>
         <Link href={ROUTES.ADMIN.NOTICE.WRITE()}>
@@ -258,11 +298,13 @@ export default function NoticePage() {
           <Input.Search
             allowClear
             className={styles.search}
-            placeholder="공지 제목 또는 내용을 검색"
+            onChange={(event) => setSearchKeyword(event.target.value)}
+            placeholder="공지 제목 또는 내용 검색"
+            value={searchKeyword}
           />
-          <Select
+          <Select<CategoryFilter>
             className={styles.select}
-            defaultValue="all"
+            onChange={setCategoryFilter}
             options={[
               { label: '전체 카테고리', value: 'all' },
               { label: '공지', value: 'Guide' },
@@ -271,24 +313,27 @@ export default function NoticePage() {
               { label: '이벤트', value: 'Event' },
               { label: '점검', value: 'maintenance' },
             ]}
+            value={categoryFilter}
           />
-          <Select
+          <Select<PublishFilter>
             className={styles.select}
-            defaultValue="all"
+            onChange={setPublishFilter}
             options={[
               { label: '전체 공개상태', value: 'all' },
               { label: '공개', value: 'published' },
               { label: '비공개', value: 'private' },
             ]}
+            value={publishFilter}
           />
-          <Select
+          <Select<ImportantFilter>
             className={styles.select}
-            defaultValue="all"
+            onChange={setImportantFilter}
             options={[
               { label: '전체 중요상태', value: 'all' },
               { label: '중요', value: 'important' },
               { label: '일반', value: 'normal' },
             ]}
+            value={importantFilter}
           />
         </Flex>
       </Card>
@@ -299,7 +344,7 @@ export default function NoticePage() {
       >
         <div className={styles.tableHeader}>
           <Text strong>공지 목록</Text>
-          <Text type="secondary">총 {notices.length}건</Text>
+          <Text type="secondary">총 {filteredNotices.length}건</Text>
         </div>
         <div className={`ag-theme-quartz ${styles.grid}`}>
           <AgGridReact<INotice>
@@ -308,7 +353,7 @@ export default function NoticePage() {
             pagination
             paginationPageSize={10}
             paginationPageSizeSelector={[10, 20, 50, 100]}
-            rowData={notices}
+            rowData={filteredNotices}
             rowHeight={48}
             theme="legacy"
           />
