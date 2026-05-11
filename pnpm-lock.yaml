@@ -39,8 +39,11 @@ importers:
         specifier: 8.59.2
         version: 8.59.2(eslint@10.3.0)(typescript@6.0.3)
 
-  apps/admin:
+  apps/web:
     dependencies:
+      '@next/third-parties':
+        specifier: ^16.2.6
+        version: 16.2.6(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
       '@react-three/fiber':
         specifier: 9.6.1
         version: 9.6.1(@types/react@19.2.14)(immer@11.1.6)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(three@0.184.0)
@@ -92,85 +95,6 @@ importers:
       next-auth:
         specifier: 5.0.0-beta.31
         version: 5.0.0-beta.31(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
-      react:
-        specifier: 19.2.5
-        version: 19.2.5
-      react-dom:
-        specifier: 19.2.5
-        version: 19.2.5(react@19.2.5)
-      recharts:
-        specifier: 3.8.1
-        version: 3.8.1(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-is@18.3.1)(react@19.2.5)(redux@5.0.1)
-      three:
-        specifier: 0.184.0
-        version: 0.184.0
-      zustand:
-        specifier: 5.0.13
-        version: 5.0.13(@types/react@19.2.14)(immer@11.1.6)(react@19.2.5)(use-sync-external-store@1.6.0(react@19.2.5))
-    devDependencies:
-      '@types/node':
-        specifier: 25.6.0
-        version: 25.6.0
-      '@types/react':
-        specifier: 19.2.14
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: 19.2.3
-        version: 19.2.3(@types/react@19.2.14)
-      '@types/three':
-        specifier: 0.184.0
-        version: 0.184.0
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-
-  apps/web:
-    dependencies:
-      '@next/third-parties':
-        specifier: ^16.2.6
-        version: 16.2.6(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
-      '@react-three/fiber':
-        specifier: 9.6.1
-        version: 9.6.1(@types/react@19.2.14)(immer@11.1.6)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(three@0.184.0)
-      '@supabase/ssr':
-        specifier: ^0.10.3
-        version: 0.10.3(@supabase/supabase-js@2.105.3)
-      '@supabase/supabase-js':
-        specifier: ^2.105.3
-        version: 2.105.3
-      '@tanstack/react-query':
-        specifier: 5.100.9
-        version: 5.100.9(react@19.2.5)
-      '@tanstack/react-query-devtools':
-        specifier: 5.100.9
-        version: 5.100.9(@tanstack/react-query@5.100.9(react@19.2.5))(react@19.2.5)
-      '@visionflow/routes':
-        specifier: workspace:*
-        version: link:../../packages/routes
-      '@visionflow/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@visionflow/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
-      ag-grid-community:
-        specifier: 35.2.1
-        version: 35.2.1
-      ag-grid-react:
-        specifier: 35.2.1
-        version: 35.2.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      antd:
-        specifier: 6.3.7
-        version: 6.3.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      axios:
-        specifier: 1.16.0
-        version: 1.16.0
-      lucide-react:
-        specifier: ^1.14.0
-        version: 1.14.0(react@19.2.5)
-      next:
-        specifier: 16.2.4
-        version: 16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       next-plausible:
         specifier: ^4.0.0
         version: 4.0.0(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)

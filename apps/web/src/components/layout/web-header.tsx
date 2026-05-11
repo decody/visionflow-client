@@ -11,7 +11,7 @@ const navItems = [
   { href: ROUTES.WORK, label: 'Work' },
   { href: ROUTES.NOTICES.ROOT, label: 'Notice' },
 
-  // { href: '/pages/guide/design-system', label: 'Design' },
+  // { href: '/guide/design-system', label: 'Design' },
 ];
 
 export function WebHeader() {

@@ -8,6 +8,7 @@
     "lib": ["DOM", "DOM.Iterable", "ES2024"],
     "paths": {
       "@/*": ["./src/*"],
+      "@visionflow/auth": ["../../packages/auth/index.ts"],
       "@visionflow/routes": ["../../packages/routes/src/index.ts"],
       "@visionflow/shared": ["../../packages/shared/src/index.ts"]
     },

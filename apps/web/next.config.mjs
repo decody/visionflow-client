@@ -12,7 +12,7 @@ if (existsSync(rootEnvPath)) {
 
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@visionflow/routes', '@visionflow/shared'],
+  transpilePackages: ['@visionflow/auth', '@visionflow/routes', '@visionflow/shared'],
 };
 
 export default nextConfig;

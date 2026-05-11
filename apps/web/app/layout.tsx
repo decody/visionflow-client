@@ -10,7 +10,6 @@ import { Inter } from 'next/font/google';
 import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
 
-import { WebShell } from '@/components/layout/web-shell';
 import { QueryProvider } from '@/components/query-provider';
 
 const inter = Inter({
@@ -36,9 +35,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html className={`${inter.variable} ${pretendard.variable}`} lang="ko">
       <body>
-        <QueryProvider>
-          <WebShell>{children}</WebShell>
-        </QueryProvider>
+        <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
   );
