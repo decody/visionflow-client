@@ -1,6 +1,8 @@
 'use client';
 
-import { Bell } from 'lucide-react';
+import { ROUTES } from '@visionflow/routes';
+import { Bell, LogOut, UserRound } from 'lucide-react';
+import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Fragment } from 'react';
 
@@ -9,7 +11,9 @@ import { useTopbarConfig } from './topbar-context';
 
 export function AdminTopbar() {
   const { action, breadcrumb } = useTopbarConfig();
+  const { data: session } = useSession();
   const lastIndex = breadcrumb.length - 1;
+  const userName = session?.user?.name ?? session?.user?.email ?? '관리자';
 
   return (
     <header className={styles.topbar}>
@@ -40,6 +44,19 @@ export function AdminTopbar() {
         <button aria-label="알림" className={styles.notifButton} type="button">
           <Bell aria-hidden="true" size={18} strokeWidth={1.8} />
           <span aria-hidden="true" className={styles.notifDot} />
+        </button>
+        <div className={styles.currentUser} title={userName}>
+          <UserRound aria-hidden="true" size={16} strokeWidth={1.8} />
+          <span>{userName}</span>
+        </div>
+        <button
+          aria-label="로그아웃"
+          className={styles.logoutButton}
+          onClick={() => void signOut({ callbackUrl: ROUTES.ADMIN.LOGIN })}
+          type="button"
+        >
+          <LogOut aria-hidden="true" size={16} strokeWidth={1.8} />
+          <span>Logout</span>
         </button>
         {action}
       </div>

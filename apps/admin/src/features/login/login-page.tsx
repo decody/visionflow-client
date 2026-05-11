@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowRight, Eye, Info, KeyRound, Mail, Shield } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import { useState } from 'react';
 
 import styles from './login-page.module.css';
@@ -103,11 +104,23 @@ export function LoginPage() {
               <span aria-hidden="true">✓</span>
               RECOMMENDED · 사내 직원
             </div>
-            <button className={styles.ssoButton} type="button">
+            <button
+              className={styles.ssoButton}
+              onClick={() => void signIn('google', { callbackUrl: '/' })}
+              type="button"
+            >
               <GoogleIcon />
               <span>Google Workspace로 계속하기</span>
             </button>
-            <p className={styles.ssoHint}>@visionflow.kr 도메인만 자동 인증됩니다</p>
+            <button
+              className={styles.ssoButton}
+              onClick={() => void signIn('naver', { callbackUrl: '/' })}
+              type="button"
+            >
+              <NaverIcon />
+              <span>네이버로 계속하기</span>
+            </button>
+            <p className={styles.ssoHint}>Google Workspace 또는 네이버 계정으로 로그인할 수 있습니다</p>
           </section>
 
           <div className={styles.divider}>
@@ -229,6 +242,25 @@ function GoogleIcon() {
       <path
         d="M10 3.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C14.96.99 12.695 0 10 0A9.996 9.996 0 0 0 1.064 5.51L4.405 8.1C5.19 5.736 7.395 3.977 10 3.977z"
         fill="#EA4335"
+      />
+    </svg>
+  );
+}
+
+function NaverIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className={styles.googleIcon}
+      height={20}
+      viewBox="0 0 20 20"
+      width={20}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect fill="#03C75A" height={20} rx={4} width={20} />
+      <path
+        d="M5.693 5.661h2.394l2.425 3.724V5.661h2.395v8.678h-2.395l-2.425-3.723v3.723H5.693V5.661z"
+        fill="#fff"
       />
     </svg>
   );

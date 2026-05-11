@@ -1,0 +1,12 @@
+{
+  "name": "@visionflow/auth",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {
+    "next-auth": "5.0.0-beta.31"
+  }
+}
