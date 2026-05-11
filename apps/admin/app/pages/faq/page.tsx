@@ -22,6 +22,7 @@ import { useMemo, useState } from 'react';
 
 import type { IFaq } from '@visionflow/shared';
 
+import { useTopbar } from '@/components/layout/topbar-context';
 import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
 import styles from './page.module.css';
@@ -59,6 +60,17 @@ const sortByNewest = (faqs: IFaq[]) => {
 };
 
 export default function FaqPage() {
+  useTopbar(
+    () => ({
+      breadcrumb: [
+        { href: ROUTES.ADMIN.HOME, label: '대시보드' },
+        { label: '인박스' },
+        { label: 'FAQ' },
+      ],
+    }),
+    [],
+  );
+
   const { data: faqs = [], isLoading } = useFaqListQuery();
   const [keyword, setKeyword] = useState('');
   const [categoryFilter, setCategoryFilter] =

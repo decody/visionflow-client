@@ -28,6 +28,7 @@ import {
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
+import { useTopbar } from '@/components/layout/topbar-context';
 import styles from './page.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -85,6 +86,17 @@ const includesKeyword = (notice: INotice, keyword: string) => {
 };
 
 export default function NoticePage() {
+  useTopbar(
+    () => ({
+      breadcrumb: [
+        { href: ROUTES.ADMIN.HOME, label: '대시보드' },
+        { label: '인박스' },
+        { label: 'Notice' },
+      ],
+    }),
+    [],
+  );
+
   const { data: notices = [], isLoading } = useNoticeListQuery();
   const [searchKeyword, setSearchKeyword] = useState('');
   const [categoryFilter, setCategoryFilter] =
