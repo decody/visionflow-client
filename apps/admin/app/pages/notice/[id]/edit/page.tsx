@@ -55,7 +55,6 @@ export default function NoticeEditPage() {
     form.setFieldsValue({
       category: notice.category,
       contentHtml: notice.contentHtml ?? '',
-      date: notice.date ? dayjs(notice.date) : undefined,
       description: notice.description ?? '',
       isImportant: notice.isImportant,
       isPublished: notice.isPublished,
@@ -68,7 +67,7 @@ export default function NoticeEditPage() {
       const payload: ICreateNoticeRequest = {
         category: values.category,
         contentHtml: values.contentHtml ?? null,
-        date: values.date?.format('YYYY-MM-DD'),
+        date: dayjs().format('YYYY-MM-DD'),
         description: values.description,
         isImportant: values.isImportant ?? false,
         isPublished: values.isPublished ?? true,
@@ -207,8 +206,8 @@ export default function NoticeEditPage() {
           </Form.Item>
 
           <Flex gap={24} wrap>
-            <Form.Item label="게시일" name="date">
-              <DatePicker />
+            <Form.Item label="게시일">
+              <DatePicker disabled value={dayjs()} />
             </Form.Item>
             <Form.Item
               label="공개 여부"

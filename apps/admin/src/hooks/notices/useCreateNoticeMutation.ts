@@ -4,6 +4,7 @@ import {
   type ICreateNoticeRequest,
   type INotice,
 } from '@visionflow/shared';
+import dayjs from 'dayjs';
 
 const normalizeNotice = (notice: INotice): INotice => ({
   ...notice,
@@ -22,6 +23,7 @@ export const useCreateNoticeMutation = () => {
         ...values,
         category: values.category,
         contentHtml: values.contentHtml ?? null,
+        date: dayjs().format('YYYY-MM-DD'),
         description: values.description,
         isImportant: values.isImportant ?? false,
         isPublished: values.isPublished ?? true,
