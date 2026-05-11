@@ -1,13 +1,14 @@
 'use client';
 
 import { Container } from '@/components/common/container';
-import type { INotice } from '@visionflow/shared';
-import { Megaphone, Search, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ChevronDown, Megaphone, Search, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useNoticeListQuery } from '@/hooks/notices/useNoticeQuery';
 import { NoticeList } from './notice-list';
 import styles from './notices-page.module.css';
+
+const NOTICES_PER_PAGE = 5;
 
 const categoryLabels: Record<string, string> = {
   Guide: '공지',
@@ -19,14 +20,14 @@ const categoryLabels: Record<string, string> = {
 const getCategoryLabel = (category: string) =>
   categoryLabels[category] ?? category;
 
-const currentPage = 1;
-const totalCount = 0;
-
 export function NoticesPage() {
-  const { data: notices = [], isLoading } = useNoticeListQuery();
+  const { data: noticeResponse, isLoading } = useNoticeListQuery();
+  const notices = noticeResponse?.data ?? [];
+
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [visibleCount, setVisibleCount] = useState(NOTICES_PER_PAGE);
   const importantCount = notices.filter(
-    (notice: INotice) => notice.isImportant,
+    (notice) => notice.isImportant,
   ).length;
   const normalizedSearchKeyword = searchKeyword.trim().toLowerCase();
   const searchableNotices = useMemo(() => {
@@ -54,6 +55,12 @@ export function NoticesPage() {
     );
   }, [normalizedSearchKeyword, notices, searchableNotices]);
   const hasSearchKeyword = normalizedSearchKeyword.length > 0;
+  const visibleNotices = filteredNotices.slice(0, visibleCount);
+  const hasMoreNotices = visibleCount < filteredNotices.length;
+
+  useEffect(() => {
+    setVisibleCount(NOTICES_PER_PAGE);
+  }, [normalizedSearchKeyword]);
 
   return (
     <>
@@ -134,20 +141,26 @@ export function NoticesPage() {
           <NoticeList
             getCategoryLabel={getCategoryLabel}
             isLoading={isLoading}
-            notices={filteredNotices}
+            notices={visibleNotices}
           />
 
-          {/* {!isLoading && filteredNotices.length > 0 ? (
+          {!isLoading && hasMoreNotices ? (
             <div className={styles.loadMoreWrap}>
-              <button className={styles.loadMore} type="button">
+              <button
+                className={styles.loadMore}
+                onClick={() =>
+                  setVisibleCount((count) => count + NOTICES_PER_PAGE)
+                }
+                type="button"
+              >
                 <ChevronDown aria-hidden="true" size={18} />
                 더보기
                 <span className={styles.loadMoreMeta}>
-                  {currentPage} / {totalCount}
+                  {visibleNotices.length} / {filteredNotices.length}
                 </span>
               </button>
             </div>
-          ) : null} */}
+          ) : null}
         </Container>
       </section>
     </>

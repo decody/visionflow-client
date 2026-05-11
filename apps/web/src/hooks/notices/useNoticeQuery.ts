@@ -1,14 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient, type INotice } from '@visionflow/shared';
+import { apiClient, type INotice, type INoticeListResponse } from '@visionflow/shared';
 
-const fetchNoticeList = async (): Promise<INotice[]> => {
-  const { data } = await apiClient.get<INotice[] | null>('notices', {
-    order: 'is_important.desc,date.desc',
-    // p_limit: 5,
-    // p_offset: 0,
-  });
+type NoticeRpcResponse = {
+  totalCount: number;
+  limit: number;
+  offset: number;
+  data: INotice[];
+};
 
-  return data ?? [];
+const fetchNoticeList = async (): Promise<INoticeListResponse> => {
+  const { data } = await apiClient.rpc<NoticeRpcResponse | null>('get_notices');
+
+  return {
+    total_count: data?.totalCount ?? 0,
+    limit: data?.limit ?? 0,
+    offset: data?.offset ?? 0,
+    data: data?.data ?? [],
+  };
 };
 
 const fetchNotice = async (
@@ -22,7 +30,7 @@ const fetchNotice = async (
 };
 
 export const useNoticeListQuery = () => {
-  return useQuery<INotice[]>({
+  return useQuery<INoticeListResponse>({
     queryKey: ['notices-list'],
     queryFn: fetchNoticeList,
   });

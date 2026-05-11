@@ -36,4 +36,12 @@ interface ICreateNoticeRequest
   updatedAt?: string; // 수정일
 }
 
-export type { ICreateNoticeRequest, INotice };
+interface INoticeListResponse {
+  total_count: number;
+  limit: number;
+  offset: number;
+  data: INotice[];
+}
+
+export type { ICreateNoticeRequest, INotice, INoticeListResponse };
+
