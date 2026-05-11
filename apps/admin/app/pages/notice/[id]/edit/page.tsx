@@ -6,7 +6,6 @@ import { ROUTES } from '@visionflow/routes';
 import {
   Button,
   Card,
-  DatePicker,
   Flex,
   Form,
   Input,
@@ -21,8 +20,6 @@ import { useParams, useRouter } from 'next/navigation';
 
 import { useUpdateNoticeMutation } from '@/hooks/notices/useUpdateNoticeMutation';
 import { ICreateNoticeRequest } from '@visionflow/shared';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import { useEffect } from 'react';
 import styles from '../../page.module.css';
 const { Text, Title } = Typography;
@@ -35,9 +32,7 @@ type NoticeFormValues = Pick<
   | 'isImportant'
   | 'isPublished'
   | 'title'
-> & {
-  date?: Dayjs;
-};
+>;
 
 export default function NoticeEditPage() {
   const router = useRouter();
@@ -67,7 +62,6 @@ export default function NoticeEditPage() {
       const payload: ICreateNoticeRequest = {
         category: values.category,
         contentHtml: values.contentHtml ?? null,
-        date: dayjs().format('YYYY-MM-DD'),
         description: values.description,
         isImportant: values.isImportant ?? false,
         isPublished: values.isPublished ?? true,
@@ -206,9 +200,6 @@ export default function NoticeEditPage() {
           </Form.Item>
 
           <Flex gap={24} wrap>
-            <Form.Item label="게시일">
-              <DatePicker disabled value={dayjs()} />
-            </Form.Item>
             <Form.Item
               label="공개 여부"
               name="isPublished"
