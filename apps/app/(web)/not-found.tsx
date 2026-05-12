@@ -14,10 +14,10 @@ export default function NotFound() {
 
         <div>
           <p className={styles.eyebrow}>404</p>
-          <h2 className={styles.title}>요청한 화면을 찾을 수 없습니다.</h2>
+          <h2 className={styles.title}>요청하신 페이지를 찾을 수 없습니다.</h2>
           <p className={styles.description}>
-            이동하려는 주소가 변경되었거나 더 이상 제공되지 않는 페이지입니다. 대시보드에서
-            현재 워크스페이스와 파이프라인 상태를 다시 확인해 주세요.
+            이동하려는 주소가 변경되었거나 더 이상 제공하지 않는 페이지입니다. 대시보드에서 현재 워크스페이스와
+            파이프라인 상태를 다시 확인해 주세요.
           </p>
         </div>
 

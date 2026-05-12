@@ -1,6 +1,7 @@
 import { ROUTES } from '@visionflow/routes';
 import { Gauge, Home } from 'lucide-react';
 import Link from 'next/link';
+
 import styles from './not-found.module.css';
 
 export default function NotFound() {
@@ -15,8 +16,8 @@ export default function NotFound() {
           <p className={styles.eyebrow}>404</p>
           <h2 className={styles.title}>관리자 페이지를 찾을 수 없습니다.</h2>
           <p className={styles.description}>
-            접근한 관리 경로가 없거나 권한 정책 변경으로 이동할 수 없습니다. 콘솔 홈에서 작업
-            상태와 운영 메뉴를 다시 확인해 주세요.
+            접근한 관리 경로가 없거나 권한 정책 변경으로 이동할 수 없습니다. 콘솔 안에서 작업 상태와 운영 메뉴를
+            다시 확인해 주세요.
           </p>
         </div>
 
@@ -26,7 +27,6 @@ export default function NotFound() {
             콘솔 홈으로 이동
           </Link>
           <Link className={styles.secondaryAction} href={ROUTES.ADMIN.NOTICES}>
-     
             공지사항 보기
           </Link>
         </div>
