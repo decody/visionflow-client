@@ -39,7 +39,7 @@ importers:
         specifier: 8.59.2
         version: 8.59.2(eslint@10.3.0)(typescript@6.0.3)
 
-  apps/web:
+  apps:
     dependencies:
       '@next/third-parties':
         specifier: ^16.2.6
@@ -61,16 +61,16 @@ importers:
         version: 5.100.9(@tanstack/react-query@5.100.9(react@19.2.5))(react@19.2.5)
       '@visionflow/auth':
         specifier: workspace:*
-        version: link:../../packages/auth
+        version: link:../packages/auth
       '@visionflow/routes':
         specifier: workspace:*
-        version: link:../../packages/routes
+        version: link:../packages/routes
       '@visionflow/shared':
         specifier: workspace:*
-        version: link:../../packages/shared
+        version: link:../packages/shared
       '@visionflow/ui':
         specifier: workspace:*
-        version: link:../../packages/ui
+        version: link:../packages/ui
       ag-grid-community:
         specifier: 35.2.1
         version: 35.2.1
