@@ -141,14 +141,20 @@ export function ContactGeneralPage() {
       <section className={styles.hero}>
         <Container>
           <div className={styles.sectionHead}>
-            <span className={`${styles.eyebrow} ${styles.eyebrowOnSurface}`}>
+            <span
+              className={`${styles.eyebrow} ${styles.eyebrowOnSurface}`}
+            >
               General · Q&amp;A
             </span>
-            <h1 className={styles.heroTitle}>궁금한 점을 남겨주세요</h1>
+            <h1 className={styles.heroTitle}>
+              궁금한 점을 남겨주세요
+            </h1>
             <p className={styles.heroSub}>
-              서비스 관련 일반 질문이나 Q&amp;A 게시판을 통해 문의해주세요.
+              서비스 관련 일반 질문이나 Q&amp;A 게시판을 통해
+              문의해주세요.
               <br />
-              비공개 정보가 포함된 경우 비밀글로 작성하시면 NDA 검토 후 답변 드립니다.
+              비공개 정보가 포함된 경우 비밀글로 작성하시면 NDA 검토
+              후 답변 드립니다.
             </p>
           </div>
         </Container>
@@ -189,7 +195,9 @@ export function ContactGeneralPage() {
                 >
                   {c.label}
                   {'count' in c && c.count !== undefined ? (
-                    <span className={styles.categoryCount}>{c.count}</span>
+                    <span className={styles.categoryCount}>
+                      {c.count}
+                    </span>
                   ) : null}
                 </button>
               ))}
@@ -228,7 +236,11 @@ export function ContactGeneralPage() {
                 role="row"
               >
                 <span className={styles.cellNo}>
-                  {p.isNotice ? <span className={styles.noticeBadge}>공지</span> : p.no}
+                  {p.isNotice ? (
+                    <span className={styles.noticeBadge}>공지</span>
+                  ) : (
+                    p.no
+                  )}
                 </span>
                 <span className={styles.cellTitle}>
                   {p.status ? (
@@ -246,13 +258,19 @@ export function ContactGeneralPage() {
                     {p.locked ? '🔒 ' : ''}
                     {p.title}
                   </span>
-                  <span className={styles.replyCount}>[{p.replies}]</span>
-                  {p.isNew ? <span className={styles.newBadge}>NEW</span> : null}
+                  <span className={styles.replyCount}>
+                    [{p.replies}]
+                  </span>
+                  {p.isNew ? (
+                    <span className={styles.newBadge}>NEW</span>
+                  ) : null}
                 </span>
                 <span className={styles.cellAuthor}>{p.author}</span>
                 <span className={styles.cellDate}>{p.date}</span>
                 <span className={styles.cellViews}>👁 {p.views}</span>
-                <span className={styles.cellReplies}>💬 {p.replies}</span>
+                <span className={styles.cellReplies}>
+                  💬 {p.replies}
+                </span>
               </div>
             ))}
           </div>
@@ -288,10 +306,17 @@ export function ContactGeneralPage() {
       <section className={styles.quickForm} id="quick-form">
         <Container>
           <header className={styles.sectionHead}>
-            <span className={`${styles.eyebrow} ${styles.eyebrowOnSurface}`}>Quick Form</span>
-            <h2 className={styles.sectionTitle}>게시판이 부담스럽다면, 빠른 문의로</h2>
+            <span
+              className={`${styles.eyebrow} ${styles.eyebrowOnSurface}`}
+            >
+              Quick Form
+            </span>
+            <h2 className={styles.sectionTitle}>
+              게시판이 부담스럽다면, 빠른 문의로
+            </h2>
             <p className={styles.sectionSub}>
-              공개되지 않는 1:1 문의입니다. 1~2 영업일 내에 이메일로 답변 드립니다.
+              공개되지 않는 1:1 문의입니다. 1~2 영업일 내에 이메일로
+              답변 드립니다.
             </p>
           </header>
           <form className={styles.formCard}>
@@ -310,8 +335,12 @@ export function ContactGeneralPage() {
                 />
               </div>
               <div className={styles.formField}>
-                <label className={styles.formLabel} htmlFor="qf-email">
-                  이메일 <span className={styles.formRequired}>*</span>
+                <label
+                  className={styles.formLabel}
+                  htmlFor="qf-email"
+                >
+                  이메일{' '}
+                  <span className={styles.formRequired}>*</span>
                 </label>
                 <input
                   className={styles.formInput}
@@ -325,7 +354,8 @@ export function ContactGeneralPage() {
             </div>
             <div className={styles.formField}>
               <label className={styles.formLabel} htmlFor="qf-title">
-                제목 <span className={styles.formOptional}>(선택)</span>
+                제목{' '}
+                <span className={styles.formOptional}>(선택)</span>
               </label>
               <input
                 className={styles.formInput}
@@ -336,7 +366,10 @@ export function ContactGeneralPage() {
               />
             </div>
             <div className={styles.formField}>
-              <label className={styles.formLabel} htmlFor="qf-message">
+              <label
+                className={styles.formLabel}
+                htmlFor="qf-message"
+              >
                 내용 <span className={styles.formRequired}>*</span>
               </label>
               <textarea
@@ -351,7 +384,9 @@ export function ContactGeneralPage() {
               />
             </div>
             <div className={styles.formActions}>
-              <p className={styles.formNote}>1~2 영업일 내 이메일로 회신 드립니다.</p>
+              <p className={styles.formNote}>
+                1~2 영업일 내 이메일로 회신 드립니다.
+              </p>
               <button className={styles.formSubmit} type="submit">
                 문의 보내기
               </button>
@@ -364,7 +399,9 @@ export function ContactGeneralPage() {
         <Container>
           <div className={styles.hintBanner}>
             <div className={styles.hintText}>
-              <p className={styles.hintTitle}>정식 견적이나 제휴 제안을 원하신다면</p>
+              <p className={styles.hintTitle}>
+                정식 견적이나 제휴 제안을 원하신다면
+              </p>
               <p className={styles.hintSub}>
                 전용 채널을 통해 더 빠르고 정확한 답변을 받아보세요.
               </p>
@@ -372,13 +409,13 @@ export function ContactGeneralPage() {
             <div className={styles.hintActions}>
               <Link
                 className={`${styles.hintCta} ${styles.hintCtaPrimary}`}
-                href={`${ROUTES.CONTACT}#quote`}
+                href={`${ROUTES.CONTACT}/quote`}
               >
                 견적 문의 →
               </Link>
               <Link
                 className={`${styles.hintCta} ${styles.hintCtaSecondary}`}
-                href={`${ROUTES.CONTACT}#partnership`}
+                href={`${ROUTES.CONTACT}/partnership`}
               >
                 제휴 문의 →
               </Link>
