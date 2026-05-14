@@ -79,10 +79,16 @@
   font: inherit;
   font-size: var(--fs-caption);
   font-weight: var(--fw-medium);
+  text-decoration: none;
 }
 
 .navButton:hover {
   background: var(--color-surface);
+}
+
+.navButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .iconButton {
@@ -138,13 +144,28 @@
   font-weight: var(--fw-bold);
 }
 
+.statusBadge,
 .statusUnanswered {
   padding: 3px 10px;
-  background: #fee2e2;
   border-radius: var(--radius-pill);
-  color: var(--color-danger);
   font-size: var(--fs-caption);
   font-weight: var(--fw-semibold);
+}
+
+.status_pending,
+.statusUnanswered {
+  background: #fee2e2;
+  color: var(--color-danger);
+}
+
+.status_in_progress {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status_resolved {
+  background: #dcfce7;
+  color: #03995f;
 }
 
 .categoryProposal {
@@ -236,6 +257,87 @@
   margin: 0;
   font-size: var(--fs-body);
   line-height: var(--lh-relaxed);
+}
+
+.questionBody p + p {
+  margin-top: 12px;
+}
+
+.emptyCard,
+.infoCard {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.emptyCard h1 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 22px;
+  font-weight: var(--fw-bold);
+}
+
+.emptyCard p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-small);
+}
+
+.infoHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+}
+
+.infoHeader svg {
+  color: var(--color-primary);
+}
+
+.infoList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.infoList div {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.infoList div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.infoList div:nth-child(odd) {
+  border-right: 1px solid var(--color-border);
+}
+
+.infoList dt {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+}
+
+.infoList dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-size: var(--fs-small);
 }
 
 /* SLA Card */
@@ -502,6 +604,12 @@
   border-right: 0;
 }
 
+.toolbarLabel {
+  color: var(--color-text);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+}
+
 .toolButton {
   display: grid;
   width: 28px;
@@ -628,7 +736,68 @@
   box-shadow: var(--shadow-cta);
 }
 
+.logList {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.logList li {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.logIcon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  background: var(--color-primary-soft);
+  border-radius: 50%;
+  color: var(--color-primary);
+}
+
+.logList div {
+  display: grid;
+  gap: 2px;
+}
+
+.logList strong {
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+}
+
+.logList span {
+  color: var(--color-text-secondary);
+  font-size: var(--fs-caption);
+}
+
 @media (max-width: 720px) {
+  .pageNav,
+  .questionMeta,
+  .composerFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .navActions,
+  .metaActions,
+  .composerActions {
+    width: 100%;
+  }
+
+  .navButton,
+  .metaButton,
+  .cancelButton,
+  .submitButton {
+    justify-content: center;
+  }
+
   .slaCard {
     grid-template-columns: 1fr;
     text-align: center;
@@ -636,5 +805,20 @@
 
   .slaActions {
     justify-content: center;
+  }
+
+  .infoList {
+    grid-template-columns: 1fr;
+  }
+
+  .infoList div,
+  .infoList div:nth-child(odd),
+  .infoList div:nth-last-child(-n + 2) {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .infoList div:last-child {
+    border-bottom: 0;
   }
 }
