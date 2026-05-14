@@ -1,7 +1,10 @@
 'use client';
 
 import { ROUTES } from '@visionflow/routes';
-import type { IQuickInquiryListResponse } from '@visionflow/shared';
+import type {
+  IQuickInquiry,
+  QuickInquiryStatus,
+} from '@visionflow/shared';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 import {
   AllCommunityModule,
@@ -9,9 +12,9 @@ import {
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import { Input, Select, Tabs } from 'antd';
-import { Check, Download } from 'lucide-react';
+import { Check, Clock3, Download, Mail, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
 import { useTopbar } from '../../components/layout/topbar-context';
@@ -19,36 +22,24 @@ import styles from './general-inquiry-list-page.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-type QuickInquiry = IQuickInquiryListResponse['data'][number];
-type StatusKey = 'unanswered' | 'reviewed' | 'done';
-type CategoryFilter = 'all';
+type StatusFilter = QuickInquiryStatus | 'all';
 type DateFilter = 'all' | 'last7' | 'last30';
 
-const STATUS_TABS = [
-  { count: 0, key: 'all' as const, label: '전체' },
-  { count: 0, key: 'unanswered' as const, label: '미답변' },
-  { count: 0, key: 'reviewed' as const, label: '확인' },
-  { count: 0, key: 'done' as const, label: '답변 완료' },
+const STATUS_TABS: ReadonlyArray<{
+  key: StatusFilter;
+  label: string;
+}> = [
+  { key: 'all', label: '전체' },
+  { key: 'pending', label: '미답변' },
+  { key: 'in_progress', label: '확인 중' },
+  { key: 'resolved', label: '답변 완료' },
 ];
 
-const STATUS_LABEL: Record<StatusKey, string> = {
-  done: '완료',
-  reviewed: '확인',
-  unanswered: '미답변',
+const STATUS_LABEL: Record<QuickInquiryStatus, string> = {
+  in_progress: '확인 중',
+  pending: '미답변',
+  resolved: '답변 완료',
 };
-
-const QUICK_STATUS_TO_ROW_STATUS: Record<
-  QuickInquiry['status'],
-  StatusKey
-> = {
-  in_progress: 'reviewed',
-  pending: 'unanswered',
-  resolved: 'done',
-};
-
-const STATUS_OPTIONS: { label: string; value: CategoryFilter }[] = [
-  { label: '전체 상태', value: 'all' },
-];
 
 const DATE_OPTIONS: { label: string; value: DateFilter }[] = [
   { label: '최근 30일', value: 'last30' },
@@ -56,58 +47,111 @@ const DATE_OPTIONS: { label: string; value: DateFilter }[] = [
   { label: '전체 기간', value: 'all' },
 ];
 
-type Row = {
-  author: { initial: string; name: string };
-  createdAbsolute: string;
-  createdRelative: string;
-  email: string;
-  excerpt: string;
-  id: string;
-  reply: { absolute: string; lapse: string } | null;
-  status: StatusKey;
-  title: string;
-};
-
 export function GeneralInquiryListPage() {
+  const [statusFilter, setStatusFilter] =
+    useState<StatusFilter>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('last30');
+  const [searchText, setSearchText] = useState('');
+
   useTopbar(
     () => ({
       breadcrumb: [
         { href: ROUTES.ADMIN.HOME, label: '대시보드' },
-        { label: '인박스' },
+        { label: '고객 문의' },
         { label: '일반 문의' },
       ],
     }),
     [],
   );
 
-  const { data: quickResponse } = useQuickListQuery();
-  const rows = useMemo(
-    () =>
-      (quickResponse?.data ?? []).map((quick) => quickToRow(quick)),
-    [quickResponse?.data],
-  );
+  const { data: quicks = [], isLoading } = useQuickListQuery();
+  const quickList = Array.isArray(quicks) ? quicks : [];
 
-  const columnDefs = useMemo<ColDef<Row>[]>(
+  const filteredRows = useMemo(() => {
+    const normalizedSearch = searchText.trim().toLowerCase();
+    const now = new Date();
+
+    return quickList.filter((row) => {
+      if (statusFilter !== 'all' && row.status !== statusFilter) {
+        return false;
+      }
+
+      if (dateFilter !== 'all') {
+        const createdAt = new Date(row.created_at);
+        if (Number.isNaN(createdAt.getTime())) {
+          return false;
+        }
+
+        const rangeDays = dateFilter === 'last7' ? 7 : 30;
+        const rangeStart = new Date(now);
+        rangeStart.setDate(now.getDate() - rangeDays);
+
+        if (createdAt < rangeStart) {
+          return false;
+        }
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return [row.subject, row.content, row.name, row.email]
+        .filter(Boolean)
+        .some((value) =>
+          String(value).toLowerCase().includes(normalizedSearch),
+        );
+    });
+  }, [dateFilter, quickList, searchText, statusFilter]);
+
+  const statusCounts = useMemo(() => {
+    return STATUS_TABS.reduce<Record<StatusFilter, number>>(
+      (acc, tab) => {
+        acc[tab.key] =
+          tab.key === 'all'
+            ? quickList.length
+            : quickList.filter((row) => row.status === tab.key)
+                .length;
+        return acc;
+      },
+      {
+        all: 0,
+        in_progress: 0,
+        pending: 0,
+        resolved: 0,
+      },
+    );
+  }, [quickList]);
+
+  const columnDefs = useMemo<ColDef<IQuickInquiry>[]>(
     () => [
       {
         cellRenderer: ({
           value,
-        }: ICellRendererParams<Row, StatusKey | undefined>) => (
-          <span
-            className={`${styles.statusBadge} ${
-              value ? styles[`status_${value}`] : ''
-            }`}
-          >
-            {value ? STATUS_LABEL[value] : '-'}
-          </span>
-        ),
+        }: ICellRendererParams<
+          IQuickInquiry,
+          IQuickInquiry['status']
+        >) => {
+          if (!value) {
+            return null;
+          }
+
+          return (
+            <span
+              className={`${styles.statusBadge} ${styles[`status_${value}`]}`}
+            >
+              {STATUS_LABEL[value] ?? value}
+            </span>
+          );
+        },
         field: 'status',
         headerName: '상태',
-        maxWidth: 110,
-        minWidth: 100,
+        maxWidth: 120,
+        minWidth: 110,
       },
       {
-        cellRenderer: ({ data }: ICellRendererParams<Row>) => {
+        cellRenderer: ({
+          data,
+        }: ICellRendererParams<IQuickInquiry>) => {
           if (!data) {
             return null;
           }
@@ -118,19 +162,23 @@ export function GeneralInquiryListPage() {
                 className={styles.titleLink}
                 href={ROUTES.ADMIN.GENERAL_INQUIRY.DETAIL(data.id)}
               >
-                {data.title}
+                {data.subject?.trim() || '(제목 없음)'}
               </Link>
-              <p className={styles.titleExcerpt}>{data.excerpt}</p>
+              <p className={styles.titleExcerpt}>
+                {data.content.trim() || '-'}
+              </p>
             </div>
           );
         },
-        field: 'title',
+        field: 'subject',
         flex: 1,
-        headerName: '제목',
-        minWidth: 320,
+        headerName: '문의 내용',
+        minWidth: 360,
       },
       {
-        cellRenderer: ({ data }: ICellRendererParams<Row>) => {
+        cellRenderer: ({
+          data,
+        }: ICellRendererParams<IQuickInquiry>) => {
           if (!data) {
             return null;
           }
@@ -138,87 +186,86 @@ export function GeneralInquiryListPage() {
           return (
             <div className={styles.authorCell}>
               <span aria-hidden="true" className={styles.avatar}>
-                {data.author.initial}
+                {getInitial(data.name)}
               </span>
-              <strong>{data.author.name}</strong>
+              <div className={styles.authorInfo}>
+                <strong>{data.name || '익명'}</strong>
+                <span>{data.email || '-'}</span>
+              </div>
             </div>
           );
         },
         colId: 'author',
         headerName: '작성자',
-        maxWidth: 150,
-        minWidth: 130,
+        maxWidth: 260,
+        minWidth: 220,
       },
       {
-        cellClass: styles.emailCell,
-        field: 'email',
-        headerName: '이메일',
-        maxWidth: 250,
-        minWidth: 210,
-      },
-      {
-        cellRenderer: ({ data }: ICellRendererParams<Row>) => {
+        cellRenderer: ({
+          data,
+        }: ICellRendererParams<IQuickInquiry>) => {
           if (!data) {
             return null;
           }
 
           return (
             <div className={styles.dateCell}>
-              <span>{data.createdAbsolute}</span>
+              <span>{formatDate(data.created_at)}</span>
               <span className={styles.dateRelative}>
-                {data.createdRelative}
+                {formatRelativeDate(data.created_at)}
               </span>
             </div>
           );
         },
         colId: 'createdAt',
         headerName: '접수일',
-        maxWidth: 140,
-        minWidth: 120,
+        maxWidth: 150,
+        minWidth: 130,
       },
       {
-        cellRenderer: ({ data }: ICellRendererParams<Row>) => {
+        cellRenderer: ({
+          data,
+        }: ICellRendererParams<IQuickInquiry>) => {
           if (!data) {
             return null;
           }
 
+          if (data.status !== 'resolved') {
+            return <span className={styles.replyDash}>-</span>;
+          }
+
           return (
             <div className={styles.replyCell}>
-              {data.reply ? (
-                <>
-                  <span className={styles.replyDone}>
-                    <Check
-                      aria-hidden="true"
-                      size={11}
-                      strokeWidth={2.5}
-                    />
-                    {data.reply.absolute}
-                  </span>
-                  <span className={styles.replyLapse}>
-                    {data.reply.lapse}
-                  </span>
-                </>
-              ) : (
-                <span className={styles.replyDash}>-</span>
-              )}
+              <span className={styles.replyDone}>
+                <Check
+                  aria-hidden="true"
+                  size={11}
+                  strokeWidth={2.5}
+                />
+                완료
+              </span>
+              <span className={styles.dateRelative}>
+                {formatDate(data.updated_at)}
+              </span>
             </div>
           );
         },
         colId: 'reply',
-        headerName: '답변일',
-        maxWidth: 140,
-        minWidth: 120,
+        headerName: '답변',
+        maxWidth: 150,
+        minWidth: 130,
       },
     ],
     [],
   );
 
-  const defaultColDef = useMemo<ColDef<Row>>(
+  const defaultColDef = useMemo<ColDef<IQuickInquiry>>(
     () => ({
       autoHeight: true,
       filter: false,
       resizable: true,
       sortable: false,
+      suppressMovable: true,
     }),
     [],
   );
@@ -230,9 +277,13 @@ export function GeneralInquiryListPage() {
           <h1 className={styles.pageTitle}>
             일반 문의
             <span className={styles.totalCount}>
-              {quickResponse?.total_count ?? 0}건
+              {quickList.length.toLocaleString()}건
             </span>
           </h1>
+          <p className={styles.pageDescription}>
+            홈페이지에서 접수된 일반 문의를 상태별로 확인하고 답변
+            진행 상황을 관리합니다.
+          </p>
         </div>
         <button className={styles.secondaryButton} type="button">
           <Download aria-hidden="true" size={14} />
@@ -240,49 +291,86 @@ export function GeneralInquiryListPage() {
         </button>
       </header>
 
+      <section
+        aria-label="일반 문의 요약"
+        className={styles.summaryRow}
+      >
+        <article className={styles.summaryItem}>
+          <Mail aria-hidden="true" size={16} />
+          <span>전체 문의</span>
+          <strong>{quickList.length.toLocaleString()}</strong>
+        </article>
+        <article className={styles.summaryItem}>
+          <Clock3 aria-hidden="true" size={16} />
+          <span>미답변</span>
+          <strong>{statusCounts.pending.toLocaleString()}</strong>
+        </article>
+        <article className={styles.summaryItem}>
+          <Check aria-hidden="true" size={16} />
+          <span>답변 완료</span>
+          <strong>{statusCounts.resolved.toLocaleString()}</strong>
+        </article>
+      </section>
+
       <Tabs
+        activeKey={statusFilter}
         className={styles.statusTabs}
-        defaultActiveKey="all"
         items={STATUS_TABS.map((tab) => ({
           key: tab.key,
           label: (
             <span className={styles.tabLabel}>
               <span>{tab.label}</span>
-              <span className={styles.tabCount}>{tab.count}</span>
+              <span className={styles.tabCount}>
+                {statusCounts[tab.key]}
+              </span>
             </span>
           ),
         }))}
+        onChange={(key) => setStatusFilter(key as StatusFilter)}
       />
 
       <div className={styles.toolbar}>
-        <Input.Search
+        <Input
           allowClear
           className={styles.searchInput}
-          placeholder="제목, 작성자, 이메일로 검색"
-        />
-        <Select<CategoryFilter>
-          className={styles.filterSelect}
-          defaultValue="all"
-          options={STATUS_OPTIONS}
+          onChange={(event) => setSearchText(event.target.value)}
+          placeholder="제목, 내용, 작성자, 이메일로 검색"
+          prefix={<Search aria-hidden="true" size={14} />}
+          value={searchText}
         />
         <Select<DateFilter>
           className={styles.filterSelect}
-          defaultValue="last30"
+          onChange={setDateFilter}
           options={DATE_OPTIONS}
+          value={dateFilter}
         />
       </div>
 
       <article className={styles.tableCard}>
+        <div className={styles.tableHeader}>
+          <div>
+            <strong>문의 목록</strong>
+            <span>
+              {filteredRows.length.toLocaleString()}건 표시 중
+            </span>
+          </div>
+        </div>
         <div className={styles.tableWrap}>
           <div className={`ag-theme-quartz ${styles.grid}`}>
-            <AgGridReact<Row>
+            <AgGridReact<IQuickInquiry>
               columnDefs={columnDefs}
               defaultColDef={defaultColDef}
+              loading={isLoading}
+              noRowsOverlayComponent={() => (
+                <div className={styles.emptyState}>
+                  조건에 맞는 문의가 없습니다.
+                </div>
+              )}
               pagination
               paginationPageSize={10}
               paginationPageSizeSelector={[10, 20, 50, 100]}
-              rowData={rows}
-              rowHeight={64}
+              rowData={filteredRows}
+              rowHeight={72}
               rowSelection="multiple"
               theme="legacy"
             />
@@ -293,38 +381,16 @@ export function GeneralInquiryListPage() {
   );
 }
 
-function quickToRow(quick: QuickInquiry): Row {
-  const status = QUICK_STATUS_TO_ROW_STATUS[quick.status];
-
-  return {
-    author: {
-      initial: getInitial(quick.name),
-      name: quick.name || '익명',
-    },
-    createdAbsolute: formatDate(quick.created_at),
-    createdRelative: formatRelativeDate(quick.created_at),
-    email: quick.email,
-    excerpt: quick.content.trim() || '-',
-    id: quick.id,
-    reply:
-      status === 'done'
-        ? {
-            absolute: formatDate(quick.updated_at),
-            lapse: '-',
-          }
-        : null,
-    status,
-    title: quick.subject?.trim() || '(제목 없음)',
-  };
+function getInitial(name?: string) {
+  return name?.trim().slice(0, 1).toUpperCase() || '?';
 }
 
-function getInitial(name: string) {
-  return name.trim().charAt(0).toUpperCase() || '?';
-}
+function formatDate(value?: string) {
+  if (!value) {
+    return '-';
+  }
 
-function formatDate(value: string) {
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) {
     return value;
   }
@@ -337,30 +403,29 @@ function formatDate(value: string) {
   }).format(date);
 }
 
-function formatRelativeDate(value: string) {
-  const date = new Date(value);
+function formatRelativeDate(value?: string) {
+  if (!value) {
+    return '-';
+  }
 
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return '-';
   }
 
-  const diffMinutes = Math.floor(
-    (Date.now() - date.getTime()) / 1000 / 60,
+  const diffMinutes = Math.max(
+    0,
+    Math.floor((Date.now() - date.getTime()) / 60000),
   );
-
-  if (diffMinutes < 1) {
-    return '방금 전';
-  }
-
   if (diffMinutes < 60) {
     return `${diffMinutes}분 전`;
   }
 
   const diffHours = Math.floor(diffMinutes / 60);
-
   if (diffHours < 24) {
     return `${diffHours}시간 전`;
   }
 
-  return `${Math.floor(diffHours / 24)}일 전`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}일 전`;
 }

@@ -4,7 +4,7 @@ import { GeneralInquiryListPage } from '@/features/general-inquiry/general-inqui
 
 export const metadata: Metadata = {
   description: 'VisionFlow CMS 일반 문의 관리',
-  title: '일반 문의 — VisionFlow Admin',
+  title: '일반 문의 | VisionFlow Admin',
 };
 
 export default function GeneralInquiry() {
