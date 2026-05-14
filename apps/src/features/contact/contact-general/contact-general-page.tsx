@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { Container } from '@/components/common/container';
 
+import { ContactGeneralFormPage } from '@/features/contact/contact-general/contact-general-form-page';
 import styles from './contact-general-page.module.css';
 
 const tabs = [
@@ -319,79 +320,7 @@ export function ContactGeneralPage() {
               답변 드립니다.
             </p>
           </header>
-          <form className={styles.formCard}>
-            <div className={styles.formRow}>
-              <div className={styles.formField}>
-                <label className={styles.formLabel} htmlFor="qf-name">
-                  이름 <span className={styles.formRequired}>*</span>
-                </label>
-                <input
-                  className={styles.formInput}
-                  id="qf-name"
-                  name="name"
-                  placeholder="문의자 이름"
-                  required
-                  type="text"
-                />
-              </div>
-              <div className={styles.formField}>
-                <label
-                  className={styles.formLabel}
-                  htmlFor="qf-email"
-                >
-                  이메일{' '}
-                  <span className={styles.formRequired}>*</span>
-                </label>
-                <input
-                  className={styles.formInput}
-                  id="qf-email"
-                  name="email"
-                  placeholder="you@example.com"
-                  required
-                  type="email"
-                />
-              </div>
-            </div>
-            <div className={styles.formField}>
-              <label className={styles.formLabel} htmlFor="qf-title">
-                제목{' '}
-                <span className={styles.formOptional}>(선택)</span>
-              </label>
-              <input
-                className={styles.formInput}
-                id="qf-title"
-                name="title"
-                placeholder="문의 제목 (선택)"
-                type="text"
-              />
-            </div>
-            <div className={styles.formField}>
-              <label
-                className={styles.formLabel}
-                htmlFor="qf-message"
-              >
-                내용 <span className={styles.formRequired}>*</span>
-              </label>
-              <textarea
-                className={styles.formTextarea}
-                id="qf-message"
-                name="message"
-                placeholder={
-                  '궁금한 점을 자유롭게 작성해 주세요.\n견적·기술·진행 절차·NDA·기타 무엇이든.'
-                }
-                required
-                rows={6}
-              />
-            </div>
-            <div className={styles.formActions}>
-              <p className={styles.formNote}>
-                1~2 영업일 내 이메일로 회신 드립니다.
-              </p>
-              <button className={styles.formSubmit} type="submit">
-                문의 보내기
-              </button>
-            </div>
-          </form>
+          <ContactGeneralFormPage />
         </Container>
       </section>
 

@@ -59,7 +59,9 @@ Designbase 토큰 시스템에 관심을 가져 주셔서 감사합니다. 비�
 - 다만 컴포넌트 명세는 사내 자산이라 공유가 어렵습니다 — 대신 GitHub의 공개 디자인 시스템 (Radix, shadcn) 추천드립니다.`;
 
 export function GeneralInquiryDetailPage({ id }: { id: string }) {
-  const [activeTab, setActiveTab] = useState<'body' | 'compose' | 'log'>('compose');
+  const [activeTab, setActiveTab] = useState<
+    'body' | 'compose' | 'log'
+  >('compose');
   const [reply, setReply] = useState(SAMPLE_REPLY);
 
   return (
@@ -70,13 +72,18 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
           <span aria-hidden="true">/</span>
           <span>인박스</span>
           <span aria-hidden="true">/</span>
-          <Link href={ROUTES.ADMIN.GENERAL_INQUIRY.ROOT}>일반 문의</Link>
+          <Link href={ROUTES.ADMIN.GENERAL_INQUIRY.ROOT}>
+            일반 문의
+          </Link>
           <span aria-hidden="true">/</span>
           <span className={styles.breadcrumbCurrent}>#{id}</span>
         </p>
 
         <div className={styles.pageNav}>
-          <Link className={styles.backLink} href={ROUTES.ADMIN.GENERAL_INQUIRY.ROOT}>
+          <Link
+            className={styles.backLink}
+            href={ROUTES.ADMIN.GENERAL_INQUIRY.ROOT}
+          >
             <ArrowLeft aria-hidden="true" size={14} />
             목록으로
           </Link>
@@ -89,7 +96,11 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
               다음
               <ChevronDown aria-hidden="true" size={14} />
             </button>
-            <button aria-label="더보기" className={styles.iconButton} type="button">
+            <button
+              aria-label="더보기"
+              className={styles.iconButton}
+              type="button"
+            >
               <MoreHorizontal aria-hidden="true" size={16} />
             </button>
           </div>
@@ -126,17 +137,19 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
           <div className={styles.authorInfo}>
             <strong>서지호 · jiho.seo@designstudio.kr</strong>
             <span>
-              오늘 13:42 작성 · IP 121.140.xxx.xxx · 출처 organic search · UA Chrome 124 (macOS)
+              오늘 13:42 작성 · IP 121.140.xxx.xxx · 출처 organic
+              search · UA Chrome 124 (macOS)
             </span>
           </div>
         </div>
 
         <div className={styles.questionBody}>
           <p>
-            VisionFlow 사이트의 Designbase 토큰 시스템을 학습 자료로 활용하고 싶습니다. 사내 디자인
-            시스템 워크샵에서 케이스 스터디로 다루고 싶은데, 컴포넌트 명세 문서나 토큰 JSON 파일을
-            일부라도 공유받을 수 있을까요? 출처는 명시하고 비상업적 교육 목적으로만 활용할
-            예정입니다.
+            VisionFlow 사이트의 Designbase 토큰 시스템을 학습 자료로
+            활용하고 싶습니다. 사내 디자인 시스템 워크샵에서 케이스
+            스터디로 다루고 싶은데, 컴포넌트 명세 문서나 토큰 JSON
+            파일을 일부라도 공유받을 수 있을까요? 출처는 명시하고
+            비상업적 교육 목적으로만 활용할 예정입니다.
           </p>
         </div>
       </article>
@@ -146,8 +159,12 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
           <Timer size={18} />
         </span>
         <div className={styles.slaBody}>
-          <p className={styles.slaTitle}>SLA 응답 마감까지 1일 18시간</p>
-          <p className={styles.slaMeta}>48시간 SLA · 미할당 상태 · 답변 필수 (제안 카테고리)</p>
+          <p className={styles.slaTitle}>
+            SLA 응답 마감까지 1일 18시간
+          </p>
+          <p className={styles.slaMeta}>
+            48시간 SLA · 미할당 상태 · 답변 필수 (제안 카테고리)
+          </p>
         </div>
         <div className={styles.slaActions}>
           <button className={styles.slaSecondary} type="button">
@@ -161,7 +178,11 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
         </div>
       </aside>
 
-      <nav aria-label="섹션" className={styles.tabsBar} role="tablist">
+      <nav
+        aria-label="섹션"
+        className={styles.tabsBar}
+        role="tablist"
+      >
         {TABS.map((tab) => (
           <button
             aria-selected={activeTab === tab.key}
@@ -172,7 +193,9 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
             type="button"
           >
             {tab.label}
-            {tab.count != null ? <span className={styles.tabCount}>{tab.count}</span> : null}
+            {tab.count != null ? (
+              <span className={styles.tabCount}>{tab.count}</span>
+            ) : null}
           </button>
         ))}
       </nav>
@@ -204,7 +227,10 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
           </div>
           <div className={styles.mailRow}>
             <dt>SUBJ</dt>
-            <dd>Re: 디자인 시스템 컴포넌트 라이브러리 자료 공유 가능 여부 안내</dd>
+            <dd>
+              Re: 디자인 시스템 컴포넌트 라이브러리 자료 공유 가능
+              여부 안내
+            </dd>
           </div>
         </dl>
 
@@ -254,9 +280,6 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
           <div className={styles.composerActions}>
             <button className={styles.cancelButton} type="button">
               취소
-            </button>
-            <button className={styles.saveButton} type="button">
-              임시 저장
             </button>
             <button className={styles.submitButton} type="button">
               <Send aria-hidden="true" size={14} />

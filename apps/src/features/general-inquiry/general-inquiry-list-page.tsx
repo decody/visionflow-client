@@ -65,43 +65,52 @@ export function GeneralInquiryListPage() {
     [],
   );
 
-  const { data: quicks = [], isLoading } = useQuickListQuery();
-  const quickList = Array.isArray(quicks) ? quicks : [];
+  const { data: quicks, isLoading } = useQuickListQuery();
+  const quickList = useMemo(
+    () => (Array.isArray(quicks) ? quicks : []),
+    [quicks],
+  );
 
   const filteredRows = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase();
     const now = new Date();
 
-    return quickList.filter((row) => {
-      if (statusFilter !== 'all' && row.status !== statusFilter) {
-        return false;
-      }
-
-      if (dateFilter !== 'all') {
-        const createdAt = new Date(row.created_at);
-        if (Number.isNaN(createdAt.getTime())) {
+    return quickList
+      .filter((row) => {
+        if (statusFilter !== 'all' && row.status !== statusFilter) {
           return false;
         }
 
-        const rangeDays = dateFilter === 'last7' ? 7 : 30;
-        const rangeStart = new Date(now);
-        rangeStart.setDate(now.getDate() - rangeDays);
+        if (dateFilter !== 'all') {
+          const createdAt = new Date(row.created_at);
+          if (Number.isNaN(createdAt.getTime())) {
+            return false;
+          }
 
-        if (createdAt < rangeStart) {
-          return false;
+          const rangeDays = dateFilter === 'last7' ? 7 : 30;
+          const rangeStart = new Date(now);
+          rangeStart.setDate(now.getDate() - rangeDays);
+
+          if (createdAt < rangeStart) {
+            return false;
+          }
         }
-      }
 
-      if (!normalizedSearch) {
-        return true;
-      }
+        if (!normalizedSearch) {
+          return true;
+        }
 
-      return [row.subject, row.content, row.name, row.email]
-        .filter(Boolean)
-        .some((value) =>
-          String(value).toLowerCase().includes(normalizedSearch),
-        );
-    });
+        return [row.subject, row.content, row.name, row.email]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLowerCase().includes(normalizedSearch),
+          );
+      })
+      .sort(
+        (a, b) =>
+          getCreatedAtTime(b.created_at) -
+          getCreatedAtTime(a.created_at),
+      );
   }, [dateFilter, quickList, searchText, statusFilter]);
 
   const statusCounts = useMemo(() => {
@@ -433,6 +442,12 @@ export function GeneralInquiryListPage() {
 
 function getInitial(name?: string) {
   return name?.trim().slice(0, 1).toUpperCase() || '?';
+}
+
+function getCreatedAtTime(value?: string) {
+  const time = value ? new Date(value).getTime() : 0;
+
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function formatDate(value?: string) {
