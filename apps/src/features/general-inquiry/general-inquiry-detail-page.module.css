@@ -427,6 +427,13 @@
   background: var(--color-primary-dark);
 }
 
+.slaButton:disabled,
+.submitButton:disabled,
+.cancelButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* Tabs */
 .tabsBar {
   display: flex;
@@ -582,6 +589,24 @@
   font-size: var(--fs-small);
 }
 
+.replyNotice {
+  margin: 0;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+}
+
+.replyNotice_success {
+  background: #f0fdf4;
+  color: #047857;
+}
+
+.replyNotice_error {
+  background: #fef2f2;
+  color: var(--color-danger);
+}
+
 .toolbar {
   display: flex;
   align-items: center;
@@ -734,6 +759,11 @@
 .submitButton:hover {
   background: var(--color-primary-dark);
   box-shadow: var(--shadow-cta);
+}
+
+.submitButton:disabled:hover {
+  background: var(--color-primary);
+  box-shadow: none;
 }
 
 .logList {

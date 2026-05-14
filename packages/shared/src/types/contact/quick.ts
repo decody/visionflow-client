@@ -14,6 +14,9 @@ export interface IQuickInquiry {
   content: string;
   status: QuickInquiryStatus;
   created_at: string;
+  replied_at?: string | null;
+  replied_by?: string | null;
+  reply_content?: string | null;
   updated_at: string;
 }
 

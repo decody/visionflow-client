@@ -125,6 +125,21 @@ const createRpcUrl = (functionName: string) => {
   return `${getRestBaseUrl()}/rpc/${normalizedFunctionName}`;
 };
 
+const createFunctionUrl = (functionName: string) => {
+  const NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const normalizedFunctionName = functionName.trim().replace(/^\/+|\/+$/g, '');
+
+  if (!NEXT_PUBLIC_SUPABASE_URL) {
+    throw new Error('Supabase URL is required. Set NEXT_PUBLIC_SUPABASE_URL.');
+  }
+
+  if (!normalizedFunctionName) {
+    throw new Error('Supabase Edge Function name is required.');
+  }
+
+  return `${trimSlash(NEXT_PUBLIC_SUPABASE_URL)}/functions/v1/${normalizedFunctionName}`;
+};
+
 // 응답 body는 JSON이면 파싱하고, 비어 있으면 null로 처리합니다.
 const parseBody = async (response: Response) => {
   const text = await response.text();
@@ -222,6 +237,13 @@ export const apiClient = {
 
   rpc<T>(functionName: string, payload: ApiPayload = {}) {
     return request<T>(createRpcUrl(functionName), {
+      body: payload,
+      method: 'POST',
+    });
+  },
+
+  invoke<T>(functionName: string, payload: ApiPayload = {}) {
+    return request<T>(createFunctionUrl(functionName), {
       body: payload,
       method: 'POST',
     });

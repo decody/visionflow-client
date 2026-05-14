@@ -17,14 +17,21 @@ import {
   Timer,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { useMemo, useState } from 'react';
 
 import Loading from '@/components/loading/page';
 import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
+import { useSendQuickReplyMutation } from '@/hooks/admin/contact/quick/useSendQuickReplyMutation';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './general-inquiry-detail-page.module.css';
 
 type DetailTab = 'body' | 'compose' | 'log';
+type ReplyNotice = {
+  message: string;
+  tone: 'error' | 'success';
+};
 
 const STATUS_LABEL: Record<QuickInquiryStatus, string> = {
   in_progress: '확인 중',
@@ -42,27 +49,18 @@ const TABS: ReadonlyArray<{
 ];
 
 export function GeneralInquiryDetailPage({ id }: { id: string }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<DetailTab>('body');
-  const [reply, setReply] = useState('');
-
-  useTopbar(
-    () => ({
-      breadcrumb: [
-        { href: ROUTES.ADMIN.HOME, label: '대시보드' },
-        { label: '고객 문의' },
-        {
-          href: ROUTES.ADMIN.GENERAL_INQUIRY.ROOT,
-          label: '일반 문의',
-        },
-        {
-          label: inquiry
-            ? `${inquiry.subject?.trim() || '제목없음'}`
-            : '',
-        },
-      ],
-    }),
-    [id],
-  );
+  const [replyDraft, setReplyDraft] = useState<{
+    inquiryId: string;
+    value: string;
+  } | null>(null);
+  const [replyNoticeState, setReplyNoticeState] = useState<{
+    inquiryId: string;
+    notice: ReplyNotice;
+  } | null>(null);
+  const { data: session } = useSession();
+  const sendReplyMutation = useSendQuickReplyMutation();
 
   const { data: quicks, isLoading } = useQuickListQuery();
 
@@ -106,9 +104,35 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
     ].join('\n');
   }, [inquiry]);
 
-  useEffect(() => {
-    setReply(defaultReply);
-  }, [defaultReply]);
+  const reply =
+    replyDraft?.inquiryId === id ? replyDraft.value : defaultReply;
+  const replyNotice =
+    replyNoticeState?.inquiryId === id ? replyNoticeState.notice : null;
+  const setCurrentReply = (value: string) => {
+    setReplyDraft({ inquiryId: id, value });
+  };
+  const setCurrentReplyNotice = (notice: ReplyNotice | null) => {
+    setReplyNoticeState(notice ? { inquiryId: id, notice } : null);
+  };
+
+  useTopbar(
+    () => ({
+      breadcrumb: [
+        { href: ROUTES.ADMIN.HOME, label: '대시보드' },
+        { label: '고객 문의' },
+        {
+          href: ROUTES.ADMIN.GENERAL_INQUIRY.ROOT,
+          label: '일반 문의',
+        },
+        {
+          label: inquiry
+            ? `${inquiry.subject?.trim() || '제목없음'}`
+            : '',
+        },
+      ],
+    }),
+    [id, inquiry],
+  );
 
   if (isLoading) {
     return <Loading />;
@@ -139,6 +163,67 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
     styles[`status_${inquiry.status}`] ?? styles.status_pending;
   const displayTitle = inquiry.subject?.trim() || '(제목 없음)';
   const sla = getSlaText(inquiry);
+  const replySubject = `Re: ${inquiry.subject?.trim() || '일반 문의'}`;
+  const repliedBy =
+    session?.user?.email ?? session?.user?.name ?? null;
+  const canSendReply =
+    Boolean(inquiry.email?.trim()) && Boolean(reply.trim());
+
+  const handleOpenComposer = () => {
+    setActiveTab('compose');
+  };
+
+  const handleCancelReply = () => {
+    setReplyDraft({ inquiryId: id, value: defaultReply });
+    setCurrentReplyNotice(null);
+    router.push(ROUTES.ADMIN.GENERAL_INQUIRY.ROOT);
+  };
+
+  const handleSendReply = async () => {
+    const to = inquiry.email?.trim();
+    const replyContent = reply.trim();
+
+    if (!to) {
+      setActiveTab('compose');
+      setCurrentReplyNotice({
+        message: '수신자 이메일이 없어 답변을 발송할 수 없습니다.',
+        tone: 'error',
+      });
+      return;
+    }
+
+    if (!replyContent) {
+      setActiveTab('compose');
+      setCurrentReplyNotice({
+        message: '답변 내용을 입력한 뒤 발송해 주세요.',
+        tone: 'error',
+      });
+      return;
+    }
+
+    try {
+      setCurrentReplyNotice(null);
+      await sendReplyMutation.mutateAsync({
+        inquiryId: inquiry.id,
+        repliedBy,
+        replyContent,
+        subject: replySubject,
+        to,
+      });
+      setCurrentReplyNotice({
+        message: '답변 메일을 발송하고 문의 상태를 완료로 변경했습니다.',
+        tone: 'success',
+      });
+    } catch (error) {
+      setCurrentReplyNotice({
+        message:
+          error instanceof Error
+            ? error.message
+            : '답변 발송 중 오류가 발생했습니다.',
+        tone: 'error',
+      });
+    }
+  };
 
   return (
     <div className={styles.page}>
@@ -224,7 +309,11 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
             <Check aria-hidden="true" size={14} />
             확인 처리
           </button>
-          <button className={styles.slaButton} type="button">
+          <button
+            className={styles.slaButton}
+            onClick={handleOpenComposer}
+            type="button"
+          >
             답변 발송
             <Send aria-hidden="true" size={14} />
           </button>
@@ -260,9 +349,15 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
       ) : null}
       {activeTab === 'compose' ? (
         <ReplyComposer
+          canSendReply={canSendReply}
+          isSending={sendReplyMutation.isPending}
           inquiry={inquiry}
+          notice={replyNotice}
+          onCancel={handleCancelReply}
+          onSend={handleSendReply}
           reply={reply}
-          setReply={setReply}
+          subject={replySubject}
+          setReply={setCurrentReply}
         />
       ) : null}
       {activeTab === 'log' ? <ActivityLog inquiry={inquiry} /> : null}
@@ -331,18 +426,34 @@ function InquiryBody({ inquiry }: { inquiry: IQuickInquiry }) {
           <dt>접수일</dt>
           <dd>{formatFullDate(inquiry.created_at)}</dd>
         </div>
+        <div>
+          <dt>답변일</dt>
+          <dd>{formatFullDate(inquiry.replied_at ?? undefined)}</dd>
+        </div>
       </dl>
     </article>
   );
 }
 
 function ReplyComposer({
+  canSendReply,
   inquiry,
+  isSending,
+  notice,
+  onCancel,
+  onSend,
   reply,
+  subject,
   setReply,
 }: {
+  canSendReply: boolean;
   inquiry: IQuickInquiry;
+  isSending: boolean;
+  notice: ReplyNotice | null;
+  onCancel: () => void;
+  onSend: () => void;
   reply: string;
+  subject: string;
   setReply: (value: string) => void;
 }) {
   return (
@@ -370,9 +481,21 @@ function ReplyComposer({
         </div>
         <div className={styles.mailRow}>
           <dt>SUBJ</dt>
-          <dd>Re: {inquiry.subject?.trim() || '일반 문의'}</dd>
+          <dd>{subject}</dd>
         </div>
       </dl>
+
+      {notice ? (
+        <p
+          className={`${styles.replyNotice} ${
+            notice.tone === 'success'
+              ? styles.replyNotice_success
+              : styles.replyNotice_error
+          }`}
+        >
+          {notice.message}
+        </p>
+      ) : null}
 
       <div className={styles.toolbar}>
         <span className={styles.toolbarLabel}>답변 내용</span>
@@ -393,12 +516,22 @@ function ReplyComposer({
           발송 전 문의 내용과 수신자 이메일을 다시 확인해 주세요.
         </p>
         <div className={styles.composerActions}>
-          <button className={styles.cancelButton} type="button">
+          <button
+            className={styles.cancelButton}
+            disabled={isSending}
+            onClick={onCancel}
+            type="button"
+          >
             &nbsp;&nbsp;취소&nbsp;&nbsp;
           </button>
-          <button className={styles.submitButton} type="button">
+          <button
+            className={styles.submitButton}
+            disabled={!canSendReply || isSending}
+            onClick={onSend}
+            type="button"
+          >
             <Send aria-hidden="true" size={14} />
-            답변 발송
+            {isSending ? '발송 중' : '답변 발송'}
           </button>
         </div>
       </footer>
@@ -420,8 +553,11 @@ function ActivityLog({ inquiry }: { inquiry: IQuickInquiry }) {
     },
     {
       icon: Check,
-      label: '관리자 확인 대기',
-      time: inquiry.status === 'pending' ? '아직 처리 전' : '처리됨',
+      label: inquiry.status === 'resolved' ? '답변 발송 완료' : '관리자 확인 대기',
+      time:
+        inquiry.status === 'resolved'
+          ? formatFullDate(inquiry.replied_at ?? inquiry.updated_at)
+          : '아직 처리 전',
     },
   ];
 
