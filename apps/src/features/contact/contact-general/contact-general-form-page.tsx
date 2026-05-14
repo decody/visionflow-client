@@ -124,7 +124,10 @@ export function ContactGeneralFormPage() {
         />
       </div>
       {message ? (
-        <p aria-live="polite" className={styles.formNote}>
+        <p
+          aria-live="polite"
+          className={`${styles.formNote} ${styles.formNoteMessage}`}
+        >
           {message}
         </p>
       ) : null}

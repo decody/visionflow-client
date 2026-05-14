@@ -16,9 +16,9 @@ import {
   Send,
   Timer,
 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { useMemo, useState } from 'react';
 
 import Loading from '@/components/loading/page';
@@ -107,7 +107,9 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
   const reply =
     replyDraft?.inquiryId === id ? replyDraft.value : defaultReply;
   const replyNotice =
-    replyNoticeState?.inquiryId === id ? replyNoticeState.notice : null;
+    replyNoticeState?.inquiryId === id
+      ? replyNoticeState.notice
+      : null;
   const setCurrentReply = (value: string) => {
     setReplyDraft({ inquiryId: id, value });
   };
@@ -211,7 +213,8 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
         to,
       });
       setCurrentReplyNotice({
-        message: '답변 메일을 발송하고 문의 상태를 완료로 변경했습니다.',
+        message:
+          '답변 메일을 발송하고 문의 상태를 완료로 변경했습니다.',
         tone: 'success',
       });
     } catch (error) {
@@ -305,10 +308,6 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
           <p className={styles.slaMeta}>{sla.meta}</p>
         </div>
         <div className={styles.slaActions}>
-          <button className={styles.slaSecondary} type="button">
-            <Check aria-hidden="true" size={14} />
-            확인 처리
-          </button>
           <button
             className={styles.slaButton}
             onClick={handleOpenComposer}
@@ -553,7 +552,10 @@ function ActivityLog({ inquiry }: { inquiry: IQuickInquiry }) {
     },
     {
       icon: Check,
-      label: inquiry.status === 'resolved' ? '답변 발송 완료' : '관리자 확인 대기',
+      label:
+        inquiry.status === 'resolved'
+          ? '답변 발송 완료'
+          : '관리자 확인 대기',
       time:
         inquiry.status === 'resolved'
           ? formatFullDate(inquiry.replied_at ?? inquiry.updated_at)

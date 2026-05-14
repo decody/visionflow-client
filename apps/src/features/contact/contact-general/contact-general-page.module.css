@@ -562,6 +562,11 @@
   font-size: var(--fs-micro);
 }
 
+.formNoteMessage {
+  color: var(--color-success);
+  font-size: var(--fs-small);
+}
+
 .formSubmit {
   padding: var(--space-4) var(--space-6);
   background: var(--color-primary);
