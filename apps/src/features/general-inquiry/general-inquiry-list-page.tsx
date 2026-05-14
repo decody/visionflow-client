@@ -16,6 +16,7 @@ import { Check, Clock3, Download, Mail, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
+import Loading from '@/components/loading/page';
 import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './general-inquiry-list-page.module.css';
@@ -50,7 +51,7 @@ const DATE_OPTIONS: { label: string; value: DateFilter }[] = [
 export function GeneralInquiryListPage() {
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>('all');
-  const [dateFilter, setDateFilter] = useState<DateFilter>('last30');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [searchText, setSearchText] = useState('');
 
   useTopbar(
@@ -121,6 +122,47 @@ export function GeneralInquiryListPage() {
       },
     );
   }, [quickList]);
+
+  const handleExportCsv = () => {
+    const headers = [
+      '상태',
+      '제목',
+      '내용',
+      '이름',
+      '이메일',
+      '접수일',
+      '수정일',
+    ];
+
+    const rows = filteredRows.map((row) => [
+      STATUS_LABEL[row.status],
+      row.subject ?? '',
+      row.content,
+      row.name,
+      row.email,
+      row.created_at,
+      row.updated_at,
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+          .join(','),
+      )
+      .join('\n');
+
+    const blob = new Blob(['\uFEFF', csv], {
+      type: 'text/csv;charset=utf-8;',
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `general-inquiries.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const columnDefs = useMemo<ColDef<IQuickInquiry>[]>(
     () => [
@@ -270,6 +312,10 @@ export function GeneralInquiryListPage() {
     [],
   );
 
+  if (isLoading) {
+    return <Loading />;
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.pageHeader}>
@@ -285,7 +331,11 @@ export function GeneralInquiryListPage() {
             진행 상황을 관리합니다.
           </p>
         </div>
-        <button className={styles.secondaryButton} type="button">
+        <button
+          className={styles.secondaryButton}
+          type="button"
+          onClick={handleExportCsv}
+        >
           <Download aria-hidden="true" size={14} />
           CSV 내보내기
         </button>
