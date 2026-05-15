@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Container } from '@/components/common/container';
 
 import { ContactGeneralFormPage } from '@/features/contact/contact-general/contact-general-form-page';
+import { QnaWebListPage } from '@/features/qna/qna-web-list-page';
 import styles from './contact-general-page.module.css';
 
 const tabs = [
@@ -182,127 +183,7 @@ export function ContactGeneralPage() {
         </Container>
       </section>
 
-      <section className={styles.board} id="board">
-        <Container>
-          <div className={styles.boardToolbar}>
-            <div className={styles.categoryGroup}>
-              {categories.map((c) => (
-                <button
-                  className={`${styles.categoryChip} ${
-                    c.active ? styles.categoryChipActive : ''
-                  }`}
-                  key={c.label}
-                  type="button"
-                >
-                  {c.label}
-                  {'count' in c && c.count !== undefined ? (
-                    <span className={styles.categoryCount}>
-                      {c.count}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-            <div className={styles.boardSpacer} />
-            <div className={styles.searchBox}>
-              <span aria-hidden="true" className={styles.searchIcon}>
-                🔍
-              </span>
-              <input
-                aria-label="검색어"
-                className={styles.searchInput}
-                placeholder="검색어를 입력하세요"
-                type="search"
-              />
-            </div>
-            <Link className={styles.boardWrite} href={ROUTES.QNA}>
-              <span aria-hidden="true">✏️</span>
-              질문 작성
-            </Link>
-          </div>
-
-          <div className={styles.table} role="table">
-            <div className={styles.thead} role="row">
-              <span className={styles.thCenter}>번호</span>
-              <span>제목</span>
-              <span className={styles.thCenter}>작성자</span>
-              <span className={styles.thCenter}>날짜</span>
-              <span className={styles.thCenter}>조회</span>
-              <span className={styles.thCenter}>답변</span>
-            </div>
-            {posts.map((p, i) => (
-              <div
-                className={`${styles.row} ${p.isNotice ? styles.rowNotice : ''}`}
-                key={`${p.no}-${i}`}
-                role="row"
-              >
-                <span className={styles.cellNo}>
-                  {p.isNotice ? (
-                    <span className={styles.noticeBadge}>공지</span>
-                  ) : (
-                    p.no
-                  )}
-                </span>
-                <span className={styles.cellTitle}>
-                  {p.status ? (
-                    <span
-                      className={`${styles.statusBadge} ${styles[statusClass[p.status]]}`}
-                    >
-                      {statusLabel[p.status]}
-                    </span>
-                  ) : null}
-                  <span
-                    className={`${styles.titleText} ${
-                      p.isNotice ? styles.titleTextNotice : ''
-                    }`}
-                  >
-                    {p.locked ? '🔒 ' : ''}
-                    {p.title}
-                  </span>
-                  <span className={styles.replyCount}>
-                    [{p.replies}]
-                  </span>
-                  {p.isNew ? (
-                    <span className={styles.newBadge}>NEW</span>
-                  ) : null}
-                </span>
-                <span className={styles.cellAuthor}>{p.author}</span>
-                <span className={styles.cellDate}>{p.date}</span>
-                <span className={styles.cellViews}>👁 {p.views}</span>
-                <span className={styles.cellReplies}>
-                  💬 {p.replies}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <nav aria-label="pagination" className={styles.pagination}>
-            <button
-              aria-label="이전 페이지"
-              className={`${styles.pageBtn} ${styles.pageBtnNav}`}
-              type="button"
-            >
-              ‹
-            </button>
-            {pageNumbers.map((n) => (
-              <button
-                className={`${styles.pageBtn} ${n === 1 ? styles.pageBtnActive : ''}`}
-                key={n}
-                type="button"
-              >
-                {n}
-              </button>
-            ))}
-            <button
-              aria-label="다음 페이지"
-              className={`${styles.pageBtn} ${styles.pageBtnNav}`}
-              type="button"
-            >
-              ›
-            </button>
-          </nav>
-        </Container>
-      </section>
+      <QnaWebListPage />
 
       <section className={styles.quickForm} id="quick-form">
         <Container>

@@ -9,6 +9,11 @@ export type {
 } from './types/contact/quick';
 export type { ICreateFaqRequest, IFaq } from './types/faq';
 export type {
+  ICreateQnaRequest,
+  IQna,
+  IQnaListResponse,
+} from './types/qna';
+export type {
   ICreateNoticeRequest,
   INotice,
   INoticeListResponse,

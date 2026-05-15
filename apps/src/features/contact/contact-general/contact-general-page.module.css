@@ -350,10 +350,15 @@
   font-size: 15px;
   font-weight: var(--fw-medium);
   color: var(--color-text);
+  text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+.titleText:hover {
+  color: var(--color-primary);
 }
 
 .titleTextNotice {
@@ -420,6 +425,18 @@
   font-size: 13px;
   font-weight: var(--fw-medium);
   color: var(--color-muted);
+}
+
+.boardMetric {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: inherit;
+}
+
+.boardMetric svg {
+  flex-shrink: 0;
 }
 
 /* === Pagination === */

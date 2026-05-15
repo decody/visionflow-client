@@ -11,6 +11,7 @@ type SupabaseEnv = {
 declare const process: { env: SupabaseEnv };
 
 export type ApiResponse<T> = {
+  count?: number;
   data: T;
 };
 
@@ -20,12 +21,24 @@ export type ApiQueryParams = Record<string, boolean | number | string | null | u
 // apiClient 내부에서만 쓰는 최소 요청 옵션입니다.
 type RequestOptions = {
   body?: unknown;
+  count?: 'exact';
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   returnRepresentation?: boolean;
   singleRow?: boolean;
 };
 
 const trimSlash = (value: string) => value.replace(/\/+$/, '');
+const parseContentRangeCount = (value: string | null) => {
+  if (!value) return undefined;
+
+  const total = value.split('/').at(-1);
+
+  if (!total || total === '*') return undefined;
+
+  const parsed = Number(total);
+
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
 
 // REST URL이 있으면 그대로 쓰고, 프로젝트 URL만 있으면 /rest/v1을 붙입니다.
 const getRestBaseUrl = () => {
@@ -61,8 +74,18 @@ const mapObjectKeys = (value: unknown, mapKey: (key: string) => string): unknown
   );
 };
 
-const createHeaders = ({ returnRepresentation = false } = {}): HeadersInit => {
+const createHeaders = ({
+  count,
+  returnRepresentation = false,
+}: {
+  count?: RequestOptions['count'];
+  returnRepresentation?: boolean;
+} = {}): HeadersInit => {
   const key = getSupabaseKey();
+  const preferences = [
+    returnRepresentation ? 'return=representation' : undefined,
+    count ? `count=${count}` : undefined,
+  ].filter(Boolean);
 
   if (!key) {
     throw new Error(
@@ -74,7 +97,7 @@ const createHeaders = ({ returnRepresentation = false } = {}): HeadersInit => {
     apikey: key,
     Authorization: `Bearer ${key}`,
     'Content-Type': 'application/json',
-    ...(returnRepresentation && { Prefer: 'return=representation' }),
+    ...(preferences.length > 0 && { Prefer: preferences.join(',') }),
   };
 };
 
@@ -175,6 +198,7 @@ const request = async <T>(url: string, options: RequestOptions): Promise<ApiResp
         ? undefined
         : JSON.stringify(mapObjectKeys(options.body, toSnakeCase)),
     headers: createHeaders({
+      count: options.count,
       returnRepresentation: options.returnRepresentation,
     }),
     method: options.method,
@@ -186,16 +210,22 @@ const request = async <T>(url: string, options: RequestOptions): Promise<ApiResp
   const data = options.singleRow && Array.isArray(body) ? body[0] : body;
 
   return {
+    count: parseContentRangeCount(response.headers.get('content-range')),
     data: mapObjectKeys(data, toCamelCase) as T,
   };
 };
 
 // 앱에서 공통으로 사용하는 Supabase REST CRUD 클라이언트입니다.
 export const apiClient = {
-  get<T>(path: string, query?: ApiQueryParams) {
+  get<T>(
+    path: string,
+    query?: ApiQueryParams,
+    options?: Pick<RequestOptions, 'count'>,
+  ) {
     const { id, url } = createUrl(path, query);
 
     return request<T>(url, {
+      count: options?.count,
       method: 'GET',
       singleRow: Boolean(id),
     });
