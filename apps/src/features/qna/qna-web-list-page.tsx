@@ -217,10 +217,10 @@ export function QnaWebListPage() {
           </div>
           <Link
             className={styles.boardWrite}
-            href={`${ROUTES.CONTACT}/general#quick-form`}
+            href={`${ROUTES.CONTACT}/general/write`}
           >
             <span aria-hidden="true">+</span>
-            문의하기
+            글쓰기
           </Link>
         </div>
 
