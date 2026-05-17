@@ -9,15 +9,28 @@ export type {
 } from './types/contact/quick';
 export type { ICreateFaqRequest, IFaq } from './types/faq';
 export type {
+  ICreateNoticeRequest,
+  INotice,
+  INoticeListResponse,
+} from './types/notice';
+export type {
   ICreateQnaRequest,
   IQna,
   IQnaListResponse,
 } from './types/qna';
 export type {
-  ICreateNoticeRequest,
-  INotice,
-  INoticeListResponse,
-} from './types/notice';
+  AiProvider,
+  ContactRow,
+  FaqRow,
+  Message,
+  NoticeRow,
+  QnaRow,
+  SearchRequest,
+  SearchResponse,
+  Source,
+  SourceType,
+  WorkRow,
+} from './types/search';
 export { apiClient } from './utils/api';
 export type { ApiPayload, ApiResponse } from './utils/api';
 
