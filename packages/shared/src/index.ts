@@ -29,8 +29,8 @@ export type {
   SearchResponse,
   Source,
   SourceType,
-  WorkRow,
 } from './types/search';
+export type { WorkRow, WorksData } from './types/works';
 export { apiClient } from './utils/api';
 export type { ApiPayload, ApiResponse } from './utils/api';
 

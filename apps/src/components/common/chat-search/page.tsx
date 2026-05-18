@@ -42,8 +42,8 @@ function getQnaHref(qna: QnaRow) {
     : `${ROUTES.CONTACT}/general/detail`;
 }
 
-function getWorkHref(workId: string) {
-  return workId === 'detail' ? `${ROUTES.WORK}/detail` : ROUTES.WORK;
+function getWorkHref(workId: number) {
+  return workId === 0 ? `${ROUTES.WORK}/detail` : ROUTES.WORK;
 }
 
 function buildSources(data: SearchResponse): Source[] {
@@ -72,7 +72,7 @@ function buildSources(data: SearchResponse): Source[] {
     })),
     ...data.sources.works.map((work) => ({
       label: `작업 사례 · ${work.title}`,
-      href: getWorkHref(work.id),
+      href: work.link_url ?? getWorkHref(work.id),
       type: 'work' as const,
     })),
   ];

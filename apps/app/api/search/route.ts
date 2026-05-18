@@ -30,9 +30,18 @@ const supabase =
     ? createClient(supabaseUrl, supabaseKey)
     : null;
 
-const WORK_SEARCH_INDEX: WorkRow[] = [
+type WorkSearchRow = WorkRow & {
+  description: string;
+  tags: string[];
+};
+
+const WORK_SEARCH_INDEX: WorkSearchRow[] = [
   {
-    id: 'detail',
+    id: 0,
+    category: '웹 3D',
+    industry: '커머스',
+    roles: ['프론트엔드 개발', 'UI/UX'],
+    size: 'tall',
     title: 'Nordic Furniture 3D Configurator',
     description:
       '북유럽 가구 브랜드의 온라인 3D 컨피규레이터 사례입니다. Figma 디자인과 Three.js 프로토타입을 함께 진행했고, 회전, 줌, 재질 변경 인터랙션을 검증했습니다. Next.js 14, Three.js, draco 압축을 사용했습니다.',
@@ -43,20 +52,40 @@ const WORK_SEARCH_INDEX: WorkRow[] = [
       'Draco',
       'WebXR',
     ],
+    image: null,
+    link_url: '/work/detail',
+    link_label: '자세히 보기',
+    created_at: '',
   },
   {
-    id: 'detail',
+    id: 1,
+    category: '웹 3D',
+    industry: '커머스',
+    roles: ['프론트엔드 개발', 'UI/UX'],
+    size: 'short',
     title: 'Furniro 3D 컨피규레이터 - 인테리어 미리보기',
     description:
       '가구와 인테리어를 브라우저에서 미리 확인하는 웹 3D 컨피규레이터 작업 사례입니다.',
     tags: ['웹 3D', '컨피규레이터', '가상 쇼룸', 'AR 미리보기'],
+    image: null,
+    link_url: '/work/detail',
+    link_label: '자세히 보기',
+    created_at: '',
   },
   {
-    id: 'detail',
+    id: 2,
+    category: '웹 3D',
+    industry: '커머스',
+    roles: ['프론트엔드 개발', 'UI/UX'],
+    size: 'tall',
     title: 'Web 3D 서비스',
     description:
       '제품을 360도로 보여주고 공간을 인터랙티브하게 탐색할 수 있는 웹 브라우저 기반 3D 경험을 설계합니다.',
     tags: ['Three.js', '컨피규레이터', '가상 쇼룸', 'AR 미리보기'],
+    image: null,
+    link_url: '/work/detail',
+    link_label: '자세히 보기',
+    created_at: '',
   },
 ];
 

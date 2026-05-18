@@ -1,3 +1,5 @@
+import type { WorkRow } from './works';
+
 export type SourceType =
   | 'faq'
   | 'work'
@@ -23,13 +25,6 @@ export type FaqRow = {
   id: string;
   question: string;
   answer: string;
-};
-
-export type WorkRow = {
-  id: string;
-  title: string;
-  description: string;
-  tags: string[];
 };
 
 export type NoticeRow = {

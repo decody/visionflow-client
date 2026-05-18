@@ -1,13 +1,21 @@
 'use client';
 
 import { ROUTES } from '@visionflow/routes';
+import type { WorkRow } from '@visionflow/shared';
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Container } from '@/components/common/container';
+import { useWorkListQuery } from '@/hooks/works/useWorkQuery';
 
 import styles from './work-page.module.css';
+
+const ALL_FILTER = '전체';
+const RECENT_LABEL = '최근';
+const DEFAULT_CATEGORY = 'Frontend';
+const DEFAULT_INDUSTRY = '기타';
+const DEFAULT_ROLE = '프론트엔드 개발';
 
 const heroStats = [
   { label: '17+ 프로젝트 이력' },
@@ -31,9 +39,57 @@ interface ProjectImage {
   theme?: string;
 }
 
+interface CaseItem {
+  category: string;
+  industry: string;
+  roles: string[];
+  title: string;
+  size: 'tall' | 'short';
+  image?: ProjectImage;
+}
+
 type ProjectImageStyle = CSSProperties & {
   '--project-image-theme': string;
 };
+
+type FilterLabel = '분야' | '산업' | '역할';
+type Filters = Record<FilterLabel, string>;
+
+const filterGroups: { label: FilterLabel; options: string[] }[] = [
+  {
+    label: '분야',
+    options: [ALL_FILTER, 'React', 'Vue', '퍼블리싱', '운영', '접근성'],
+  },
+  {
+    label: '산업',
+    options: [
+      ALL_FILTER,
+      '공공',
+      '금융',
+      '통신',
+      '커머스',
+      '교육',
+      '전자',
+    ],
+  },
+  {
+    label: '역할',
+    options: [
+      ALL_FILTER,
+      '프론트엔드 개발',
+      'UI/UX',
+      '퍼블리싱',
+      '스크립트',
+    ],
+  },
+];
+
+const stats = [
+  { value: '17+', label: '프로젝트 이력' },
+  { value: '7+', label: '산업 도메인' },
+  { value: 'React/Vue', label: '주요 프레임워크' },
+  { value: 'UI/UX', label: '핵심 역량' },
+];
 
 const projectImageThemes = [
   'linear-gradient(135deg, #e8f4ff 0%, #bfe5ff 45%, #f8fbff 100%)',
@@ -46,176 +102,64 @@ const projectImageThemes = [
   'linear-gradient(135deg, #f3f6f8 0%, #c9d4df 50%, #eaf7f2 100%)',
 ];
 
-function getProjectImageTheme(seed: string) {
+const INITIAL_VISIBLE_CASES = 6;
+const LOAD_MORE_SIZE = 4;
+const STAT_ROLL_DURATION = 2800;
+const STAT_ROLL_STAGGER = 120;
+
+const getProjectImageTheme = (seed: string) => {
   const index = Array.from(seed).reduce(
     (sum, char) => sum + char.charCodeAt(0),
     0,
   );
 
   return projectImageThemes[index % projectImageThemes.length]!;
-}
+};
 
-const featuredCases: FeaturedCase[] = [
-  {
-    category: 'React UI/UX',
-    year: '최근',
-    title: '진에어 크루포탈\n내부 시스템 개발',
-    client: '크루포탈 6개 프로젝트 · 반응형 및 Web 화면',
-    metric: 'Codex 활용 UI/UX 공통화 및 API 연동',
-    size: 'large',
-  },
-  {
-    category: '금융 웹접근성',
-    year: '최근',
-    title: '신한은행 마이데이터 · Family · 외환',
-    client: 'Vue3, Legacy HTML, SCSS 기반 퍼블리싱',
-    metric: '웹접근성 및 화면 구축 담당',
-    size: 'small',
-  },
-  {
-    category: 'AI 이벤트 운영',
-    year: '최근',
-    title: 'LG라이프케어 운영 · 마이크로 사이트',
-    client: 'React, Next.js, Tailwind, shadcn 기반',
-    metric: 'UI/UX 및 프런트 개발',
-    size: 'small',
-  },
-];
+const getWorkCategory = (work: WorkRow) =>
+  work.category.trim() || DEFAULT_CATEGORY;
 
-const INITIAL_VISIBLE_CASES = 6;
-const LOAD_MORE_SIZE = 4;
+const getWorkIndustry = (work: WorkRow) =>
+  work.industry.trim() || DEFAULT_INDUSTRY;
 
-type FilterLabel = '분야' | '산업' | '역할';
-type Filters = Record<FilterLabel, string>;
+const getWorkRoles = (work: WorkRow) =>
+  work.roles.length > 0 ? work.roles : [DEFAULT_ROLE];
 
-const filterGroups: { label: FilterLabel; options: string[] }[] = [
-  {
-    label: '분야',
-    options: ['전체', 'React', 'Vue', '퍼블리싱', '운영', '웹접근성'],
-  },
-  {
-    label: '산업',
-    options: [
-      '전체',
-      '항공',
-      '금융',
-      '통신',
-      '커머스',
-      '교육',
-      '전자',
-    ],
-  },
-  {
-    label: '역할',
-    options: ['전체', '프런트 개발', 'UI/UX', '퍼블리싱', '스크립트'],
-  },
-];
+const createWorkSummary = (work: WorkRow) =>
+  [getWorkIndustry(work), ...getWorkRoles(work)].join(' · ');
 
-interface CaseItem {
-  category: string;
-  industry: string;
-  roles: string[];
-  title: string;
-  size: 'tall' | 'short';
-  image?: ProjectImage;
-}
+const createFeaturedTitle = (title: string, index: number) => {
+  if (index !== 0) {
+    return title;
+  }
 
-const allCases: CaseItem[] = [
-  {
-    category: 'React',
-    industry: '항공',
-    roles: ['프런트 개발', 'UI/UX'],
-    title: '진에어 크루포탈 UI/UX 공통 및 API 연동 개발',
-    size: 'tall',
-  },
-  {
-    category: 'Vue3',
-    industry: '금융',
-    roles: ['퍼블리싱', '웹접근성'],
-    title: '신한은행 마이데이터 · Family · 외환 퍼블리싱',
-    size: 'short',
-  },
-  {
-    category: 'Next.js',
-    industry: '커머스',
-    roles: ['프런트 개발', '운영', 'UI/UX'],
-    title: 'LG라이프케어 운영 및 AI 이벤트 테스트',
-    size: 'tall',
-  },
-  {
-    category: 'Vue/Nuxt',
-    industry: '통신',
-    roles: ['프런트 개발', '운영'],
-    title: 'LG Uplus · 알닷 · 내부 CRM 개선 프로젝트',
-    size: 'tall',
-  },
-  {
-    category: 'React',
-    industry: '전자',
-    roles: ['퍼블리싱', '스크립트'],
-    title: 'SK렌터카 모바일 React 화면 퍼블리싱',
-    size: 'short',
-  },
-  {
-    category: 'Vue',
-    industry: '금융',
-    roles: ['프런트 개발', '퍼블리싱'],
-    title: '키움저축은행 기간계 시스템 Element UI 구축',
-    size: 'short',
-  },
-  {
-    category: '퍼블리싱',
-    industry: '커머스',
-    roles: ['퍼블리싱'],
-    title: '몰리스몰 HTML 어드민 퍼블리싱',
-    size: 'short',
-  },
-  {
-    category: 'Vuetify',
-    industry: '금융',
-    roles: ['프런트 개발', '퍼블리싱'],
-    title: '삼성카드 모바일 Vue 퍼블리싱',
-    size: 'tall',
-  },
-  {
-    category: 'WebSquare',
-    industry: '교육',
-    roles: ['퍼블리싱', '스크립트'],
-    title: '인천재능대학교 학생관리 시스템 퍼블리싱',
-    size: 'tall',
-  },
-  {
-    category: '운영',
-    industry: '커머스',
-    roles: ['운영', '스크립트'],
-    title: '11번가 유지보수 및 모바일 사이트 운영',
-    size: 'short',
-  },
-  {
-    category: '웹접근성',
-    industry: '금융',
-    roles: ['웹접근성', '퍼블리싱'],
-    title: '금융 서비스 웹접근성 개선 및 화면 표준화',
-    size: 'short',
-  },
-  {
-    category: 'React',
-    industry: '교육',
-    roles: ['UI/UX', '프런트 개발'],
-    title: '교육 플랫폼 관리자 화면 UX 개선',
-    size: 'tall',
-  },
-];
+  const separators = [' · ', ' | ', ' - ', ' / '];
+  const separator = separators.find((value) => title.includes(value));
 
-const stats = [
-  { value: '17+', label: '프로젝트 이력' },
-  { value: '7+', label: '산업 도메인' },
-  { value: 'React/Vue', label: '주요 프레임워크' },
-  { value: 'UI/UX', label: '핵심 역량' },
-];
+  return separator ? title.replace(separator, '\n') : title;
+};
 
-const STAT_ROLL_DURATION = 2800;
-const STAT_ROLL_STAGGER = 120;
+const mapWorkToFeaturedCase = (
+  work: WorkRow,
+  index: number,
+): FeaturedCase => ({
+  category: getWorkCategory(work),
+  year: RECENT_LABEL,
+  title: createFeaturedTitle(work.title, index),
+  client: createWorkSummary(work),
+  metric: getWorkRoles(work).join(' · '),
+  size: index === 0 ? 'large' : 'small',
+  image: work.image ? { src: work.image } : undefined,
+});
+
+const mapWorkToCaseItem = (work: WorkRow): CaseItem => ({
+  category: getWorkCategory(work),
+  industry: getWorkIndustry(work),
+  roles: getWorkRoles(work),
+  title: work.title,
+  size: work.size,
+  image: work.image ? { src: work.image } : undefined,
+});
 
 const easeOutQuint = (progress: number) =>
   1 - Math.pow(1 - progress, 5);
@@ -290,7 +234,7 @@ const getStatRollItems = (stat: (typeof stats)[number]) => {
     '접근성',
     '개선',
     '설계',
-    '구축',
+    '구현',
     '테스트',
     stat.value,
   ];
@@ -322,7 +266,9 @@ function ProjectImageVisual({
     <div
       aria-hidden="true"
       className={styles.dummyImage}
-      style={{ '--project-image-theme': imageTheme } as ProjectImageStyle}
+      style={
+        { '--project-image-theme': imageTheme } as ProjectImageStyle
+      }
     >
       <span className={styles.dummyPanel} />
       <span className={styles.dummyPanelAlt} />
@@ -332,14 +278,9 @@ function ProjectImageVisual({
   );
 }
 
-function FeaturedCard({
-  data,
-  size,
-}: {
-  data: FeaturedCase;
-  size: 'large' | 'small';
-}) {
-  const isLarge = size === 'large';
+function FeaturedCard({ data }: { data: FeaturedCase }) {
+  const isLarge = data.size === 'large';
+
   return (
     <article
       className={`${styles.featuredCard} ${isLarge ? styles.featuredCardLarge : ''}`}
@@ -410,35 +351,49 @@ function CaseCard({ data }: { data: CaseItem }) {
 }
 
 export function WorkPage() {
-  const [featuredLarge, ...featuredSmall] = featuredCases;
+  const { data: worksData = [] } = useWorkListQuery();
   const statsRef = useRef<HTMLElement | null>(null);
   const statRollRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const [filters, setFilters] = useState<Filters>({
-    분야: '전체',
-    산업: '전체',
-    역할: '전체',
+    분야: ALL_FILTER,
+    산업: ALL_FILTER,
+    역할: ALL_FILTER,
   });
   const [visibleCount, setVisibleCount] = useState(
     INITIAL_VISIBLE_CASES,
   );
   const [statsAnimated, setStatsAnimated] = useState(false);
 
+  const workCases = useMemo(
+    () => worksData.map((work) => mapWorkToCaseItem(work)),
+    [worksData],
+  );
+
+  const featuredCases = useMemo(
+    () =>
+      worksData
+        .slice(0, 3)
+        .map((work, index) => mapWorkToFeaturedCase(work, index)),
+    [worksData],
+  );
+
+  const [featuredLarge, ...featuredSmall] = featuredCases;
+
   const filteredCases = useMemo(
     () =>
-      allCases.filter((item) => {
+      workCases.filter((item) => {
         const matchesField =
-          filters.분야 === '전체' ||
+          filters.분야 === ALL_FILTER ||
           item.category === filters.분야 ||
           item.roles.includes(filters.분야);
         const matchesIndustry =
-          filters.산업 === '전체' || item.industry === filters.산업;
+          filters.산업 === ALL_FILTER || item.industry === filters.산업;
         const matchesRole =
-          filters.역할 === '전체' ||
-          item.roles.includes(filters.역할);
+          filters.역할 === ALL_FILTER || item.roles.includes(filters.역할);
 
         return matchesField && matchesIndustry && matchesRole;
       }),
-    [filters],
+    [filters, workCases],
   );
 
   const visibleCases = filteredCases.slice(0, visibleCount);
@@ -554,19 +509,19 @@ export function WorkPage() {
           <div className={styles.heroHead}>
             <span className={styles.eyebrow}>Work Portfolio</span>
             <h1 className={styles.heroTitle}>
-              프런트엔드 실무 프로젝트
+              프론트엔드 실무 프로젝트
             </h1>
             <p className={styles.heroSub}>
-              금융, 항공, 통신, 커머스, 교육 도메인에서 화면 구축부터
+              금융, 공공, 통신, 커머스, 교육 도메인에서 화면 구현부터
               운영 개선까지 수행한 이력입니다.
               <br />
-              React, Vue, Next.js, WebSquare, 레거시 HTML 환경을
-              넘나들며 UI 완성도와 구현 안정성을 맞춰왔습니다.
+              React, Vue, Next.js, WebSquare, 레거시 HTML 환경을 넘나들며
+              UI 완성도와 구현 안정성을 맞춰왔습니다.
             </p>
             <ul className={styles.heroStats}>
-              {heroStats.map((s) => (
-                <li className={styles.heroStatChip} key={s.label}>
-                  {s.label}
+              {heroStats.map((stat) => (
+                <li className={styles.heroStatChip} key={stat.label}>
+                  {stat.label}
                 </li>
               ))}
             </ul>
@@ -580,46 +535,55 @@ export function WorkPage() {
             <span className={styles.eyebrow}>Featured</span>
             <h2 className={styles.sectionTitle}>대표 프로젝트</h2>
             <p className={styles.sectionSub}>
-              프로필 문서의 최신 경력 중 화면 구현 역량이 잘 드러나는
-              사례를 선별했습니다.
+              등록된 작업 이력 중 화면 구현 역량과 협업 경험이 잘 드러나는
+              프로젝트를 먼저 보여드립니다.
             </p>
           </header>
-          <div className={styles.featuredGrid}>
-            <div className={styles.featuredColLarge}>
-              <FeaturedCard data={featuredLarge!} size="large" />
+
+          {featuredLarge ? (
+            <div className={styles.featuredGrid}>
+              <div className={styles.featuredColLarge}>
+                <FeaturedCard data={featuredLarge} />
+              </div>
+              <div className={styles.featuredColSmall}>
+                {featuredSmall.map((caseItem) => (
+                  <FeaturedCard data={caseItem} key={caseItem.title} />
+                ))}
+              </div>
             </div>
-            <div className={styles.featuredColSmall}>
-              {featuredSmall.map((c) => (
-                <FeaturedCard data={c} key={c.title} size="small" />
-              ))}
+          ) : (
+            <div className={styles.emptyState}>
+              <strong>등록된 프로젝트가 없습니다.</strong>
+              <span>관리자에서 작업 이력을 추가하면 이 영역에 표시됩니다.</span>
             </div>
-          </div>
+          )}
         </Container>
       </section>
 
       <section className={styles.filter}>
         <Container>
           <div className={styles.filterRows}>
-            {filterGroups.map((g) => (
-              <div className={styles.filterRow} key={g.label}>
-                <span className={styles.filterLabel}>{g.label}</span>
+            {filterGroups.map((group) => (
+              <div className={styles.filterRow} key={group.label}>
+                <span className={styles.filterLabel}>{group.label}</span>
                 <div className={styles.filterChips}>
-                  {g.options.map((opt) => (
+                  {group.options.map((option) => (
                     <button
-                      aria-pressed={filters[g.label] === opt}
-                      className={`${styles.filterChip} ${filters[g.label] === opt ? styles.filterChipActive : ''}`}
-                      key={opt}
-                      onClick={() => handleFilterChange(g.label, opt)}
+                      aria-pressed={filters[group.label] === option}
+                      className={`${styles.filterChip} ${filters[group.label] === option ? styles.filterChipActive : ''}`}
+                      key={option}
+                      onClick={() =>
+                        handleFilterChange(group.label, option)
+                      }
                       type="button"
                     >
-                      {opt}
+                      {option}
                     </button>
                   ))}
                 </div>
-                {g.label === '역할' ? (
+                {group.label === '역할' ? (
                   <span className={styles.filterTotal}>
-                    총 <strong>{filteredCases.length}개</strong> 주요
-                    사례
+                    총 <strong>{filteredCases.length}개</strong> 주요 이력
                   </span>
                 ) : null}
               </div>
@@ -632,15 +596,15 @@ export function WorkPage() {
         <Container>
           {visibleCases.length > 0 ? (
             <div className={styles.allGrid}>
-              {visibleCases.map((c, i) => (
-                <CaseCard data={c} key={`${c.title}-${i}`} />
+              {visibleCases.map((caseItem) => (
+                <CaseCard data={caseItem} key={caseItem.title} />
               ))}
             </div>
           ) : (
             <div className={styles.emptyState}>
               <strong>조건에 맞는 이력이 없습니다.</strong>
               <span>
-                필터를 조정하면 다른 프로젝트 사례를 볼 수 있습니다.
+                필터를 조정하면 다른 프로젝트 이력을 볼 수 있습니다.
               </span>
             </div>
           )}
@@ -653,7 +617,7 @@ export function WorkPage() {
                 }
                 type="button"
               >
-                더 많은 이력 보기 <span aria-hidden="true">↓</span>
+                더 많은 이력 보기 <span aria-hidden="true">→</span>
               </button>
             </div>
           ) : null}
@@ -663,33 +627,33 @@ export function WorkPage() {
       <section className={styles.statsStrip} ref={statsRef}>
         <Container>
           <ul className={styles.statsList}>
-            {stats.map((s, index) => {
-              const rollItems = getStatRollItems(s);
+            {stats.map((stat, index) => {
+              const rollItems = getStatRollItems(stat);
 
               return (
-                <li className={styles.statItem} key={s.label}>
+                <li className={styles.statItem} key={stat.label}>
                   <span className={styles.statValue}>
                     <span
-                      className={styles.statRoll}
                       aria-hidden="true"
+                      className={styles.statRoll}
                       ref={(node) => {
                         statRollRefs.current[index] = node;
                       }}
                     >
-                      {rollItems.map((item, index) => (
+                      {rollItems.map((item, itemIndex) => (
                         <span
                           className={styles.statRollItem}
-                          key={`${s.label}-${item}-${index}`}
+                          key={`${stat.label}-${item}-${itemIndex}`}
                         >
                           {item}
                         </span>
                       ))}
                     </span>
                     <span className={styles.statValueSr}>
-                      {s.value}
+                      {stat.value}
                     </span>
                   </span>
-                  <span className={styles.statLabel}>{s.label}</span>
+                  <span className={styles.statLabel}>{stat.label}</span>
                 </li>
               );
             })}
@@ -704,11 +668,11 @@ export function WorkPage() {
               <h2 className={styles.ctaTitle}>
                 프로젝트에 맞는
                 <br />
-                프런트엔드 실행력
+                프론트엔드 실행력
               </h2>
               <p className={styles.ctaSub}>
-                신규 구축, 운영 개선, 레거시 전환, 웹접근성 대응까지
-                필요한 단계에 맞춰 화면을 설계하고 구현합니다.
+                신규 구현, 운영 개선, 레거시 전환, 접근성 대응까지 필요한
+                단계에 맞춰 화면을 설계하고 구현합니다.
               </p>
             </div>
             <Link className={styles.ctaButton} href={ROUTES.CONTACT}>
