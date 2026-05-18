@@ -1,15 +1,18 @@
+'use client';
+
 import { ROUTES } from '@visionflow/routes';
 import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Container } from '@/components/common/container';
 
 import styles from './work-page.module.css';
 
 const heroStats = [
-  { label: '120+ 프로젝트' },
-  { label: '80+ 클라이언트' },
-  { label: '5개 산업군' },
-  { label: '재의뢰율 65%' },
+  { label: '17+ 프로젝트 이력' },
+  { label: '금융 · 통신 · 커머스 경험' },
+  { label: 'React · Vue 중심 개발' },
+  { label: 'UI/UX · 퍼블리싱 · 운영' },
 ];
 
 interface FeaturedCase {
@@ -23,83 +26,264 @@ interface FeaturedCase {
 
 const featuredCases: FeaturedCase[] = [
   {
-    category: '웹 3D',
-    year: '2026',
-    title: 'Nordic Furniture\n3D Configurator',
-    client: 'Nordic Furniture · 12주',
-    metric: '전환율 +47%',
+    category: 'React UI/UX',
+    year: '최근',
+    title: '진에어 크루포탈\n내부 시스템 개발',
+    client: '크루포탈 6개 프로젝트 · 반응형 및 Web 화면',
+    metric: 'Codex 활용 UI/UX 공통화 및 API 연동',
     size: 'large',
   },
   {
-    category: '웹/앱 개발',
-    year: '2026',
-    title: '핀테크 모바일 앱 리뉴얼',
-    client: 'Acme Capital · 8주',
-    metric: 'DAU +112%',
+    category: '금융 웹접근성',
+    year: '최근',
+    title: '신한은행 마이데이터 · Family · 외환',
+    client: 'Vue3, Legacy HTML, SCSS 기반 퍼블리싱',
+    metric: '웹접근성 및 화면 구축 담당',
     size: 'small',
   },
   {
-    category: '대시보드',
-    year: '2025',
-    title: 'BI 대시보드 통합',
-    client: '익명 (리테일) · 10주',
-    metric: '운영시간 −38%',
+    category: 'AI 이벤트 운영',
+    year: '최근',
+    title: 'LG라이프케어 운영 · 마이크로 사이트',
+    client: 'React, Next.js, Tailwind, shadcn 기반',
+    metric: 'UI/UX 및 프런트 개발',
     size: 'small',
   },
 ];
 
-const filterGroups = [
+const INITIAL_VISIBLE_CASES = 6;
+const LOAD_MORE_SIZE = 4;
+
+type FilterLabel = '분야' | '산업' | '역할';
+type Filters = Record<FilterLabel, string>;
+
+const filterGroups: { label: FilterLabel; options: string[] }[] = [
   {
-    label: '카테고리',
-    options: ['전체', '웹 3D', '광고 이미지', '웹/앱 개발', '데이터 대시보드'],
+    label: '분야',
+    options: ['전체', 'React', 'Vue', '퍼블리싱', '운영', '웹접근성'],
   },
   {
     label: '산업',
-    options: ['전체', '리테일', 'F&B', '패션', '테크', '미디어'],
+    options: [
+      '전체',
+      '항공',
+      '금융',
+      '통신',
+      '커머스',
+      '교육',
+      '전자',
+    ],
   },
   {
-    label: '연도',
-    options: ['전체', '2026', '2025', '2024'],
+    label: '역할',
+    options: ['전체', '프런트 개발', 'UI/UX', '퍼블리싱', '스크립트'],
   },
 ];
 
 interface CaseItem {
   category: string;
-  year: string;
+  industry: string;
+  roles: string[];
   title: string;
   size: 'tall' | 'short';
 }
 
 const allCases: CaseItem[] = [
-  { category: '광고 이미지', year: '2026', title: '시즌 캠페인 키비주얼 50컷', size: 'tall' },
-  { category: '웹 3D', year: '2026', title: 'AR 가구 미리보기 PWA', size: 'tall' },
-  { category: '웹/앱 개발', year: '2025', title: '뷰티 브랜드 이커머스 리뉴얼', size: 'short' },
-  { category: '광고 이미지', year: '2026', title: 'AI 제품 컷 100장', size: 'short' },
-  { category: '대시보드', year: '2025', title: '실시간 매출 모니터링', size: 'short' },
-  { category: '대시보드', year: '2025', title: '운영 어드민 통합', size: 'tall' },
-  { category: '웹 3D', year: '2025', title: '주얼리 360° 뷰어', size: 'tall' },
-  { category: '웹/앱 개발', year: '2024', title: '예약 시스템 SaaS', size: 'short' },
-  { category: '웹/앱 개발', year: '2024', title: '핀테크 온보딩 플로우', size: 'tall' },
-  { category: '광고 이미지', year: '2024', title: '스타트업 브랜딩 패키지', size: 'short' },
+  {
+    category: 'React',
+    industry: '항공',
+    roles: ['프런트 개발', 'UI/UX'],
+    title: '진에어 크루포탈 UI/UX 공통 및 API 연동 개발',
+    size: 'tall',
+  },
+  {
+    category: 'Vue3',
+    industry: '금융',
+    roles: ['퍼블리싱', '웹접근성'],
+    title: '신한은행 마이데이터 · Family · 외환 퍼블리싱',
+    size: 'short',
+  },
+  {
+    category: 'Next.js',
+    industry: '커머스',
+    roles: ['프런트 개발', '운영', 'UI/UX'],
+    title: 'LG라이프케어 운영 및 AI 이벤트 테스트',
+    size: 'tall',
+  },
+  {
+    category: 'Vue/Nuxt',
+    industry: '통신',
+    roles: ['프런트 개발', '운영'],
+    title: 'LG Uplus · 알닷 · 내부 CRM 개선 프로젝트',
+    size: 'tall',
+  },
+  {
+    category: 'React',
+    industry: '전자',
+    roles: ['퍼블리싱', '스크립트'],
+    title: 'SK렌터카 모바일 React 화면 퍼블리싱',
+    size: 'short',
+  },
+  {
+    category: 'Vue',
+    industry: '금융',
+    roles: ['프런트 개발', '퍼블리싱'],
+    title: '키움저축은행 기간계 시스템 Element UI 구축',
+    size: 'short',
+  },
+  {
+    category: '퍼블리싱',
+    industry: '커머스',
+    roles: ['퍼블리싱'],
+    title: '몰리스몰 HTML 어드민 퍼블리싱',
+    size: 'short',
+  },
+  {
+    category: 'Vuetify',
+    industry: '금융',
+    roles: ['프런트 개발', '퍼블리싱'],
+    title: '삼성카드 모바일 Vue 퍼블리싱',
+    size: 'tall',
+  },
+  {
+    category: 'WebSquare',
+    industry: '교육',
+    roles: ['퍼블리싱', '스크립트'],
+    title: '인천재능대학교 학생관리 시스템 퍼블리싱',
+    size: 'tall',
+  },
+  {
+    category: '운영',
+    industry: '커머스',
+    roles: ['운영', '스크립트'],
+    title: '11번가 유지보수 및 모바일 사이트 운영',
+    size: 'short',
+  },
+  {
+    category: '웹접근성',
+    industry: '금융',
+    roles: ['웹접근성', '퍼블리싱'],
+    title: '금융 서비스 웹접근성 개선 및 화면 표준화',
+    size: 'short',
+  },
+  {
+    category: 'React',
+    industry: '교육',
+    roles: ['UI/UX', '프런트 개발'],
+    title: '교육 플랫폼 관리자 화면 UX 개선',
+    size: 'tall',
+  },
 ];
 
 const stats = [
-  { value: '120+', label: '완료한 프로젝트' },
-  { value: '80+', label: '클라이언트' },
-  { value: '5일', label: '평균 첫 시안' },
-  { value: '65%', label: '재의뢰율' },
+  { value: '17+', label: '프로젝트 이력' },
+  { value: '7+', label: '산업 도메인' },
+  { value: 'React/Vue', label: '주요 프레임워크' },
+  { value: 'UI/UX', label: '핵심 역량' },
 ];
 
-function FeaturedCard({ data, size }: { data: FeaturedCase; size: 'large' | 'small' }) {
+const STAT_ROLL_DURATION = 2800;
+const STAT_ROLL_STAGGER = 120;
+
+const easeOutQuint = (progress: number) =>
+  1 - Math.pow(1 - progress, 5);
+
+const getStatRollItems = (stat: (typeof stats)[number]) => {
+  if (stat.label === '프로젝트 이력') {
+    return [
+      '0+',
+      '4+',
+      '12+',
+      '6+',
+      '15+',
+      '9+',
+      '3+',
+      '16+',
+      '7+',
+      '14+',
+      '11+',
+      '5+',
+      '18+',
+      stat.value,
+    ];
+  }
+
+  if (stat.label === '산업 도메인') {
+    return [
+      '0+',
+      '3+',
+      '6+',
+      '1+',
+      '5+',
+      '8+',
+      '2+',
+      '4+',
+      '9+',
+      '6+',
+      '3+',
+      '8+',
+      '5+',
+      stat.value,
+    ];
+  }
+
+  if (stat.label === '주요 프레임워크') {
+    return [
+      '-',
+      'HTML/CSS',
+      'Next.js',
+      'Vue',
+      'TypeScript',
+      'Nuxt',
+      'React',
+      'WebSquare',
+      'SCSS',
+      'Tailwind',
+      'JavaScript',
+      'shadcn',
+      'Frontend',
+      stat.value,
+    ];
+  }
+
+  return [
+    '-',
+    '운영',
+    '접근성',
+    '퍼블리싱',
+    'UX',
+    '기획',
+    'UI',
+    '운영',
+    '접근성',
+    '개선',
+    '설계',
+    '구축',
+    '테스트',
+    stat.value,
+  ];
+};
+
+function FeaturedCard({
+  data,
+  size,
+}: {
+  data: FeaturedCase;
+  size: 'large' | 'small';
+}) {
   const isLarge = size === 'large';
   return (
-    <article className={`${styles.featuredCard} ${isLarge ? styles.featuredCardLarge : ''}`}>
-      <div className={`${styles.featuredImage} ${isLarge ? styles.featuredImageLarge : ''}`}>
+    <article
+      className={`${styles.featuredCard} ${isLarge ? styles.featuredCardLarge : ''}`}
+    >
+      <div
+        className={`${styles.featuredImage} ${isLarge ? styles.featuredImageLarge : ''}`}
+      >
         <span className={styles.featuredBadge}>
-          <span aria-hidden="true">✨</span> Featured
+          <span aria-hidden="true">★</span> Featured
         </span>
         <span aria-hidden="true" className={styles.imagePlaceholder}>
-          Image
+          {data.category}
         </span>
       </div>
       <div className={styles.featuredBody}>
@@ -107,10 +291,12 @@ function FeaturedCard({ data, size }: { data: FeaturedCase; size: 'large' | 'sma
           <span className={styles.categoryChip}>{data.category}</span>
           <span className={styles.yearText}>{data.year}</span>
         </div>
-        <h3 className={`${styles.featuredTitle} ${isLarge ? styles.featuredTitleLarge : ''}`}>
+        <h3
+          className={`${styles.featuredTitle} ${isLarge ? styles.featuredTitleLarge : ''}`}
+        >
           {isLarge
-            ? data.title.split('\n').map((line, i) => (
-                <span className={styles.featuredTitleLine} key={i}>
+            ? data.title.split('\n').map((line) => (
+                <span className={styles.featuredTitleLine} key={line}>
                   {line}
                 </span>
               ))
@@ -119,7 +305,7 @@ function FeaturedCard({ data, size }: { data: FeaturedCase; size: 'large' | 'sma
         <p className={styles.featuredClient}>{data.client}</p>
         <div className={styles.metricRow}>
           <span aria-hidden="true" className={styles.metricArrow}>
-            ▲
+            ↗
           </span>
           <span className={styles.metricText}>{data.metric}</span>
         </div>
@@ -130,16 +316,20 @@ function FeaturedCard({ data, size }: { data: FeaturedCase; size: 'large' | 'sma
 
 function CaseCard({ data }: { data: CaseItem }) {
   return (
-    <article className={`${styles.caseCard} ${data.size === 'tall' ? styles.caseCardTall : ''}`}>
+    <article
+      className={`${styles.caseCard} ${data.size === 'tall' ? styles.caseCardTall : ''}`}
+    >
       <div className={styles.caseImage}>
         <span aria-hidden="true" className={styles.imagePlaceholder}>
-          Image
+          {data.category}
         </span>
       </div>
       <div className={styles.caseBody}>
         <div className={styles.caseMeta}>
-          <span className={styles.categoryChipSm}>{data.category}</span>
-          <span className={styles.yearTextSm}>{data.year}</span>
+          <span className={styles.categoryChipSm}>
+            {data.category}
+          </span>
+          <span className={styles.yearTextSm}>{data.industry}</span>
         </div>
         <h3 className={styles.caseTitle}>{data.title}</h3>
       </div>
@@ -149,17 +339,157 @@ function CaseCard({ data }: { data: CaseItem }) {
 
 export function WorkPage() {
   const [featuredLarge, ...featuredSmall] = featuredCases;
+  const statsRef = useRef<HTMLElement | null>(null);
+  const statRollRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const [filters, setFilters] = useState<Filters>({
+    분야: '전체',
+    산업: '전체',
+    역할: '전체',
+  });
+  const [visibleCount, setVisibleCount] = useState(
+    INITIAL_VISIBLE_CASES,
+  );
+  const [statsAnimated, setStatsAnimated] = useState(false);
+
+  const filteredCases = useMemo(
+    () =>
+      allCases.filter((item) => {
+        const matchesField =
+          filters.분야 === '전체' ||
+          item.category === filters.분야 ||
+          item.roles.includes(filters.분야);
+        const matchesIndustry =
+          filters.산업 === '전체' || item.industry === filters.산업;
+        const matchesRole =
+          filters.역할 === '전체' ||
+          item.roles.includes(filters.역할);
+
+        return matchesField && matchesIndustry && matchesRole;
+      }),
+    [filters],
+  );
+
+  const visibleCases = filteredCases.slice(0, visibleCount);
+  const hasMoreCases = visibleCount < filteredCases.length;
+
+  useEffect(() => {
+    const target = statsRef.current;
+    if (!target || statsAnimated) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setStatsAnimated(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.35 },
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [statsAnimated]);
+
+  useEffect(() => {
+    if (!statsAnimated) {
+      return;
+    }
+
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+    const rolls = statRollRefs.current.filter(
+      (roll): roll is HTMLSpanElement => Boolean(roll),
+    );
+    const rollMeta = rolls.map((roll, index) => {
+      const slotHeight =
+        roll.firstElementChild?.getBoundingClientRect().height ?? 0;
+      const finalIndex = Math.max(roll.children.length - 1, 0);
+
+      return {
+        delay: index * STAT_ROLL_STAGGER,
+        finalY: -slotHeight * finalIndex,
+        roll,
+        slotHeight,
+      };
+    });
+
+    if (reduceMotion) {
+      rollMeta.forEach(({ finalY, roll }) => {
+        roll.style.transform = `translate3d(0, ${finalY}px, 0)`;
+      });
+      return;
+    }
+
+    let animationFrame = 0;
+    let animationStart: number | null = null;
+
+    const animateStats = (time: number) => {
+      animationStart ??= time;
+
+      let shouldContinue = false;
+
+      rollMeta.forEach(({ delay, finalY, roll, slotHeight }) => {
+        const elapsed = time - animationStart! - delay;
+
+        if (elapsed < 0) {
+          roll.style.transform = 'translate3d(0, 0, 0)';
+          shouldContinue = true;
+          return;
+        }
+
+        const progress = Math.min(elapsed / STAT_ROLL_DURATION, 1);
+        const easedProgress = easeOutQuint(progress);
+        const settleProgress = Math.max((progress - 0.72) / 0.28, 0);
+        const overshoot =
+          -slotHeight *
+          0.16 *
+          Math.sin(settleProgress * Math.PI) *
+          (1 - settleProgress);
+        const y = finalY * easedProgress + overshoot;
+
+        roll.style.transform = `translate3d(0, ${y}px, 0)`;
+
+        if (progress < 1) {
+          shouldContinue = true;
+        } else {
+          roll.style.transform = `translate3d(0, ${finalY}px, 0)`;
+        }
+      });
+
+      if (shouldContinue) {
+        animationFrame = requestAnimationFrame(animateStats);
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animateStats);
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [statsAnimated]);
+
+  const handleFilterChange = (label: FilterLabel, value: string) => {
+    setFilters((current) => ({ ...current, [label]: value }));
+    setVisibleCount(INITIAL_VISIBLE_CASES);
+  };
+
   return (
     <>
       <section className={styles.hero}>
         <Container>
           <div className={styles.heroHead}>
-            <span className={styles.eyebrow}>Our Work</span>
-            <h1 className={styles.heroTitle}>우리가 만든 결과들</h1>
+            <span className={styles.eyebrow}>Work Portfolio</span>
+            <h1 className={styles.heroTitle}>
+              프런트엔드 실무 프로젝트
+            </h1>
             <p className={styles.heroSub}>
-              120+ 프로젝트를 통해 검증된 역량.
+              금융, 항공, 통신, 커머스, 교육 도메인에서 화면 구축부터
+              운영 개선까지 수행한 이력입니다.
               <br />
-              각 케이스는 고객이 마주한 문제와 우리가 만든 해결 방식을 담고 있습니다.
+              React, Vue, Next.js, WebSquare, 레거시 HTML 환경을
+              넘나들며 UI 완성도와 구현 안정성을 맞춰왔습니다.
             </p>
             <ul className={styles.heroStats}>
               {heroStats.map((s) => (
@@ -176,8 +506,11 @@ export function WorkPage() {
         <Container>
           <header className={styles.sectionHead}>
             <span className={styles.eyebrow}>Featured</span>
-            <h2 className={styles.sectionTitle}>주목할 만한 케이스</h2>
-            <p className={styles.sectionSub}>가장 자랑할 만한 4개 프로젝트를 선별했습니다.</p>
+            <h2 className={styles.sectionTitle}>대표 프로젝트</h2>
+            <p className={styles.sectionSub}>
+              프로필 문서의 최신 경력 중 화면 구현 역량이 잘 드러나는
+              사례를 선별했습니다.
+            </p>
           </header>
           <div className={styles.featuredGrid}>
             <div className={styles.featuredColLarge}>
@@ -199,19 +532,22 @@ export function WorkPage() {
               <div className={styles.filterRow} key={g.label}>
                 <span className={styles.filterLabel}>{g.label}</span>
                 <div className={styles.filterChips}>
-                  {g.options.map((opt, i) => (
+                  {g.options.map((opt) => (
                     <button
-                      className={`${styles.filterChip} ${i === 0 ? styles.filterChipActive : ''}`}
+                      aria-pressed={filters[g.label] === opt}
+                      className={`${styles.filterChip} ${filters[g.label] === opt ? styles.filterChipActive : ''}`}
                       key={opt}
+                      onClick={() => handleFilterChange(g.label, opt)}
                       type="button"
                     >
                       {opt}
                     </button>
                   ))}
                 </div>
-                {g.label === '연도' ? (
+                {g.label === '역할' ? (
                   <span className={styles.filterTotal}>
-                    총 <strong>124개</strong> 케이스
+                    총 <strong>{filteredCases.length}개</strong> 주요
+                    사례
                   </span>
                 ) : null}
               </div>
@@ -222,28 +558,69 @@ export function WorkPage() {
 
       <section className={styles.allCases}>
         <Container>
-          <div className={styles.allGrid}>
-            {allCases.map((c, i) => (
-              <CaseCard data={c} key={`${c.title}-${i}`} />
-            ))}
-          </div>
-          <div className={styles.loadMoreWrap}>
-            <button className={styles.loadMore} type="button">
-              더 불러오기 <span aria-hidden="true">↓</span>
-            </button>
-          </div>
+          {visibleCases.length > 0 ? (
+            <div className={styles.allGrid}>
+              {visibleCases.map((c, i) => (
+                <CaseCard data={c} key={`${c.title}-${i}`} />
+              ))}
+            </div>
+          ) : (
+            <div className={styles.emptyState}>
+              <strong>조건에 맞는 이력이 없습니다.</strong>
+              <span>
+                필터를 조정하면 다른 프로젝트 사례를 볼 수 있습니다.
+              </span>
+            </div>
+          )}
+          {hasMoreCases ? (
+            <div className={styles.loadMoreWrap}>
+              <button
+                className={styles.loadMore}
+                onClick={() =>
+                  setVisibleCount((count) => count + LOAD_MORE_SIZE)
+                }
+                type="button"
+              >
+                더 많은 이력 보기 <span aria-hidden="true">↓</span>
+              </button>
+            </div>
+          ) : null}
         </Container>
       </section>
 
-      <section className={styles.statsStrip}>
+      <section className={styles.statsStrip} ref={statsRef}>
         <Container>
           <ul className={styles.statsList}>
-            {stats.map((s) => (
-              <li className={styles.statItem} key={s.label}>
-                <span className={styles.statValue}>{s.value}</span>
-                <span className={styles.statLabel}>{s.label}</span>
-              </li>
-            ))}
+            {stats.map((s, index) => {
+              const rollItems = getStatRollItems(s);
+
+              return (
+                <li className={styles.statItem} key={s.label}>
+                  <span className={styles.statValue}>
+                    <span
+                      className={styles.statRoll}
+                      aria-hidden="true"
+                      ref={(node) => {
+                        statRollRefs.current[index] = node;
+                      }}
+                    >
+                      {rollItems.map((item, index) => (
+                        <span
+                          className={styles.statRollItem}
+                          key={`${s.label}-${item}-${index}`}
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </span>
+                    <span className={styles.statValueSr}>
+                      {s.value}
+                    </span>
+                  </span>
+                  <span className={styles.statLabel}>{s.label}</span>
+                </li>
+              );
+            })}
           </ul>
         </Container>
       </section>
@@ -253,16 +630,17 @@ export function WorkPage() {
           <div className={styles.ctaBanner}>
             <div className={styles.ctaText}>
               <h2 className={styles.ctaTitle}>
-                당신의 꿈을
+                프로젝트에 맞는
                 <br />
-                현실로 만드세요!
+                프런트엔드 실행력
               </h2>
               <p className={styles.ctaSub}>
-                전문가와 함께 당신의 아이디어를 실현해 보세요. 맞춤형 솔루션을 제공합니다.
+                신규 구축, 운영 개선, 레거시 전환, 웹접근성 대응까지
+                필요한 단계에 맞춰 화면을 설계하고 구현합니다.
               </p>
             </div>
             <Link className={styles.ctaButton} href={ROUTES.CONTACT}>
-              프로젝트 의뢰하기
+              프로젝트 문의하기
             </Link>
           </div>
         </Container>
