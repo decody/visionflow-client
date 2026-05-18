@@ -1,452 +1,413 @@
 'use client';
 
 import { ROUTES } from '@visionflow/routes';
+import type { WorkRow } from '@visionflow/shared';
+import type { ColDef, ICellRendererParams } from 'ag-grid-community';
+import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
+import { AgGridReact } from 'ag-grid-react';
 import {
-  AlertTriangle,
-  BarChart3,
-  Briefcase,
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Filter,
-  LayoutGrid,
-  List,
-  MoreHorizontal,
-  Plus,
-  Star,
-} from 'lucide-react';
+  Button,
+  Card,
+  Flex,
+  Input,
+  Modal,
+  Select,
+  Statistic,
+  Tabs,
+  Tag,
+  message,
+} from 'antd';
+import { BriefcaseBusiness, Download, Plus, Search, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
+import Loading from '@/components/loading/page';
+import { useDeleteWorkMutation } from '@/hooks/works/useWorkMutation';
+import { useWorkListQuery } from '@/hooks/works/useWorkQuery';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './work-portfolio-list-page.module.css';
 
-type StatusKey = 'draft' | 'review' | 'publish' | 'archive';
+ModuleRegistry.registerModules([AllCommunityModule]);
 
-type WorkCase = {
-  author: { color?: string; initials: string; name: string };
-  category: string;
-  categoryKey: string;
-  client: string;
-  id: string;
-  publishDate: string;
-  slug: string;
-  starred: boolean;
-  status: StatusKey;
-  thumbColor: string;
-  title: string;
-  version: string;
-  year: number;
+type SizeFilter = WorkRow['size'] | 'all';
+type WorkAdminRow = WorkRow & {
+  createdAt?: string;
+  linkLabel?: string | null;
+  linkUrl?: string | null;
 };
 
-const WORK_CASES: ReadonlyArray<WorkCase> = [
-  {
-    author: { initials: 'KJ', name: '김진자' },
-    category: '광고 이미지',
-    categoryKey: 'ad',
-    client: '에스엘 코스메틱',
-    id: '1',
-    publishDate: '5/14 예정',
-    slug: '/work/brand-15-season-campaign',
-    starred: true,
-    status: 'draft',
-    thumbColor: '#fce7f3',
-    title: 'Brand 1.5 — 시즌 캠페인 광고 이미지',
-    version: 'v3',
-    year: 2026,
-  },
-  {
-    author: { color: 'green', initials: 'PS', name: '박서준' },
-    category: '웹 3D',
-    categoryKey: 'brand',
-    client: 'Furniro Living',
-    id: '2',
-    publishDate: '미정',
-    slug: '/work/furniro-3d-configurator',
-    starred: true,
-    status: 'draft',
-    thumbColor: '#e2e8f0',
-    title: 'Furniro 3D 컨피규레이터 — 인테리어 미리보기',
-    version: 'v1',
-    year: 2025,
-  },
-  {
-    author: { initials: 'KJ', name: '김진자' },
-    category: '앱 개발',
-    categoryKey: 'dashboard',
-    client: 'TechCo',
-    id: '3',
-    publishDate: '미정',
-    slug: '/work/techco-admin-localization',
-    starred: false,
-    status: 'review',
-    thumbColor: '#fef3c7',
-    title: 'TechCo 어드민 — 운영 효율화',
-    version: 'v2',
-    year: 2025,
-  },
-  {
-    author: { color: 'green', initials: 'JB', name: '진보람' },
-    category: '데이터 대시보드',
-    categoryKey: 'dashboard',
-    client: 'Greenday Logis...',
-    id: '4',
-    publishDate: '미정',
-    slug: '/work/greenday-logistics-dashboard',
-    starred: false,
-    status: 'review',
-    thumbColor: '#dbeafe',
-    title: 'Greenday 물류 대시보드',
-    version: 'v4',
-    year: 2025,
-  },
-  {
-    author: { initials: 'KJ', name: '김진자' },
-    category: '웹 3D',
-    categoryKey: 'ad',
-    client: 'Studio M',
-    id: '5',
-    publishDate: '5/2 발행',
-    slug: '/work/studio-m-portfolio',
-    starred: true,
-    status: 'publish',
-    thumbColor: '#ede9fe',
-    title: 'Studio M — 인터랙티브 포트폴리오',
-    version: 'v9 publish',
-    year: 2025,
-  },
-  {
-    author: { color: 'green', initials: 'PS', name: '박서준' },
-    category: '광고 이미지',
-    categoryKey: 'ad',
-    client: 'Pharma Co (NDA)',
-    id: '6',
-    publishDate: '4/28 발행',
-    slug: '/work/pharma-co-campaign',
-    starred: false,
-    status: 'publish',
-    thumbColor: '#fce7f3',
-    title: 'Pharma Co — 의약품 광고 캠페인',
-    version: 'v3',
-    year: 2025,
-  },
-  {
-    author: { initials: 'KJ', name: '김진자' },
-    category: '앱 개발',
-    categoryKey: 'landing',
-    client: 'Brand Story Co.',
-    id: '7',
-    publishDate: '4/22 발행',
-    slug: '/work/brand-story-mobile-app',
-    starred: false,
-    status: 'publish',
-    thumbColor: '#fef9c3',
-    title: 'Brand Story Co. 모바일 앱',
-    version: 'v3',
-    year: 2025,
-  },
-  {
-    author: { color: 'green', initials: 'PS', name: '박서준' },
-    category: '데이터 대시보드',
-    categoryKey: 'dashboard',
-    client: 'Northern Insights',
-    id: '8',
-    publishDate: '4/15 발행',
-    slug: '/work/northern-insights-bi',
-    starred: false,
-    status: 'publish',
-    thumbColor: '#dbeafe',
-    title: 'Northern Insights — BI 통합 데이터 대시보드',
-    version: 'v6',
-    year: 2024,
-  },
-  {
-    author: { initials: 'KJ', name: '김진자' },
-    category: '웹 3D',
-    categoryKey: 'brand',
-    client: 'VisionFlow 자체 IP',
-    id: '9',
-    publishDate: '3/28 발행',
-    slug: '/work/sentry-house-self-ip',
-    starred: false,
-    status: 'publish',
-    thumbColor: '#fef3c7',
-    title: 'Sentry House — 자체 IP 케이스',
-    version: 'v8',
-    year: 2024,
-  },
-];
-
-const STATUS_LABELS: Record<StatusKey, string> = {
-  archive: '아카이브',
-  draft: 'DRAFT',
-  publish: '발행',
-  review: '검토',
+const SIZE_LABEL: Record<WorkRow['size'], string> = {
+  short: '일반',
+  tall: '강조',
 };
-
-const STATUS_STYLE: Record<StatusKey, string> = {
-  archive: styles.badgeArchive ?? '',
-  draft: styles.badgeDraft ?? '',
-  publish: styles.badgePublish ?? '',
-  review: styles.badgeReview ?? '',
-};
-
-const CATEGORY_STYLE: Record<string, string> = {
-  ad: styles.catAd ?? '',
-  brand: styles.catBrand ?? '',
-  dashboard: styles.catDashboard ?? '',
-  landing: styles.catLanding ?? '',
-};
-
-type FilterKey = 'all' | 'draft' | 'review' | 'publish' | 'archive';
-
-const FILTER_TABS: ReadonlyArray<{ count: number; key: FilterKey; label: string }> = [
-  { count: 13, key: 'all', label: '전체' },
-  { count: 4, key: 'draft', label: 'Draft' },
-  { count: 2, key: 'review', label: '검토 대기' },
-  { count: 7, key: 'publish', label: '발행' },
-  { count: 0, key: 'archive', label: '아카이브' },
-];
 
 export function WorkPortfolioListPage() {
-  const [filter, setFilter] = useState<FilterKey>('all');
-  const [view, setView] = useState<'table' | 'gallery'>('table');
+  const [messageApi, messageContextHolder] = message.useMessage();
+  const [modal, modalContextHolder] = Modal.useModal();
+  const [sizeFilter, setSizeFilter] = useState<SizeFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [searchText, setSearchText] = useState('');
+  const deleteWorkMutation = useDeleteWorkMutation();
+  const { data: works = [], isLoading } = useWorkListQuery();
 
   useTopbar(
     () => ({
-      action: (
-        <Link className={styles.createBtn} href={ROUTES.ADMIN.WORK_PORTFOLIO.CREATE}>
-          <Plus size={14} />+ 새 케이스 작성
-        </Link>
-      ),
       breadcrumb: [
         { href: ROUTES.ADMIN.HOME, label: '대시보드' },
         { label: '콘텐츠' },
-        { label: 'Work 케이스' },
+        { label: 'Work 포트폴리오' },
       ],
     }),
     [],
   );
 
-  const filtered =
-    filter === 'all' ? WORK_CASES : WORK_CASES.filter((c) => c.status === filter);
+  const rows = useMemo<WorkAdminRow[]>(
+    () => (Array.isArray(works) ? works : []),
+    [works],
+  );
+
+  const categories = useMemo(
+    () =>
+      Array.from(new Set(rows.map((row) => row.category).filter(Boolean))).map(
+        (category) => ({ label: category, value: category }),
+      ),
+    [rows],
+  );
+
+  const filteredRows = useMemo(() => {
+    const normalizedSearch = searchText.trim().toLowerCase();
+
+    return rows
+      .filter((row) => {
+        if (sizeFilter !== 'all' && row.size !== sizeFilter) {
+          return false;
+        }
+
+        if (categoryFilter !== 'all' && row.category !== categoryFilter) {
+          return false;
+        }
+
+        if (!normalizedSearch) {
+          return true;
+        }
+
+        return [
+          row.title,
+          row.category,
+          row.industry,
+          row.linkLabel,
+          row.linkUrl,
+          ...(row.roles ?? []),
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLowerCase().includes(normalizedSearch),
+          );
+      })
+      .sort((a, b) => getCreatedAtTime(b) - getCreatedAtTime(a));
+  }, [categoryFilter, rows, searchText, sizeFilter]);
+
+  const sizeCounts = useMemo(
+    () => ({
+      all: rows.length,
+      short: rows.filter((row) => row.size === 'short').length,
+      tall: rows.filter((row) => row.size === 'tall').length,
+    }),
+    [rows],
+  );
+
+  const handleDeleteWork = useCallback(
+    (work: WorkAdminRow) => {
+      modal.confirm({
+        cancelText: '취소',
+        content: `"${work.title || '제목 없음'}" Work를 삭제하시겠습니까? 삭제 후에는 목록에서 제거됩니다.`,
+        okText: '삭제',
+        okType: 'danger',
+        title: 'Work 삭제 확인',
+        onOk: async () => {
+          try {
+            await deleteWorkMutation.mutateAsync(String(work.id));
+            messageApi.success('Work를 삭제했습니다.');
+          } catch (error) {
+            messageApi.error(
+              error instanceof Error
+                ? error.message
+                : 'Work 삭제 중 오류가 발생했습니다.',
+            );
+          }
+        },
+      });
+    },
+    [deleteWorkMutation, messageApi, modal],
+  );
+
+  const columnDefs = useMemo<ColDef<WorkAdminRow>[]>(
+    () => [
+      {
+        cellRenderer: ({ data }: ICellRendererParams<WorkAdminRow>) => {
+          if (!data) {
+            return null;
+          }
+
+          return (
+            <div className={styles.titleCell}>
+              <Link
+                className={styles.titleLink}
+                href={ROUTES.ADMIN.WORK_PORTFOLIO.DETAIL(data.id)}
+              >
+                {data.title || '(제목 없음)'}
+              </Link>
+              <span className={styles.subText}>
+                {data.linkUrl || data.image || '연결 URL 없음'}
+              </span>
+            </div>
+          );
+        },
+        field: 'title',
+        flex: 1,
+        headerName: '프로젝트',
+        minWidth: 320,
+      },
+      {
+        cellRenderer: ({
+          value,
+        }: ICellRendererParams<WorkAdminRow, string>) => (
+          <Tag color="blue">{value || '-'}</Tag>
+        ),
+        field: 'category',
+        headerName: '카테고리',
+        maxWidth: 160,
+        minWidth: 130,
+      },
+      {
+        field: 'industry',
+        headerName: '산업',
+        maxWidth: 160,
+        minWidth: 130,
+      },
+      {
+        cellRenderer: ({ data }: ICellRendererParams<WorkAdminRow>) => (
+          <div className={styles.roleCell}>
+            {(data?.roles ?? []).slice(0, 3).map((role) => (
+              <Tag key={role}>{role}</Tag>
+            ))}
+          </div>
+        ),
+        colId: 'roles',
+        headerName: '역할',
+        minWidth: 220,
+      },
+      {
+        cellRenderer: ({
+          value,
+        }: ICellRendererParams<WorkAdminRow, WorkRow['size']>) =>
+          value ? (
+            <Tag color={value === 'tall' ? 'gold' : 'default'}>
+              {SIZE_LABEL[value]}
+            </Tag>
+          ) : (
+            '-'
+          ),
+        field: 'size',
+        headerName: '노출',
+        maxWidth: 120,
+        minWidth: 100,
+      },
+      {
+        cellRenderer: ({ data }: ICellRendererParams<WorkAdminRow>) =>
+          formatDate(data ? getCreatedAt(data) : undefined),
+        colId: 'createdAt',
+        headerName: '등록일',
+        maxWidth: 150,
+        minWidth: 130,
+      },
+      {
+        cellRenderer: ({ data }: ICellRendererParams<WorkAdminRow>) => {
+          if (!data) {
+            return null;
+          }
+
+          return (
+            <Button
+              danger
+              icon={<Trash2 size={14} />}
+              loading={deleteWorkMutation.isPending}
+              onClick={() => handleDeleteWork(data)}
+              size="small"
+              type="text"
+            >
+              삭제
+            </Button>
+          );
+        },
+        colId: 'actions',
+        headerName: '관리',
+        maxWidth: 100,
+        minWidth: 90,
+        sortable: false,
+      },
+    ],
+    [deleteWorkMutation.isPending, handleDeleteWork],
+  );
+
+  const defaultColDef = useMemo<ColDef<WorkAdminRow>>(
+    () => ({
+      autoHeight: true,
+      filter: false,
+      resizable: true,
+      sortable: true,
+      suppressMovable: true,
+    }),
+    [],
+  );
+
+  const handleExportCsv = () => {
+    const headers = ['ID', '제목', '카테고리', '산업', '역할', '노출', '등록일'];
+    const csvRows = filteredRows.map((row) => [
+      row.id,
+      row.title,
+      row.category,
+      row.industry,
+      row.roles.join(' / '),
+      SIZE_LABEL[row.size],
+      formatDate(getCreatedAt(row)),
+    ]);
+
+    const csv = [headers, ...csvRows]
+      .map((row) =>
+        row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','),
+      )
+      .join('\n');
+
+    const blob = new Blob(['\uFEFF', csv], {
+      type: 'text/csv;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'work-portfolio.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (isLoading) {
+    return <Loading />;
+  }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>
-          Work 케이스
-          <span className={styles.pageCount}>53건</span>
-        </h1>
-      </header>
+    <section className={styles.page}>
+      {messageContextHolder}
+      {modalContextHolder}
+      <Flex align="flex-start" justify="space-between" gap={16} wrap>
+        <div>
+          <h1 className={styles.title}>Work 포트폴리오</h1>
+          <p className={styles.description}>
+            웹사이트에 노출되는 Work 사례를 등록하고 관리합니다.
+          </p>
+        </div>
+        <div className={styles.headerActions}>
+          <Button icon={<Download size={14} />} onClick={handleExportCsv}>
+            CSV 내보내기
+          </Button>
+          <Link href={ROUTES.ADMIN.WORK_PORTFOLIO.CREATE}>
+            <Button icon={<Plus size={14} />} type="primary">
+              Work 작성
+            </Button>
+          </Link>
+        </div>
+      </Flex>
 
-      {/* KPI */}
-      <div className={styles.kpiRow}>
-        <div className={`${styles.kpiCard} ${styles.kpiAccentDraft}`}>
-          <div className={styles.kpiTopRow}>
-            <p className={styles.kpiLabel}>DRAFT 작업중</p>
-            <span className={`${styles.kpiIconBadge} ${styles.kpiIconDraft}`}>
-              <Briefcase aria-hidden="true" size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <p className={styles.kpiValue}>4</p>
-          <p className={styles.kpiSub}>오늘 작업 중 2건</p>
-        </div>
-        <div className={`${styles.kpiCard} ${styles.kpiAccentReview}`}>
-          <div className={styles.kpiTopRow}>
-            <p className={styles.kpiLabel}>검토 대기</p>
-            <span className={`${styles.kpiIconBadge} ${styles.kpiIconReview}`}>
-              <AlertTriangle aria-hidden="true" size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <p className={styles.kpiValue}>2</p>
-          <p className={`${styles.kpiSub} ${styles.kpiSubReview}`}>SuperAdmin 승인 대기</p>
-        </div>
-        <div className={`${styles.kpiCard} ${styles.kpiAccentPublish}`}>
-          <div className={styles.kpiTopRow}>
-            <p className={styles.kpiLabel}>리뷰 후 발행</p>
-            <span className={`${styles.kpiIconBadge} ${styles.kpiIconPublish}`}>
-              <CheckCircle2 aria-hidden="true" size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <p className={styles.kpiValue}>3</p>
-          <p className={`${styles.kpiSub} ${styles.kpiSubPublish}`}>예정 5/10 · 5/12 · 5/14</p>
-        </div>
-        <div className={`${styles.kpiCard} ${styles.kpiAccentTotal}`}>
-          <div className={styles.kpiTopRow}>
-            <p className={styles.kpiLabel}>총 실행 케이스</p>
-            <span className={`${styles.kpiIconBadge} ${styles.kpiIconTotal}`}>
-              <BarChart3 aria-hidden="true" size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <p className={styles.kpiValue}>47</p>
-          <p className={styles.kpiSub}>평균 3.2일 생산 리드타임</p>
-        </div>
+      <div className={styles.summaryGrid}>
+        <Card>
+          <Statistic title="전체 프로젝트" value={rows.length} />
+        </Card>
+        <Card>
+          <Statistic title="강조 노출" value={sizeCounts.tall} />
+        </Card>
+        <Card>
+          <Statistic title="일반 노출" value={sizeCounts.short} />
+        </Card>
+        <Card>
+          <Statistic
+            prefix={<BriefcaseBusiness size={18} />}
+            title="카테고리"
+            value={categories.length}
+          />
+        </Card>
       </div>
 
-      {/* Toolbar */}
-      <div className={styles.toolbar}>
-        <div className={styles.filterTabs}>
-          {FILTER_TABS.map((tab) => (
-            <button
-              className={`${styles.filterTab} ${filter === tab.key ? styles.filterTabActive : ''}`}
-              key={tab.key}
-              onClick={() => setFilter(tab.key)}
-              type="button"
-            >
-              {tab.label}
-              <span className={styles.filterCount}>{tab.count}</span>
-            </button>
-          ))}
-        </div>
+      <Tabs
+        activeKey={sizeFilter}
+        items={[
+          { key: 'all', label: `전체 ${sizeCounts.all}` },
+          { key: 'tall', label: `강조 ${sizeCounts.tall}` },
+          { key: 'short', label: `일반 ${sizeCounts.short}` },
+        ]}
+        onChange={(key) => setSizeFilter(key as SizeFilter)}
+      />
 
-        <div className={styles.toolbarActions}>
-          <div className={styles.viewToggle}>
-            <button
-              className={`${styles.viewBtn} ${view === 'table' ? styles.viewBtnActive : ''}`}
-              onClick={() => setView('table')}
-              type="button"
-            >
-              <List size={14} />
-              테이블
-            </button>
-            <button
-              className={`${styles.viewBtn} ${view === 'gallery' ? styles.viewBtnActive : ''}`}
-              onClick={() => setView('gallery')}
-              type="button"
-            >
-              <LayoutGrid size={14} />
-              갤러리
-            </button>
-          </div>
-          <button className={styles.actionBtn} type="button">
-            <Filter size={13} />
-            필터링
-          </button>
-          <button className={styles.actionBtn} type="button">
-            <Download size={13} />
-            CSV
-          </button>
+      <Card className={styles.tableCard}>
+        <div className={styles.toolbar}>
+          <Input
+            allowClear
+            className={styles.searchInput}
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="제목, 카테고리, 산업, 역할 검색"
+            prefix={<Search size={14} />}
+            value={searchText}
+          />
+          <Select
+            className={styles.categorySelect}
+            onChange={setCategoryFilter}
+            options={[{ label: '전체 카테고리', value: 'all' }, ...categories]}
+            value={categoryFilter}
+          />
         </div>
-      </div>
-
-      {/* Table */}
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.checkboxCell}>
-                <input aria-label="전체 선택" type="checkbox" />
-              </th>
-              <th className={styles.starCell} />
-              <th>상태</th>
-              <th>케이스</th>
-              <th>클라이언트</th>
-              <th>카테고리</th>
-              <th>연도</th>
-              <th>발행일</th>
-              <th>버전</th>
-              <th>작성자</th>
-              <th className={styles.actionCell} />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((item) => (
-              <tr key={item.id}>
-                <td className={styles.checkboxCell}>
-                  <input aria-label="선택" type="checkbox" />
-                </td>
-                <td className={styles.starCell}>
-                  <button
-                    aria-label={item.starred ? '즐겨찾기 해제' : '즐겨찾기 추가'}
-                    className={`${styles.starBtn} ${item.starred ? styles.starBtnActive : ''}`}
-                    type="button"
-                  >
-                    <Star fill={item.starred ? 'currentColor' : 'none'} size={14} />
-                  </button>
-                </td>
-                <td className={styles.statusCell}>
-                  <span className={`${styles.badge} ${STATUS_STYLE[item.status]}`}>
-                    {STATUS_LABELS[item.status]}
-                  </span>
-                </td>
-                <td>
-                  <div className={styles.caseInfo}>
-                    <span
-                      aria-hidden="true"
-                      className={styles.caseThumb}
-                      style={{ background: item.thumbColor }}
-                    />
-                    <div className={styles.caseText}>
-                      <Link
-                        className={styles.caseTitle}
-                        href={ROUTES.ADMIN.WORK_PORTFOLIO.DETAIL(item.id)}
-                      >
-                        {item.title}
-                      </Link>
-                      <span className={styles.caseUrl}>{item.slug}</span>
-                    </div>
-                  </div>
-                </td>
-                <td>{item.client}</td>
-                <td>
-                  <span className={`${styles.catPill} ${CATEGORY_STYLE[item.categoryKey] ?? ''}`}>
-                    {item.category}
-                  </span>
-                </td>
-                <td>{item.year}</td>
-                <td>{item.publishDate}</td>
-                <td>{item.version}</td>
-                <td>
-                  <div className={styles.authorChip}>
-                    <span
-                      className={`${styles.authorAvatar} ${item.author.color === 'green' ? styles.authorAvatarGreen : ''}`}
-                    >
-                      {item.author.initials}
-                    </span>
-                    {item.author.name}
-                  </div>
-                </td>
-                <td className={styles.actionCell}>
-                  <button aria-label="옵션" className={styles.iconBtn} type="button">
-                    <MoreHorizontal size={14} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Pagination */}
-        <div className={styles.pagination}>
-          <div className={styles.pageInfo}>
-            <span>페이지당</span>
-            <button className={styles.pageSizeBtn} type="button">
-              20 <ChevronDown size={12} />
-            </button>
-            <span>· 1–9 / 53건</span>
-          </div>
-          <div className={styles.pageButtons}>
-            <button aria-label="이전" className={styles.pageBtn} type="button">
-              <ChevronLeft size={14} />
-            </button>
-            <button className={`${styles.pageBtn} ${styles.pageBtnActive}`} type="button">
-              1
-            </button>
-            <button className={styles.pageBtn} type="button">
-              2
-            </button>
-            <button className={styles.pageBtn} type="button">
-              3
-            </button>
-            <button aria-label="다음" className={styles.pageBtn} type="button">
-              <ChevronRight size={14} />
-            </button>
-          </div>
+        <div className={`ag-theme-quartz ${styles.grid}`}>
+          <AgGridReact<WorkAdminRow>
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            noRowsOverlayComponent={() => (
+              <div className={styles.emptyState}>표시할 Work가 없습니다.</div>
+            )}
+            pagination
+            paginationPageSize={10}
+            paginationPageSizeSelector={[10, 20, 50]}
+            rowData={filteredRows}
+            rowHeight={72}
+            rowSelection="multiple"
+            theme="legacy"
+          />
         </div>
-      </div>
-    </div>
+      </Card>
+    </section>
   );
+}
+
+function getCreatedAt(row: WorkAdminRow) {
+  return row.createdAt ?? row.created_at;
+}
+
+function getCreatedAtTime(row: WorkAdminRow) {
+  const value = getCreatedAt(row);
+  const time = value ? new Date(value).getTime() : 0;
+
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function formatDate(value?: string) {
+  if (!value) {
+    return '-';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
 }

@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { WorkPortfolioCreatePage } from '@/features/work-portfolio/work-portfolio-create-page';
 
 export const metadata: Metadata = {
-  description: 'VisionFlow CMS Work 케이스 등록',
-  title: '새 케이스 작성 — VisionFlow Admin',
+  description: 'VisionFlow CMS Work 포트폴리오 등록',
+  title: 'Work 작성 | VisionFlow Admin',
 };
 
 export default function WorkPortfolioNew() {

@@ -1,331 +1,189 @@
 'use client';
 
 import { ROUTES } from '@visionflow/routes';
-import { ArrowLeft, Eye, FileText, Plus, Upload, X } from 'lucide-react';
+import type { WorkRow } from '@visionflow/shared';
+import {
+  Button,
+  Card,
+  Flex,
+  Form,
+  Input,
+  Select,
+  Space,
+  Typography,
+  message,
+} from 'antd';
+import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
+import {
+  useCreateWorkMutation,
+  type WorkMutationValues,
+} from '@/hooks/works/useWorkMutation';
 import styles from './work-portfolio-create-page.module.css';
 
-type Tab = 'brief' | 'result' | 'meta' | 'notes';
+const { Text, Title } = Typography;
 
-const TABS: ReadonlyArray<{ key: Tab; label: string }> = [
-  { key: 'brief', label: '브리프' },
-  { key: 'result', label: '결과물 설명' },
-  { key: 'meta', label: '메타' },
-  { key: 'notes', label: 'Notes' },
-];
+type WorkFormValues = Omit<WorkMutationValues, 'roles'> & {
+  rolesText: string;
+};
 
-const CHECKLIST = [
-  { done: false, label: '헤드라인 입력' },
-  { done: false, label: '클라이언트 선택' },
-  { done: false, label: '썸네일 업로드' },
-  { done: false, label: '브리프 요약 작성' },
-  { done: false, label: '태그 추가' },
-  { done: false, label: '메타 정보 입력' },
-];
+const INITIAL_VALUES: WorkFormValues = {
+  category: '',
+  image: '',
+  industry: '',
+  linkLabel: '',
+  linkUrl: '',
+  rolesText: '',
+  size: 'short',
+  title: '',
+};
 
 export function WorkPortfolioCreatePage() {
-  const [activeTab, setActiveTab] = useState<Tab>('brief');
-  const [tags, setTags] = useState<string[]>([]);
+  const [messageApi, contextHolder] = message.useMessage();
+  const [form] = Form.useForm<WorkFormValues>();
+  const router = useRouter();
+  const createWorkMutation = useCreateWorkMutation();
 
-  const removeTag = (tag: string) => setTags((prev) => prev.filter((t) => t !== tag));
+  const handleFinish = async (values: WorkFormValues) => {
+    try {
+      const createdWork = await createWorkMutation.mutateAsync(
+        toMutationValues(values),
+      );
+
+      messageApi.success('Work 포트폴리오를 등록했습니다.');
+      router.push(
+        createdWork?.id
+          ? ROUTES.ADMIN.WORK_PORTFOLIO.DETAIL(createdWork.id)
+          : ROUTES.ADMIN.WORK_PORTFOLIO.ROOT,
+      );
+    } catch (error) {
+      messageApi.error(getErrorMessage(error, 'Work 등록 중 오류가 발생했습니다.'));
+    }
+  };
 
   return (
-    <div className={styles.page}>
-      {/* Top Bar */}
-      <div className={styles.topBar}>
-        <p className={styles.breadcrumb}>
-          <Link href={ROUTES.ADMIN.WORK_PORTFOLIO.ROOT}>
-            <ArrowLeft aria-hidden="true" size={13} /> Work 케이스
+    <section className={styles.page}>
+      {contextHolder}
+      <Flex align="flex-start" justify="space-between" gap={16} wrap>
+        <div>
+          <Link className={styles.backLink} href={ROUTES.ADMIN.WORK_PORTFOLIO.ROOT}>
+            <ArrowLeft size={14} />
+            목록으로
           </Link>
-          <span aria-hidden="true">/</span>
-          <span className={styles.breadcrumbCurrent}>새 케이스 작성</span>
-        </p>
-
-        <div className={styles.topActions}>
-          <button className={styles.topBtn} type="button">
-            <Eye aria-hidden="true" size={14} />
-            미리보기
-          </button>
-          <Link className={styles.topBtn} href={ROUTES.ADMIN.WORK_PORTFOLIO.ROOT}>
-            취소
-          </Link>
-          <button className={`${styles.topBtn} ${styles.createBtn}`} type="button">
-            <FileText aria-hidden="true" size={13} />
-            DRAFT 저장
-          </button>
+          <Title className={styles.title} level={2}>
+            Work 작성
+          </Title>
+          <Text type="secondary">
+            웹사이트 Work 섹션에 노출할 프로젝트 정보를 입력합니다.
+          </Text>
         </div>
-      </div>
+      </Flex>
 
-      {/* Left Panel */}
-      <div className={styles.leftPanel}>
-        {/* Tabs */}
-        <nav aria-label="작성 탭" className={styles.tabs}>
-          {TABS.map((tab) => (
-            <button
-              className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              type="button"
+      <Card className={styles.panel}>
+        <Form
+          form={form}
+          initialValues={INITIAL_VALUES}
+          layout="vertical"
+          onFinish={handleFinish}
+          requiredMark={false}
+        >
+          <div className={styles.formGrid}>
+            <Form.Item
+              label="프로젝트 제목"
+              name="title"
+              rules={[{ message: '제목을 입력해주세요.', required: true }]}
             >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+              <Input maxLength={120} placeholder="예: Brand Campaign Renewal" showCount />
+            </Form.Item>
 
-        {/* Form Content */}
-        <div className={styles.formContent}>
-          {activeTab === 'brief' && (
-            <>
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>기본 정보</h2>
-                <div className={styles.fieldRow}>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="client">
-                      클라이언트
-                    </label>
-                    <input
-                      className={styles.input}
-                      id="client"
-                      placeholder="예) 에스엘 코스메틱"
-                      type="text"
-                    />
-                  </div>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="category">
-                      카테고리
-                    </label>
-                    <select className={`${styles.input} ${styles.select}`} id="category">
-                      <option value="">카테고리 선택</option>
-                      <option>광고 이미지</option>
-                      <option>랜딩페이지</option>
-                      <option>대시보드</option>
-                      <option>브랜딩</option>
-                    </select>
-                  </div>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="year">
-                      연도
-                    </label>
-                    <input
-                      className={styles.input}
-                      id="year"
-                      placeholder="2026"
-                      type="number"
-                    />
-                  </div>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="slug">
-                      슬러그 (URL)
-                    </label>
-                    <input
-                      className={styles.input}
-                      id="slug"
-                      placeholder="/work/project-name"
-                      type="text"
-                    />
-                  </div>
-                </div>
-                <div className={`${styles.field} ${styles.fieldFull}`}>
-                  <label className={styles.label} htmlFor="headline">
-                    헤드라인
-                  </label>
-                  <input
-                    className={styles.input}
-                    id="headline"
-                    placeholder="케이스 제목 — 부제목"
-                    type="text"
-                  />
-                </div>
-              </section>
+            <Form.Item
+              label="카테고리"
+              name="category"
+              rules={[{ message: '카테고리를 입력해주세요.', required: true }]}
+            >
+              <Input placeholder="예: Web App, 3D, Dashboard" />
+            </Form.Item>
 
-              <hr className={styles.divider} />
+            <Form.Item
+              label="산업"
+              name="industry"
+              rules={[{ message: '산업을 입력해주세요.', required: true }]}
+            >
+              <Input placeholder="예: 커머스, 금융, 공공" />
+            </Form.Item>
 
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>썸네일</h2>
-                <div className={styles.uploadArea}>
-                  <Upload aria-hidden="true" className={styles.uploadIcon} size={28} />
-                  <p className={styles.uploadLabel}>이미지 업로드</p>
-                  <p className={styles.uploadSub}>PNG, JPG, WebP · 최대 10MB · 권장 1920×1080</p>
-                </div>
-              </section>
-
-              <hr className={styles.divider} />
-
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>프로젝트 개요</h2>
-                <div className={`${styles.field} ${styles.fieldFull}`}>
-                  <label className={styles.label} htmlFor="brief">
-                    브리프 요약
-                  </label>
-                  <textarea
-                    className={`${styles.input} ${styles.textarea}`}
-                    id="brief"
-                    placeholder="프로젝트의 목적, 범위, 핵심 요구사항을 간결하게 설명해 주세요."
-                  />
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="budget">
-                      예산 (선택)
-                    </label>
-                    <input
-                      className={styles.input}
-                      id="budget"
-                      placeholder="₩0,000,000"
-                      type="text"
-                    />
-                  </div>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="duration">
-                      기간 (선택)
-                    </label>
-                    <input
-                      className={styles.input}
-                      id="duration"
-                      placeholder="예) 6주"
-                      type="text"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <hr className={styles.divider} />
-
-              <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>태그</h2>
-                <div className={styles.tagRow}>
-                  {tags.map((tag) => (
-                    <span className={styles.tag} key={tag}>
-                      {tag}
-                      <button
-                        aria-label={`${tag} 제거`}
-                        className={styles.tagRemove}
-                        onClick={() => removeTag(tag)}
-                        type="button"
-                      >
-                        <X size={10} />
-                      </button>
-                    </span>
-                  ))}
-                  <button
-                    className={styles.addTagBtn}
-                    onClick={() => {
-                      const t = prompt('태그 입력');
-                      if (t?.trim()) setTags((prev) => [...prev, t.trim()]);
-                    }}
-                    type="button"
-                  >
-                    <Plus size={11} />
-                    태그 추가
-                  </button>
-                </div>
-              </section>
-            </>
-          )}
-
-          {activeTab === 'result' && (
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>결과물 설명</h2>
-              <div className={`${styles.field} ${styles.fieldFull}`}>
-                <label className={styles.label} htmlFor="result-desc">
-                  결과물 상세 설명
-                </label>
-                <textarea
-                  className={`${styles.input} ${styles.textarea}`}
-                  id="result-desc"
-                  placeholder="납품된 결과물, 품질 지표, 클라이언트 반응 등을 기술해 주세요."
-                  style={{ minHeight: 140 }}
-                />
-              </div>
-            </section>
-          )}
-
-          {activeTab === 'meta' && (
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>SEO 메타</h2>
-              <div className={`${styles.field} ${styles.fieldFull}`}>
-                <label className={styles.label} htmlFor="meta-title">
-                  메타 타이틀
-                </label>
-                <input
-                  className={styles.input}
-                  id="meta-title"
-                  placeholder="케이스 제목 | VisionFlow Work"
-                  type="text"
-                />
-              </div>
-              <div className={`${styles.field} ${styles.fieldFull}`}>
-                <label className={styles.label} htmlFor="meta-desc">
-                  메타 설명
-                </label>
-                <textarea
-                  className={`${styles.input} ${styles.textarea}`}
-                  id="meta-desc"
-                  placeholder="검색 결과에 표시될 설명 (160자 이내)"
-                  style={{ minHeight: 80 }}
-                />
-              </div>
-            </section>
-          )}
-
-          {activeTab === 'notes' && (
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>내부 메모</h2>
-              <textarea
-                className={`${styles.input} ${styles.textarea}`}
-                placeholder="팀 내부 참고 사항을 자유롭게 작성하세요."
-                style={{ minHeight: 120 }}
+            <Form.Item label="노출 타입" name="size" rules={[{ required: true }]}>
+              <Select<WorkRow['size']>
+                options={[
+                  { label: '일반 카드', value: 'short' },
+                  { label: '강조 카드', value: 'tall' },
+                ]}
               />
-            </section>
-          )}
-        </div>
-
-        {/* Save row */}
-        <div className={styles.saveRow}>
-          <Link className={styles.cancelBtn} href={ROUTES.ADMIN.WORK_PORTFOLIO.ROOT}>
-            <ArrowLeft aria-hidden="true" size={13} />
-            취소
-          </Link>
-          <div className={styles.saveActions}>
-            <button className={styles.draftBtn} type="button">
-              DRAFT 저장
-            </button>
-            <button className={styles.submitBtn} type="button">
-              <FileText aria-hidden="true" size={13} />
-              검토 요청
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Panel — Checklist */}
-      <div className={styles.rightPanel}>
-        <div className={styles.previewHeader}>
-          <span className={styles.previewLabel}>작성 체크리스트</span>
-        </div>
-
-        <div className={styles.previewBody}>
-          <div className={styles.previewEmpty}>
-            <Eye aria-hidden="true" className={styles.previewEmptyIcon} size={40} />
-            <p className={styles.previewEmptyTitle}>미리보기 준비 중</p>
-            <p className={styles.previewEmptyDesc}>내용을 입력하면 미리보기가 표시됩니다.</p>
+            </Form.Item>
           </div>
 
-          <div className={styles.checklist}>
-            <h3 className={styles.checklistTitle}>등록 체크리스트</h3>
-            {CHECKLIST.map((item) => (
-              <div className={styles.checkItem} data-done={item.done} key={item.label}>
-                <span className={`${styles.checkDot} ${item.done ? styles.checkDotDone : ''}`} />
-                {item.label}
-              </div>
-            ))}
+          <Form.Item
+            extra="쉼표로 구분해서 입력하세요. 예: Frontend, UI/UX, Publishing"
+            label="역할"
+            name="rolesText"
+            rules={[{ message: '역할을 하나 이상 입력해주세요.', required: true }]}
+          >
+            <Input placeholder="Frontend, UI/UX" />
+          </Form.Item>
+
+          <Form.Item label="대표 이미지 URL" name="image">
+            <Input placeholder="https://..." />
+          </Form.Item>
+
+          <div className={styles.formGrid}>
+            <Form.Item label="외부 링크 URL" name="linkUrl">
+              <Input placeholder="https://..." />
+            </Form.Item>
+
+            <Form.Item label="외부 링크 라벨" name="linkLabel">
+              <Input placeholder="사이트 보기" />
+            </Form.Item>
           </div>
-        </div>
-      </div>
-    </div>
+
+          <Flex className={styles.actions} justify="flex-end" gap={8}>
+            <Link href={ROUTES.ADMIN.WORK_PORTFOLIO.ROOT}>
+              <Button>취소</Button>
+            </Link>
+            <Space>
+              <Button
+                htmlType="submit"
+                icon={<Save size={14} />}
+                loading={createWorkMutation.isPending}
+                type="primary"
+              >
+                등록
+              </Button>
+            </Space>
+          </Flex>
+        </Form>
+      </Card>
+    </section>
   );
+}
+
+function toMutationValues(values: WorkFormValues): WorkMutationValues {
+  return {
+    category: values.category.trim(),
+    image: values.image?.trim() || null,
+    industry: values.industry.trim(),
+    linkLabel: values.linkLabel?.trim() || null,
+    linkUrl: values.linkUrl?.trim() || null,
+    roles: values.rolesText
+      .split(',')
+      .map((role) => role.trim())
+      .filter(Boolean),
+    size: values.size,
+    title: values.title.trim(),
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
