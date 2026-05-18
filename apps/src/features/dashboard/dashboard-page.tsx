@@ -7,7 +7,6 @@ import {
   ArrowUpRight,
   BarChart3,
   Briefcase,
-  FileText,
   Folder,
   HelpCircle,
   type LucideIcon,

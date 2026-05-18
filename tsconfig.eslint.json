@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "playwright.config.ts",
+    "supabase/functions/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": ["**/.next/**", "**/dist/**", "**/build/**", "**/node_modules/**"]
+}

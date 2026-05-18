@@ -205,7 +205,7 @@ const RECENT_ACTIVITY = [
   },
 ];
 
-export function UsersDetailPage({ id }: { id: string }) {
+export function UsersDetailPage({ id: _id }: { id: string }) {
   const [selectedRole, setSelectedRole] = useState<RoleKey>('operator');
 
   useTopbar(

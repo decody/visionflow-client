@@ -19,7 +19,7 @@ export default tseslint.config(
         ...globals.node,
       },
       parserOptions: {
-        projectService: true,
+        project: ['./tsconfig.eslint.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -33,12 +33,23 @@ export default tseslint.config(
         'warn',
         { fixStyle: 'inline-type-imports', prefer: 'type-imports' },
       ],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
   {
     files: ['apps/web/**/*.{ts,tsx}'],
     rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['tests/**/*.ts', 'playwright.config.ts'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
       'react-refresh/only-export-components': 'off',
     },
   },

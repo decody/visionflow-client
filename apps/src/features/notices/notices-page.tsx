@@ -2,7 +2,7 @@
 
 import { Container } from '@/components/common/container';
 import { ChevronDown, Megaphone, Search, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useNoticeListQuery } from '@/hooks/notices/useNoticeQuery';
 import { NoticeList } from './notice-list';
@@ -22,7 +22,10 @@ const getCategoryLabel = (category: string) =>
 
 export function NoticesPage() {
   const { data: noticeResponse, isLoading } = useNoticeListQuery();
-  const notices = noticeResponse?.data ?? [];
+  const notices = useMemo(
+    () => noticeResponse?.data ?? [],
+    [noticeResponse?.data],
+  );
 
   const [searchKeyword, setSearchKeyword] = useState('');
   const [visibleCount, setVisibleCount] = useState(NOTICES_PER_PAGE);
@@ -57,10 +60,6 @@ export function NoticesPage() {
   const hasSearchKeyword = normalizedSearchKeyword.length > 0;
   const visibleNotices = filteredNotices.slice(0, visibleCount);
   const hasMoreNotices = visibleCount < filteredNotices.length;
-
-  useEffect(() => {
-    setVisibleCount(NOTICES_PER_PAGE);
-  }, [normalizedSearchKeyword]);
 
   return (
     <>
@@ -117,9 +116,10 @@ export function NoticesPage() {
                 </span>
                 <input
                   aria-label="공지 검색"
-                  onChange={(event) =>
-                    setSearchKeyword(event.target.value)
-                  }
+                  onChange={(event) => {
+                    setSearchKeyword(event.target.value);
+                    setVisibleCount(NOTICES_PER_PAGE);
+                  }}
                   placeholder="공지 검색"
                   type="search"
                   value={searchKeyword}
@@ -128,7 +128,10 @@ export function NoticesPage() {
                   <button
                     aria-label="검색어 지우기"
                     className={styles.clearSearch}
-                    onClick={() => setSearchKeyword('')}
+                    onClick={() => {
+                      setSearchKeyword('');
+                      setVisibleCount(NOTICES_PER_PAGE);
+                    }}
                     type="button"
                   >
                     <X aria-hidden="true" size={15} />

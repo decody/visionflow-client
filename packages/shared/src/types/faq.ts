@@ -18,6 +18,6 @@ interface IFaq extends IFaqContent {
 }
 
 // FAQ 생성/수정 요청에 사용되는 인터페이스
-interface ICreateFaqRequest extends IFaqContent {}
+type ICreateFaqRequest = IFaqContent;
 
 export type { ICreateFaqRequest, IFaq };

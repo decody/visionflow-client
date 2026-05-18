@@ -12,7 +12,7 @@ const tabs = [
   { label: '빠른 문의', active: false, href: '#quick-form' },
 ] as const;
 
-const categories = [
+const _categories = [
   { label: '전체', count: 124, active: true },
   { label: '서비스 일반', active: false },
   { label: '가격', active: false },
@@ -36,7 +36,7 @@ interface Post {
   locked?: boolean;
 }
 
-const posts: Post[] = [
+const _posts: Post[] = [
   {
     no: 0,
     title: '커뮤니티 이용 가이드라인 업데이트 안내',
@@ -123,19 +123,19 @@ const posts: Post[] = [
   },
 ];
 
-const statusLabel: Record<PostStatus, string> = {
+const _statusLabel: Record<PostStatus, string> = {
   pending: '답변대기',
   inProgress: '진행중',
   done: '답변완료',
 };
 
-const statusClass: Record<PostStatus, string> = {
+const _statusClass: Record<PostStatus, string> = {
   pending: 'statusPending',
   inProgress: 'statusInProgress',
   done: 'statusDone',
 };
 
-const pageNumbers = [1, 2, 3, 4, 5];
+const _pageNumbers = [1, 2, 3, 4, 5];
 
 export function ContactGeneralPage() {
   return (
