@@ -2,6 +2,7 @@
 
 import { ROUTES } from '@visionflow/routes';
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Container } from '@/components/common/container';
@@ -22,6 +23,36 @@ interface FeaturedCase {
   client: string;
   metric: string;
   size: 'large' | 'small';
+  image?: ProjectImage;
+}
+
+interface ProjectImage {
+  src?: string;
+  theme?: string;
+}
+
+type ProjectImageStyle = CSSProperties & {
+  '--project-image-theme': string;
+};
+
+const projectImageThemes = [
+  'linear-gradient(135deg, #e8f4ff 0%, #bfe5ff 45%, #f8fbff 100%)',
+  'linear-gradient(135deg, #edf7f2 0%, #bfe3cf 48%, #fff7df 100%)',
+  'linear-gradient(135deg, #f4efff 0%, #d7c7ff 46%, #edf7ff 100%)',
+  'linear-gradient(135deg, #fff1eb 0%, #ffc9b8 48%, #eef6ff 100%)',
+  'linear-gradient(135deg, #fff8e5 0%, #f3d28a 48%, #eef7ff 100%)',
+  'linear-gradient(135deg, #e8fbf8 0%, #8ed8d0 50%, #f7f5ff 100%)',
+  'linear-gradient(135deg, #eef1ff 0%, #aebeff 52%, #fff7ed 100%)',
+  'linear-gradient(135deg, #f3f6f8 0%, #c9d4df 50%, #eaf7f2 100%)',
+];
+
+function getProjectImageTheme(seed: string) {
+  const index = Array.from(seed).reduce(
+    (sum, char) => sum + char.charCodeAt(0),
+    0,
+  );
+
+  return projectImageThemes[index % projectImageThemes.length]!;
 }
 
 const featuredCases: FeaturedCase[] = [
@@ -86,6 +117,7 @@ interface CaseItem {
   roles: string[];
   title: string;
   size: 'tall' | 'short';
+  image?: ProjectImage;
 }
 
 const allCases: CaseItem[] = [
@@ -264,6 +296,42 @@ const getStatRollItems = (stat: (typeof stats)[number]) => {
   ];
 };
 
+function ProjectImageVisual({
+  category,
+  image,
+  title,
+}: {
+  category: string;
+  image?: ProjectImage;
+  title: string;
+}) {
+  const imageTheme =
+    image?.theme ?? getProjectImageTheme(`${category}-${title}`);
+
+  if (image?.src) {
+    return (
+      <img
+        alt={title.replace(/\n/g, ' ')}
+        className={styles.projectImage}
+        src={image.src}
+      />
+    );
+  }
+
+  return (
+    <div
+      aria-hidden="true"
+      className={styles.dummyImage}
+      style={{ '--project-image-theme': imageTheme } as ProjectImageStyle}
+    >
+      <span className={styles.dummyPanel} />
+      <span className={styles.dummyPanelAlt} />
+      <span className={styles.dummyAccent} />
+      <span className={styles.imagePlaceholder}>{category}</span>
+    </div>
+  );
+}
+
 function FeaturedCard({
   data,
   size,
@@ -279,11 +347,13 @@ function FeaturedCard({
       <div
         className={`${styles.featuredImage} ${isLarge ? styles.featuredImageLarge : ''}`}
       >
+        <ProjectImageVisual
+          category={data.category}
+          image={data.image}
+          title={data.title}
+        />
         <span className={styles.featuredBadge}>
           <span aria-hidden="true">★</span> Featured
-        </span>
-        <span aria-hidden="true" className={styles.imagePlaceholder}>
-          {data.category}
         </span>
       </div>
       <div className={styles.featuredBody}>
@@ -320,9 +390,11 @@ function CaseCard({ data }: { data: CaseItem }) {
       className={`${styles.caseCard} ${data.size === 'tall' ? styles.caseCardTall : ''}`}
     >
       <div className={styles.caseImage}>
-        <span aria-hidden="true" className={styles.imagePlaceholder}>
-          {data.category}
-        </span>
+        <ProjectImageVisual
+          category={data.category}
+          image={data.image}
+          title={data.title}
+        />
       </div>
       <div className={styles.caseBody}>
         <div className={styles.caseMeta}>
