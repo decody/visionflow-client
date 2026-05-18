@@ -54,10 +54,43 @@ type ProjectImageStyle = CSSProperties & {
 type FilterLabel = '분야' | '산업' | '역할';
 type Filters = Record<FilterLabel, string>;
 
+const filterAliases: Record<string, string[]> = {
+  React: ['React.js', 'Next.js', 'Next', 'shadcn'],
+  Vue: [
+    'Vue.js',
+    'Vue2',
+    'Vue3',
+    'Vue 2',
+    'Vue 3',
+    'Nuxt',
+    'Vuetify',
+  ],
+  'UI/UX': ['UI', 'UX', 'UIUX', '화면 설계', '사용자 경험'],
+  스크립트: ['JavaScript', 'TypeScript', 'JS', 'TS'],
+  퍼블리싱: ['HTML', 'CSS', 'SCSS', '마크업'],
+  '프론트엔드 개발': [
+    'Frontend',
+    'Front-end',
+    '프런트엔드 개발',
+    '프론트 엔드 개발',
+    '프런트 엔드 개발',
+    'API 연동 개발',
+    'API 개발',
+    '개발',
+  ],
+};
+
 const filterGroups: { label: FilterLabel; options: string[] }[] = [
   {
     label: '분야',
-    options: [ALL_FILTER, 'React', 'Vue', '퍼블리싱', '운영', '접근성'],
+    options: [
+      ALL_FILTER,
+      'React',
+      'Vue',
+      '퍼블리싱',
+      '운영',
+      '접근성',
+    ],
   },
   {
     label: '산업',
@@ -162,6 +195,35 @@ const mapWorkToCaseItem = (work: WorkRow): CaseItem => ({
   size: work.size,
   image: work.image ? { src: work.image } : undefined,
 });
+
+const normalizeFilterText = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/프런트/g, '프론트')
+    .replace(/[\s._/-]+/g, '');
+
+const getFilterSearchTerms = (filter: string) =>
+  [filter, ...(filterAliases[filter] ?? [])]
+    .map(normalizeFilterText)
+    .filter(Boolean);
+
+const matchesFilterText = (values: string[], filter: string) => {
+  if (filter === ALL_FILTER) {
+    return true;
+  }
+
+  const searchTerms = getFilterSearchTerms(filter);
+  const normalizedValues = values
+    .map(normalizeFilterText)
+    .filter(Boolean);
+
+  return normalizedValues.some((value) =>
+    searchTerms.some(
+      (searchTerm) =>
+        value.includes(searchTerm) || searchTerm.includes(value),
+    ),
+  );
+};
 
 const easeOutQuint = (progress: number) =>
   1 - Math.pow(1 - progress, 5);
@@ -405,14 +467,18 @@ export function WorkPage() {
   const filteredCases = useMemo(
     () =>
       workCases.filter((item) => {
-        const matchesField =
-          filters.분야 === ALL_FILTER ||
-          item.category === filters.분야 ||
-          item.roles.includes(filters.분야);
-        const matchesIndustry =
-          filters.산업 === ALL_FILTER || item.industry === filters.산업;
-        const matchesRole =
-          filters.역할 === ALL_FILTER || item.roles.includes(filters.역할);
+        const matchesField = matchesFilterText(
+          [item.category, ...item.roles],
+          filters.분야,
+        );
+        const matchesIndustry = matchesFilterText(
+          [item.industry],
+          filters.산업,
+        );
+        const matchesRole = matchesFilterText(
+          item.roles,
+          filters.역할,
+        );
 
         return matchesField && matchesIndustry && matchesRole;
       }),
@@ -538,8 +604,8 @@ export function WorkPage() {
               금융, 공공, 통신, 커머스, 교육 도메인에서 화면 구현부터
               운영 개선까지 수행한 이력입니다.
               <br />
-              React, Vue, Next.js, WebSquare, 레거시 HTML 환경을 넘나들며
-              UI 완성도와 구현 안정성을 맞춰왔습니다.
+              React, Vue, Next.js, WebSquare, 레거시 HTML 환경을
+              넘나들며 UI 완성도와 구현 안정성을 맞춰왔습니다.
             </p>
             <ul className={styles.heroStats}>
               {heroStats.map((stat) => (
@@ -558,8 +624,8 @@ export function WorkPage() {
             <span className={styles.eyebrow}>Featured</span>
             <h2 className={styles.sectionTitle}>대표 프로젝트</h2>
             <p className={styles.sectionSub}>
-              등록된 작업 이력 중 화면 구현 역량과 협업 경험이 잘 드러나는
-              프로젝트를 먼저 보여드립니다.
+              등록된 작업 이력 중 화면 구현 역량과 협업 경험이 잘
+              드러나는 프로젝트를 먼저 보여드립니다.
             </p>
           </header>
 
@@ -570,14 +636,19 @@ export function WorkPage() {
               </div>
               <div className={styles.featuredColSmall}>
                 {featuredSmall.map((caseItem) => (
-                  <FeaturedCard data={caseItem} key={caseItem.title} />
+                  <FeaturedCard
+                    data={caseItem}
+                    key={caseItem.title}
+                  />
                 ))}
               </div>
             </div>
           ) : (
             <div className={styles.emptyState}>
               <strong>등록된 프로젝트가 없습니다.</strong>
-              <span>관리자에서 작업 이력을 추가하면 이 영역에 표시됩니다.</span>
+              <span>
+                관리자에서 작업 이력을 추가하면 이 영역에 표시됩니다.
+              </span>
             </div>
           )}
         </Container>
@@ -588,7 +659,9 @@ export function WorkPage() {
           <div className={styles.filterRows}>
             {filterGroups.map((group) => (
               <div className={styles.filterRow} key={group.label}>
-                <span className={styles.filterLabel}>{group.label}</span>
+                <span className={styles.filterLabel}>
+                  {group.label}
+                </span>
                 <div className={styles.filterChips}>
                   {group.options.map((option) => (
                     <button
@@ -606,7 +679,8 @@ export function WorkPage() {
                 </div>
                 {group.label === '역할' ? (
                   <span className={styles.filterTotal}>
-                    총 <strong>{filteredCases.length}개</strong> 주요 이력
+                    총 <strong>{filteredCases.length}개</strong> 주요
+                    이력
                   </span>
                 ) : null}
               </div>
@@ -676,7 +750,9 @@ export function WorkPage() {
                       {stat.value}
                     </span>
                   </span>
-                  <span className={styles.statLabel}>{stat.label}</span>
+                  <span className={styles.statLabel}>
+                    {stat.label}
+                  </span>
                 </li>
               );
             })}
@@ -694,8 +770,8 @@ export function WorkPage() {
                 프론트엔드 실행력
               </h2>
               <p className={styles.ctaSub}>
-                신규 구현, 운영 개선, 레거시 전환, 접근성 대응까지 필요한
-                단계에 맞춰 화면을 설계하고 구현합니다.
+                신규 구현, 운영 개선, 레거시 전환, 접근성 대응까지
+                필요한 단계에 맞춰 화면을 설계하고 구현합니다.
               </p>
             </div>
             <Link className={styles.ctaButton} href={ROUTES.CONTACT}>
