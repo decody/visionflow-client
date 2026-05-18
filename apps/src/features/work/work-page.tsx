@@ -17,8 +17,7 @@ const DEFAULT_CATEGORY = 'Frontend';
 const DEFAULT_INDUSTRY = '기타';
 const DEFAULT_ROLE = '프론트엔드 개발';
 
-const heroStats = [
-  { label: '17+ 프로젝트 이력' },
+const staticHeroStats = [
   { label: '금융 · 통신 · 커머스 경험' },
   { label: 'React · Vue 중심 개발' },
   { label: 'UI/UX · 퍼블리싱 · 운영' },
@@ -84,9 +83,12 @@ const filterGroups: { label: FilterLabel; options: string[] }[] = [
   },
 ];
 
-const stats = [
-  { value: '17+', label: '프로젝트 이력' },
-  { value: '7+', label: '산업 도메인' },
+type WorkStat = {
+  value: string;
+  label: string;
+};
+
+const staticStats: WorkStat[] = [
   { value: 'React/Vue', label: '주요 프레임워크' },
   { value: 'UI/UX', label: '핵심 역량' },
 ];
@@ -164,43 +166,36 @@ const mapWorkToCaseItem = (work: WorkRow): CaseItem => ({
 const easeOutQuint = (progress: number) =>
   1 - Math.pow(1 - progress, 5);
 
-const getStatRollItems = (stat: (typeof stats)[number]) => {
+const createCountLabel = (count: number) => `${count}+`;
+
+const createCountRollItems = (value: string) => {
+  const finalCount = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(finalCount)) {
+    return ['0+', value];
+  }
+
+  const first = Math.max(Math.floor(finalCount * 0.25), 1);
+  const second = Math.max(Math.floor(finalCount * 0.7), first + 1);
+  const overshoot = finalCount + 1;
+
+  return [
+    '0+',
+    `${first}+`,
+    `${second}+`,
+    `${Math.max(finalCount - 1, 0)}+`,
+    `${overshoot}+`,
+    value,
+  ];
+};
+
+const getStatRollItems = (stat: WorkStat) => {
   if (stat.label === '프로젝트 이력') {
-    return [
-      '0+',
-      '4+',
-      '12+',
-      '6+',
-      '15+',
-      '9+',
-      '3+',
-      '16+',
-      '7+',
-      '14+',
-      '11+',
-      '5+',
-      '18+',
-      stat.value,
-    ];
+    return createCountRollItems(stat.value);
   }
 
   if (stat.label === '산업 도메인') {
-    return [
-      '0+',
-      '3+',
-      '6+',
-      '1+',
-      '5+',
-      '8+',
-      '2+',
-      '4+',
-      '9+',
-      '6+',
-      '3+',
-      '8+',
-      '5+',
-      stat.value,
-    ];
+    return createCountRollItems(stat.value);
   }
 
   if (stat.label === '주요 프레임워크') {
@@ -363,6 +358,34 @@ export function WorkPage() {
     INITIAL_VISIBLE_CASES,
   );
   const [statsAnimated, setStatsAnimated] = useState(false);
+
+  const projectHistoryCount = worksData.length;
+  const industryDomainCount = useMemo(
+    () =>
+      new Set(
+        worksData
+          .map((work) => getWorkIndustry(work))
+          .filter((industry) => industry !== DEFAULT_INDUSTRY),
+      ).size,
+    [worksData],
+  );
+  const projectHistoryValue = createCountLabel(projectHistoryCount);
+  const industryDomainValue = createCountLabel(industryDomainCount);
+  const heroStats = useMemo(
+    () => [
+      { label: `${projectHistoryValue} 프로젝트 이력` },
+      ...staticHeroStats,
+    ],
+    [projectHistoryValue],
+  );
+  const stats = useMemo<WorkStat[]>(
+    () => [
+      { value: projectHistoryValue, label: '프로젝트 이력' },
+      { value: industryDomainValue, label: '산업 도메인' },
+      ...staticStats,
+    ],
+    [industryDomainValue, projectHistoryValue],
+  );
 
   const workCases = useMemo(
     () => worksData.map((work) => mapWorkToCaseItem(work)),
