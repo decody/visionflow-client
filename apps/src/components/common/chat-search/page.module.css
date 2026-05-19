@@ -98,46 +98,12 @@
   background: rgba(255, 255, 255, 0.18);
 }
 
-.providerTabs {
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 6px;
-  padding: 10px 12px;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.providerTab {
-  min-width: 0;
-  height: 34px;
-  color: var(--color-muted);
-  font: inherit;
-  font-size: 13px;
-  font-weight: var(--fw-semibold);
-  background: var(--color-surface-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.providerTab:hover,
-.providerTab:focus-visible,
-.providerTabActive {
-  color: var(--color-primary);
-  background: var(--color-primary-softer);
-  border-color: var(--color-primary-soft);
-}
-
 .messages {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 260px;
-  max-height: min(430px, calc(100vh - 245px));
+  min-height: 300px;
+  max-height: min(500px, calc(100vh - 190px));
   padding: 16px;
   overflow-y: auto;
   background:
@@ -217,6 +183,101 @@
   background: #fff1f2;
   border-color: #fecdd3;
   opacity: 1;
+}
+
+.actions {
+  display: flex;
+  max-width: 96%;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.actionChip {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 10px;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-normal);
+  text-align: left;
+  background: var(--color-bg);
+  border: 1px solid var(--color-primary-soft);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.actionChip:hover,
+.actionChip:focus-visible {
+  color: var(--color-primary-dark);
+  background: var(--color-primary-softer);
+  border-color: var(--color-primary-light);
+  transform: translateY(-1px);
+}
+
+.actionChip span {
+  overflow-wrap: anywhere;
+}
+
+.recommendationCard {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  width: min(100%, 340px);
+  padding: 13px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 14px 34px rgba(17, 24, 39, 0.08);
+}
+
+.recommendationIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--color-primary);
+  background: var(--color-primary-softer);
+  border-radius: var(--radius-md);
+}
+
+.recommendationCard strong {
+  display: block;
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-snug);
+}
+
+.recommendationCard p {
+  margin: 5px 0 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: var(--lh-relaxed);
+}
+
+.recommendationCard ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 16px;
+}
+
+.recommendationCard li {
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: var(--lh-normal);
 }
 
 .sources {
@@ -383,7 +444,20 @@
 
   .messages {
     min-height: 240px;
-    max-height: calc(100vh - 230px);
+    max-height: calc(100vh - 188px);
+  }
+
+  .actions,
+  .sources {
+    max-width: 100%;
+  }
+
+  .actionChip {
+    flex: 1 1 145px;
+  }
+
+  .recommendationCard {
+    width: 100%;
   }
 
   .trigger {
