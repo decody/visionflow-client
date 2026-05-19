@@ -1,5 +1,6 @@
 'use client';
 
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { ROUTES } from '@visionflow/routes';
 import type {
   AiProvider,
@@ -9,7 +10,6 @@ import type {
 } from '@visionflow/shared';
 import {
   Compass,
-  MessageCircle,
   RotateCcw,
   Send,
   Sparkles,
@@ -17,7 +17,9 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import type { Group, Mesh, MeshBasicMaterial } from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import styles from './page.module.css';
 
@@ -56,6 +58,14 @@ type RecommendationQuestion = {
   id: string;
   options: PlanOption[];
   text: string;
+};
+
+type ChatbotRobotModelProps = {
+  floating?: boolean;
+  positionY?: number;
+  rotationY?: number;
+  scale?: number;
+  tiltZ?: number;
 };
 
 const PROVIDER: AiProvider = 'gemini';
@@ -131,13 +141,27 @@ const RECOMMENDATION_QUESTIONS: RecommendationQuestion[] = [
       {
         id: 'show-product',
         label: '제품을 입체적으로 보여주고 싶어요',
-        keywords: ['3d', '입체', '제품', '공간', 'ar', '컨피규레이터'],
+        keywords: [
+          '3d',
+          '입체',
+          '제품',
+          '공간',
+          'ar',
+          '컨피규레이터',
+        ],
         scores: { web3d: 4 },
       },
       {
         id: 'make-visuals',
         label: '광고 이미지를 빠르게 만들고 싶어요',
-        keywords: ['광고', '이미지', '상세페이지', '컷', '비주얼', '캠페인'],
+        keywords: [
+          '광고',
+          '이미지',
+          '상세페이지',
+          '컷',
+          '비주얼',
+          '캠페인',
+        ],
         scores: { adVisuals: 4 },
       },
       {
@@ -149,7 +173,14 @@ const RECOMMENDATION_QUESTIONS: RecommendationQuestion[] = [
       {
         id: 'see-data',
         label: '데이터를 보고 의사결정하고 싶어요',
-        keywords: ['데이터', '대시보드', '지표', '매출', '분석', '운영'],
+        keywords: [
+          '데이터',
+          '대시보드',
+          '지표',
+          '매출',
+          '분석',
+          '운영',
+        ],
         scores: { dashboard: 4 },
       },
     ],
@@ -341,7 +372,9 @@ function isResetIntent(value: string) {
   ]);
 }
 
-function createQuestionMessage(question: RecommendationQuestion): ChatMessage {
+function createQuestionMessage(
+  question: RecommendationQuestion,
+): ChatMessage {
   return {
     role: 'ai',
     text: question.text,
@@ -352,7 +385,10 @@ function createQuestionMessage(question: RecommendationQuestion): ChatMessage {
   };
 }
 
-function findBestOption(question: RecommendationQuestion, input: string) {
+function findBestOption(
+  question: RecommendationQuestion,
+  input: string,
+) {
   const normalized = normalizeText(input);
 
   return (
@@ -395,7 +431,116 @@ function getRecommendationResult(answers: PlanOption[]) {
 }
 
 function getRecommendationQuestion(index: number) {
-  return RECOMMENDATION_QUESTIONS[index] ?? RECOMMENDATION_QUESTIONS[0]!;
+  return (
+    RECOMMENDATION_QUESTIONS[index] ?? RECOMMENDATION_QUESTIONS[0]!
+  );
+}
+
+function ChatbotRobotModel({
+  floating = true,
+  positionY = -0.55,
+  rotationY = -0.28,
+  scale = 1.45,
+  tiltZ = 0,
+}: ChatbotRobotModelProps) {
+  const groupRef = useRef<Group>(null);
+  const leftEyelidRef = useRef<Mesh>(null);
+  const rightEyelidRef = useRef<Mesh>(null);
+  const reducedMotionRef = useRef(false);
+  const gltf = useLoader(GLTFLoader, '/models/chatbot_robot.glb');
+  const targetYRef = useRef(positionY);
+  const nextTargetAtRef = useRef(0);
+
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateReducedMotion = () => {
+      reducedMotionRef.current = query.matches;
+    };
+
+    updateReducedMotion();
+    query.addEventListener('change', updateReducedMotion);
+    return () => query.removeEventListener('change', updateReducedMotion);
+  }, []);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+
+    const phase = (clock.elapsedTime + (floating ? 0.15 : 0.72)) % 4.2;
+    const closing =
+      !reducedMotionRef.current && phase >= 0.32 && phase <= 0.43;
+    const blinkScale = closing ? 1 : 0.12;
+    const blinkOpacity = closing ? 1 : 0;
+
+    [leftEyelidRef.current, rightEyelidRef.current].forEach((eyelid) => {
+      if (!eyelid) return;
+
+      eyelid.scale.y += (blinkScale - eyelid.scale.y) * 0.55;
+      (eyelid.material as MeshBasicMaterial).opacity = blinkOpacity;
+    });
+
+    if (!floating) {
+      groupRef.current.rotation.y =
+        rotationY + Math.sin(clock.elapsedTime * 0.9) * 0.04;
+      groupRef.current.rotation.z =
+        tiltZ + Math.sin(clock.elapsedTime * 0.8) * 0.025;
+      groupRef.current.position.y =
+        positionY + Math.sin(clock.elapsedTime * 1.1) * 0.025;
+      return;
+    }
+
+    if (clock.elapsedTime >= nextTargetAtRef.current) {
+      targetYRef.current = positionY - 0.2 + Math.random() * 0.45;
+      nextTargetAtRef.current =
+        clock.elapsedTime + 0.9 + Math.random() * 1.2;
+    }
+
+    groupRef.current.rotation.y =
+      rotationY + Math.sin(clock.elapsedTime * 0.85) * 0.18;
+    groupRef.current.rotation.z = tiltZ;
+    groupRef.current.position.y +=
+      (targetYRef.current - groupRef.current.position.y) * 0.035;
+  });
+
+  return (
+    <group
+      ref={groupRef}
+      scale={scale}
+      position={[0, positionY, 0]}
+      rotation={[0, rotationY, tiltZ]}
+    >
+      <primitive object={gltf.scene} />
+      <mesh
+        ref={leftEyelidRef}
+        position={[-0.088, 0.607, 0.266]}
+        rotation={[0, 0, -0.05]}
+        renderOrder={2}
+      >
+        <planeGeometry args={[0.078, 0.026]} />
+        <meshBasicMaterial
+          color="#101827"
+          transparent
+          opacity={0}
+          depthTest={false}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh
+        ref={rightEyelidRef}
+        position={[0.088, 0.607, 0.266]}
+        rotation={[0, 0, 0.05]}
+        renderOrder={2}
+      >
+        <planeGeometry args={[0.078, 0.026]} />
+        <meshBasicMaterial
+          color="#101827"
+          transparent
+          opacity={0}
+          depthTest={false}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  );
 }
 
 export default function ChatSearch() {
@@ -412,6 +557,7 @@ export default function ChatSearch() {
   >([]);
   const bodyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -421,6 +567,68 @@ export default function ChatSearch() {
       120,
     );
     return () => window.clearTimeout(timer);
+  }, [open]);
+
+  useEffect(() => {
+    if (open || !triggerRef.current) return;
+
+    let animationFrame = 0;
+    let nextTargetAt = 0;
+    // 이 변수들은 채팅 창의 트리거(버튼)가 화면의 어느 위치에 떠 있을지 초기 위치와 타겟 위치를 의미합니다.
+    let x = Math.max(window.innerWidth - 50, 24); // x: 화면 오른쪽 아래에 채팅 버튼 위치 (최소 24px 여유)
+    let y = Math.max(window.innerHeight - 50, 24); // y: 화면 아래쪽에 채팅 버튼 위치 (최소 24px 여유)
+    let targetX = x; // 움직일 목표 x좌표
+    let targetY = y; // 움직일 목표 y좌표
+
+    // 이 함수는 채팅 버튼이 움직일 수 있는(떠다닐 수 있는) 화면 영역의 최대, 최소 값을 계산합니다.
+    const getBounds = () => {
+      const margin = 116; // 여백 설정
+      const maxX = Math.max(window.innerWidth - 184, margin); // 버튼이 왼쪽 끝으로 이동하지 않도록 여백 확보
+      const maxY = Math.max(window.innerHeight - 184, margin); // 버튼이 위쪽 끝으로 이동하지 않도록 여백 확보
+
+      return { margin, maxX, maxY };
+    };
+
+    const pickTarget = () => {
+      const { margin, maxX, maxY } = getBounds();
+      // rangeX와 rangeY는 버튼이 이동할 수 있는 X, Y축 범위(px)를 제한합니다.
+      const rangeX = Math.min(105, maxX - margin); // 최대 105px 또는 허용 가능한 최대값 중 작은 값 사용
+      const rangeY = Math.min(70, maxY - margin); // 최대 70px 또는 허용 가능한 최대값 중 작은 값 사용
+
+      // centerX, centerY는 화면의 80% 위치를 기준점으로 삼아 버튼의 기본 이동 중심을 설정합니다.
+      const centerX = window.innerWidth * 0.85;
+      const centerY = window.innerHeight * 0.85;
+
+      targetX = Math.min(
+        maxX,
+        Math.max(margin, centerX + (Math.random() - 0.5) * rangeX),
+      );
+      targetY = Math.min(
+        maxY,
+        Math.max(margin, centerY + (Math.random() - 0.5) * rangeY),
+      );
+      nextTargetAt = performance.now() + 4200 + Math.random() * 3200;
+    };
+
+    const animate = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+
+      const now = performance.now();
+      if (now >= nextTargetAt) {
+        pickTarget();
+      }
+
+      x += (targetX - x) * 0.0045;
+      y += (targetY - y) * 0.0045;
+      trigger.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      animationFrame = window.requestAnimationFrame(animate);
+    };
+
+    pickTarget();
+    animate();
+
+    return () => window.cancelAnimationFrame(animationFrame);
   }, [open]);
 
   useEffect(() => {
@@ -453,13 +661,18 @@ export default function ChatSearch() {
     setRecommendationAnswers([]);
     setMessages((prev) => [
       ...prev,
-      ...(userText ? [{ role: 'user' as const, text: userText }] : []),
+      ...(userText
+        ? [{ role: 'user' as const, text: userText }]
+        : []),
       {
         role: 'ai',
         text: 'VisionFlow는 웹 3D, AI 광고 이미지, 웹/앱 구축, 데이터 대시보드를 한 흐름으로 설계해 브랜드의 디지털 경험을 더 잘 팔리고 더 잘 운영되게 만드는 제작 파트너입니다.',
         sources: ONBOARDING_SOURCES,
         actions: [
-          { label: '맞는 플랜도 찾아보기', value: 'start-recommendation' },
+          {
+            label: '맞는 플랜도 찾아보기',
+            value: 'start-recommendation',
+          },
           { label: '처음으로', value: 'reset' },
         ],
       },
@@ -472,7 +685,9 @@ export default function ChatSearch() {
     setRecommendationAnswers([]);
     setMessages((prev) => [
       ...prev,
-      ...(userText ? [{ role: 'user' as const, text: userText }] : []),
+      ...(userText
+        ? [{ role: 'user' as const, text: userText }]
+        : []),
       {
         role: 'ai',
         text: '좋아요. 정식 견적 전 단계로, 지금 상황에 가장 가까운 서비스 라인을 먼저 좁혀볼게요.',
@@ -651,7 +866,9 @@ export default function ChatSearch() {
           </div>
           <div className={styles.headerText}>
             <strong>VisionFlow AI 가이드</strong>
-            <span>사이트 안내부터 맞춤 서비스 추천까지 도와드려요.</span>
+            <span>
+              사이트 안내부터 맞춤 서비스 추천까지 도와드려요.
+            </span>
           </div>
           <button
             type="button"
@@ -703,9 +920,11 @@ export default function ChatSearch() {
                     <strong>{message.recommendation.title}</strong>
                     <p>{message.recommendation.summary}</p>
                     <ul>
-                      {message.recommendation.reasons.map((reason) => (
-                        <li key={reason}>{reason}</li>
-                      ))}
+                      {message.recommendation.reasons.map(
+                        (reason) => (
+                          <li key={reason}>{reason}</li>
+                        ),
+                      )}
                     </ul>
                   </div>
                 </article>
@@ -784,14 +1003,49 @@ export default function ChatSearch() {
         </form>
       </section>
 
+      {open ? (
+        <div className={styles.peekRobot} aria-hidden="true">
+          <Canvas camera={{ position: [0, 0.35, 5.2], fov: 40 }}>
+            <ambientLight intensity={1.6} />
+            <directionalLight
+              position={[2.5, 3, 4]}
+              intensity={2.4}
+            />
+            <Suspense fallback={null}>
+              <ChatbotRobotModel
+                floating={false}
+                positionY={-0.28}
+                rotationY={-0.65}
+                scale={1.24}
+                tiltZ={0.7}
+              />
+            </Suspense>
+          </Canvas>
+        </div>
+      ) : null}
+
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className={styles.trigger}
+        className={`${styles.trigger} ${open ? styles.triggerOpen : ''}`}
         aria-label={open ? 'AI 가이드 닫기' : 'AI 가이드 열기'}
         aria-expanded={open}
       >
-        {open ? <X size={22} /> : <MessageCircle size={23} />}
+        {!open ? (
+          <span className={styles.robotCanvas} aria-hidden="true">
+            <Canvas camera={{ position: [0, 0.1, 5], fov: 38 }}>
+              <ambientLight intensity={1.6} />
+              <directionalLight
+                position={[2.5, 3, 4]}
+                intensity={2.4}
+              />
+              <Suspense fallback={null}>
+                <ChatbotRobotModel />
+              </Suspense>
+            </Canvas>
+          </span>
+        ) : null}
       </button>
     </aside>
   );

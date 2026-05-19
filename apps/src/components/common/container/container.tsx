@@ -1,12 +1,12 @@
-import type { ElementType, ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 
 import styles from './container.module.css';
 
 interface ContainerProps {
-  as?: ElementType;
+  as?: keyof React.JSX.IntrinsicElements;
   children: ReactNode;
 }
 
 export function Container({ as: Tag = 'div', children }: ContainerProps) {
-  return <Tag className={styles.container}>{children}</Tag>;
+  return createElement(Tag, { className: styles.container }, children);
 }
