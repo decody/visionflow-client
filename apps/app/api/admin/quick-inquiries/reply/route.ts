@@ -1,7 +1,7 @@
-import { auth } from '../../../../../auth';
 import type { IQuickInquiry } from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { auth } from '../../../../../auth';
 
 type ReplyPayload = {
   inquiryId?: string;
@@ -32,11 +32,16 @@ const escapeHtml = (value: string) =>
 const toHtml = (value: string) =>
   escapeHtml(value)
     .split(/\n{2,}/)
-    .map((paragraph) => `<p>${paragraph.replaceAll('\n', '<br>')}</p>`)
+    .map(
+      (paragraph) => `<p>${paragraph.replaceAll('\n', '<br>')}</p>`,
+    )
     .join('');
 
-const jsonError = (message: string, status: number, details?: unknown) =>
-  NextResponse.json({ details, message }, { status });
+const jsonError = (
+  message: string,
+  status: number,
+  details?: unknown,
+) => NextResponse.json({ details, message }, { status });
 
 const parseProviderError = async (response: Response) => {
   const text = await response.text();
@@ -89,22 +94,25 @@ export async function POST(request: NextRequest) {
     const resendApiKey = getRequiredEnv('RESEND_API_KEY');
     const from =
       process.env.RESEND_FROM_EMAIL ??
-      'VisionFlow Admin <support@visionflow.kr>';
+      'VisionFlow Admin <onboarding@resend.dev>';
 
-    const emailResponse = await fetch('https://api.resend.com/emails', {
-      body: JSON.stringify({
-        from,
-        html: toHtml(replyContent),
-        subject,
-        text: replyContent,
-        to,
-      }),
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
+    const emailResponse = await fetch(
+      'https://api.resend.com/emails',
+      {
+        body: JSON.stringify({
+          from,
+          html: toHtml(replyContent),
+          subject,
+          text: replyContent,
+          to,
+        }),
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
       },
-      method: 'POST',
-    });
+    );
 
     if (!emailResponse.ok) {
       const detail = await parseProviderError(emailResponse);
@@ -130,9 +138,12 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseUrl = (
-      process.env.SUPABASE_URL ?? getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL')
+      process.env.SUPABASE_URL ??
+      getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL')
     ).replace(/\/+$/, '');
-    const serviceRoleKey = getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+    const serviceRoleKey = getRequiredEnv(
+      'SUPABASE_SERVICE_ROLE_KEY',
+    );
     const now = new Date().toISOString();
     const updateResponse = await fetch(
       `${supabaseUrl}/rest/v1/quick_inquiries?id=eq.${encodeURIComponent(

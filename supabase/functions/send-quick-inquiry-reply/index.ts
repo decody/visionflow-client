@@ -10,7 +10,8 @@ type ReplyPayload = {
 };
 
 const corsHeaders = {
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Origin': '*',
 };
@@ -46,7 +47,9 @@ const escapeHtml = (value: string) =>
 const toHtml = (value: string) =>
   escapeHtml(value)
     .split(/\n{2,}/)
-    .map((paragraph) => `<p>${paragraph.replaceAll('\n', '<br>')}</p>`)
+    .map(
+      (paragraph) => `<p>${paragraph.replaceAll('\n', '<br>')}</p>`,
+    )
     .join('');
 
 Deno.serve(async (request) => {
@@ -60,10 +63,14 @@ Deno.serve(async (request) => {
 
   try {
     const payload = (await request.json()) as ReplyPayload;
-    const inquiryId = (payload.inquiryId ?? payload.inquiry_id)?.trim();
+    const inquiryId = (
+      payload.inquiryId ?? payload.inquiry_id
+    )?.trim();
     const to = payload.to?.trim();
     const subject = payload.subject?.trim();
-    const replyContent = (payload.replyContent ?? payload.reply_content)?.trim();
+    const replyContent = (
+      payload.replyContent ?? payload.reply_content
+    )?.trim();
 
     if (!inquiryId || !to || !subject || !replyContent) {
       return json(
@@ -76,22 +83,27 @@ Deno.serve(async (request) => {
     }
 
     const resendApiKey = requiredEnv('RESEND_API_KEY');
-    const from = Deno.env.get('RESEND_FROM_EMAIL') ?? 'VisionFlow Admin <support@visionflow.kr>';
+    const from =
+      Deno.env.get('RESEND_FROM_EMAIL') ??
+      'VisionFlow Admin <onboarding@resend.dev>';
 
-    const emailResponse = await fetch('https://api.resend.com/emails', {
-      body: JSON.stringify({
-        from,
-        html: toHtml(replyContent),
-        subject,
-        text: replyContent,
-        to,
-      }),
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
+    const emailResponse = await fetch(
+      'https://api.resend.com/emails',
+      {
+        body: JSON.stringify({
+          from,
+          html: toHtml(replyContent),
+          subject,
+          text: replyContent,
+          to,
+        }),
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
       },
-      method: 'POST',
-    });
+    );
 
     if (!emailResponse.ok) {
       const detail = await emailResponse.text();
@@ -105,7 +117,10 @@ Deno.serve(async (request) => {
       );
     }
 
-    const supabaseUrl = requiredEnv('SUPABASE_URL').replace(/\/+$/, '');
+    const supabaseUrl = requiredEnv('SUPABASE_URL').replace(
+      /\/+$/,
+      '',
+    );
     const serviceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
     const now = new Date().toISOString();
     const updateResponse = await fetch(
