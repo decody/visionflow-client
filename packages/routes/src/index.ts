@@ -65,7 +65,9 @@ export const ROUTES = {
     WORK_PORTFOLIO: {
       ROOT: '/settings/work-portfolio',
       DETAIL: (id: string | number) => `/settings/work-portfolio/${id}`,
+      EDIT: (id: string | number) => `/settings/work-portfolio/${id}/edit`,
       CREATE: '/settings/work-portfolio/new',
+      WRITE: () => '/settings/work-portfolio/write',
     },
 
     // 사이드바 SYSTEM
