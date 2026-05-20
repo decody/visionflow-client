@@ -6,6 +6,7 @@ import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import {
+  Alert,
   Button,
   Card,
   Flex,
@@ -49,7 +50,12 @@ export function WorkPortfolioListPage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchText, setSearchText] = useState('');
   const deleteWorkMutation = useDeleteWorkMutation();
-  const { data: works = [], isLoading } = useWorkListQuery();
+  const {
+    data: works = [],
+    error: worksError,
+    isError: isWorksError,
+    isLoading,
+  } = useWorkListQuery();
   const role = useUserRoleStore((state) => state.role);
   const canManageWork = role === 'SuperAdmin' || role === 'Operator';
 
@@ -148,9 +154,11 @@ export function WorkPortfolioListPage() {
     () => [
       {
         cellRenderer: ({ data }: ICellRendererParams<WorkAdminRow>) => {
-          if (!data || !canManageWork) {
+          if (!data) {
             return null;
           }
+
+          const title = data.title || '(제목 없음)';
 
           return (
             <div className={styles.titleCell}>
@@ -158,7 +166,7 @@ export function WorkPortfolioListPage() {
                 className={styles.titleLink}
                 href={ROUTES.ADMIN.WORK_PORTFOLIO.DETAIL(data.id)}
               >
-                {data.title || '(제목 없음)'}
+                {title}
               </Link>
               <span className={styles.subText}>
                 {data.linkUrl || data.image || '연결 URL 없음'}
@@ -224,31 +232,35 @@ export function WorkPortfolioListPage() {
         maxWidth: 150,
         minWidth: 130,
       },
-      {
-        cellRenderer: ({ data }: ICellRendererParams<WorkAdminRow>) => {
-          if (!data) {
-            return null;
-          }
+      ...(canManageWork
+        ? [
+            {
+              cellRenderer: ({ data }: ICellRendererParams<WorkAdminRow>) => {
+                if (!data) {
+                  return null;
+                }
 
-          return (
-            <Button
-              danger
-              icon={<Trash2 size={14} />}
-              loading={deleteWorkMutation.isPending}
-              onClick={() => handleDeleteWork(data)}
-              size="small"
-              type="text"
-            >
-              삭제
-            </Button>
-          );
-        },
-        colId: 'actions',
-        headerName: '관리',
-        maxWidth: 100,
-        minWidth: 90,
-        sortable: false,
-      },
+                return (
+                  <Button
+                    danger
+                    icon={<Trash2 size={14} />}
+                    loading={deleteWorkMutation.isPending}
+                    onClick={() => handleDeleteWork(data)}
+                    size="small"
+                    type="text"
+                  >
+                    삭제
+                  </Button>
+                );
+              },
+              colId: 'actions',
+              headerName: '관리',
+              maxWidth: 100,
+              minWidth: 90,
+              sortable: false,
+            },
+          ]
+        : []),
     ],
     [canManageWork, deleteWorkMutation.isPending, handleDeleteWork],
   );
@@ -295,6 +307,23 @@ export function WorkPortfolioListPage() {
 
   if (isLoading) {
     return <Loading />;
+  }
+
+  if (isWorksError) {
+    return (
+      <section className={styles.page}>
+        <Alert
+          description={
+            worksError instanceof Error
+              ? worksError.message
+              : 'Supabase 연결 또는 권한 설정을 확인해 주세요.'
+          }
+          message="Work 데이터를 불러오지 못했습니다."
+          showIcon
+          type="error"
+        />
+      </section>
+    );
   }
 
   return (

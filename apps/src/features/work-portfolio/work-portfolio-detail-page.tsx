@@ -130,6 +130,7 @@ export function WorkPortfolioDetailPage({ id }: { id: string }) {
   return (
     <section className={styles.page}>
       {contextHolder}
+      {canManageWork ? null : <Form component={false} form={form} />}
       <Flex align="flex-start" justify="space-between" gap={16} wrap>
         <div>
           <Link className={styles.backLink} href={ROUTES.ADMIN.WORK_PORTFOLIO.ROOT}>
