@@ -85,8 +85,19 @@ export function LoginFormPage() {
             <NaverIcon />
             <span>네이버로 계속하기</span>
           </button>
+          <button
+            className={styles.ssoButton}
+            type="button"
+            onClick={() =>
+              void signIn('kakao', { callbackUrl: '/settings' })
+            }
+          >
+            <KakaoIcon />
+            <span>카카오로 계속하기</span>
+          </button>
           <p className={styles.ssoHint}>
-            Google Workspace 또는 네이버 계정으로 로그인할 수 있습니다
+            Google Workspace, 네이버 또는 카카오 계정으로 로그인할 수
+            있습니다
           </p>
         </section>
 
@@ -242,6 +253,26 @@ function NaverIcon() {
       <path
         d="M5.693 5.661h2.394l2.425 3.724V5.661h2.395v8.678h-2.395l-2.425-3.723v3.723H5.693V5.661z"
         fill="#fff"
+      />
+    </svg>
+  );
+}
+
+function KakaoIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className={styles.googleIcon}
+      height={20}
+      viewBox="0 0 20 20"
+      width={20}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect fill="#FEE500" height={20} rx={4} width={20} />
+      <path
+        d="M10 5.2c-3.314 0-6 2.088-6 4.664 0 1.665 1.122 3.124 2.809 3.949l-.575 2.102a.215.215 0 0 0 .33.235l2.52-1.673c.3.034.606.052.916.052 3.314 0 6-2.088 6-4.665C16 7.288 13.314 5.2 10 5.2z"
+        fill="#000"
+        opacity="0.84"
       />
     </svg>
   );
