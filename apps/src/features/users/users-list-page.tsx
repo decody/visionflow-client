@@ -1,243 +1,172 @@
 'use client';
 
 import { ROUTES } from '@visionflow/routes';
+import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 import {
-  Activity,
-  AlertTriangle,
-  Briefcase,
-  ChevronDown,
+  AllCommunityModule,
+  ModuleRegistry,
+} from 'ag-grid-community';
+import { AgGridReact } from 'ag-grid-react';
+import {
+  Avatar,
+  Button,
+  Card,
+  Flex,
+  Input,
+  Select,
+  Statistic,
+  Tabs,
+  Tag,
+  Tooltip,
+} from 'antd';
+import {
+  Clock3,
   Download,
-  Eye,
-  Globe,
+  Mail,
   MoreHorizontal,
   Plus,
-  RefreshCcw,
   Search,
-  Shield,
   ShieldCheck,
-  Sparkles,
-  User as UserIcon,
-  Users as UsersIcon,
+  UserCheck,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useMemo, useState } from 'react';
 
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './users-list-page.module.css';
 
-type RoleKey = 'super_admin' | 'sales' | 'operator' | 'viewer';
-type StatusKey = 'active' | 'inactive' | 'pending';
-type TwoFactor = 'totp' | 'off' | 'none';
+ModuleRegistry.registerModules([AllCommunityModule]);
 
-const ROLE_LABEL: Record<RoleKey, string> = {
-  operator: 'Operator',
-  sales: 'Sales',
-  super_admin: 'SuperAdmin',
-  viewer: 'Viewer',
-};
+type UserRole = 'SuperAdmin' | 'Operator' | 'Viewer';
+type UserStatus = 'active' | 'inactive' | 'pending_invite';
+type RoleFilter = UserRole | 'all';
+type StatusFilter = UserStatus | 'all';
 
-type RoleFilter = {
-  count: number;
-  emoji: string;
-  key: RoleKey | 'all';
-  label: string;
-};
-
-const ROLE_FILTERS: ReadonlyArray<RoleFilter> = [
-  { count: 12, emoji: '', key: 'all', label: '전체' },
-  { count: 1, emoji: '🛡', key: 'super_admin', label: 'SuperAdmin' },
-  { count: 3, emoji: '💼', key: 'sales', label: 'Sales' },
-  { count: 5, emoji: '⚙', key: 'operator', label: 'Operator' },
-  { count: 3, emoji: '👁', key: 'viewer', label: 'Viewer' },
-];
-
-type User = {
+type UserRow = {
+  avatar_color?: string;
+  created_at: string;
   email: string;
-  external?: boolean;
   id: string;
-  isMe?: boolean;
-  lastLoginAbsolute: string | null;
-  lastLoginLocation?: string;
+  last_login_at: string | null;
+  last_login_ip: string | null;
+  last_login_location: string | null;
   name: string;
-  permission: string;
-  role: RoleKey;
-  status: StatusKey;
-  tokenExpiry?: string;
-  tokenInvitedBy?: string;
-  twoFactor: TwoFactor;
+  role: UserRole;
+  status: UserStatus;
+  updated_at: string;
 };
 
-const USERS: ReadonlyArray<User> = [
+const ROLE_LABEL: Record<UserRole, string> = {
+  Operator: 'Operator',
+  SuperAdmin: 'SuperAdmin',
+  Viewer: 'Viewer',
+};
+
+const STATUS_LABEL: Record<UserStatus, string> = {
+  active: '활성',
+  inactive: '비활성',
+  pending_invite: '초대 대기',
+};
+
+const ROLE_OPTIONS: { label: string; value: RoleFilter }[] = [
+  { label: '전체 역할', value: 'all' },
+  { label: 'SuperAdmin', value: 'SuperAdmin' },
+  { label: 'Operator', value: 'Operator' },
+  { label: 'Viewer', value: 'Viewer' },
+];
+
+const STATUS_OPTIONS: { label: string; value: StatusFilter }[] = [
+  { label: '전체 상태', value: 'all' },
+  { label: '활성', value: 'active' },
+  { label: '비활성', value: 'inactive' },
+  { label: '초대 대기', value: 'pending_invite' },
+];
+
+const USERS: ReadonlyArray<UserRow> = [
   {
-    email: 'lee.daepyo@visionflow.kr',
-    id: 'u-1',
-    isMe: true,
-    lastLoginAbsolute: '오늘 09:42',
-    lastLoginLocation: '서울 사무실 IP',
+    avatar_color: '#1677ff',
+    created_at: '2026-01-05T02:14:00+09:00',
+    email: 'admin@visionflow.kr',
+    id: '8a8a817e-8a52-42c5-bbe5-2fb21cf4c111',
+    last_login_at: '2026-05-20T09:42:00+09:00',
+    last_login_ip: '203.0.113.12',
+    last_login_location: 'Seoul, KR',
     name: '이대표',
-    permission: '전체 시스템 · 모든 작업',
-    role: 'super_admin',
+    role: 'SuperAdmin',
     status: 'active',
-    twoFactor: 'totp',
+    updated_at: '2026-05-20T09:42:00+09:00',
   },
   {
-    email: 'kim.minji@visionflow.kr',
-    id: 'u-2',
-    lastLoginAbsolute: '오늘 11:08',
-    lastLoginLocation: '서울 사무실 IP',
+    avatar_color: '#13c2c2',
+    created_at: '2026-02-18T11:20:00+09:00',
+    email: 'operator@visionflow.kr',
+    id: '9b433442-d6bb-4212-8fe5-78c240222222',
+    last_login_at: '2026-05-19T18:08:00+09:00',
+    last_login_ip: '198.51.100.24',
+    last_login_location: 'Incheon, KR',
     name: '김민지',
-    permission: '인박스 + Work 읽기',
-    role: 'sales',
+    role: 'Operator',
     status: 'active',
-    twoFactor: 'totp',
+    updated_at: '2026-05-19T18:08:00+09:00',
   },
   {
-    email: 'park.seojun@visionflow.kr',
-    id: 'u-3',
-    lastLoginAbsolute: '오늘 10:15',
-    lastLoginLocation: '서울 사무실 IP',
+    avatar_color: '#722ed1',
+    created_at: '2026-03-08T15:35:00+09:00',
+    email: 'viewer@partner.co.kr',
+    id: 'a1839fa4-fc18-42c6-ae47-30ae0f333333',
+    last_login_at: '2026-05-12T14:21:00+09:00',
+    last_login_ip: '192.0.2.44',
+    last_login_location: 'Busan, KR',
     name: '박서준',
-    permission: 'Work 작성 + Q&A 답변',
-    role: 'operator',
+    role: 'Viewer',
     status: 'active',
-    twoFactor: 'totp',
+    updated_at: '2026-05-12T14:21:00+09:00',
   },
   {
-    email: 'jung.suyeong@visionflow.kr',
-    id: 'u-4',
-    lastLoginAbsolute: '어제 18:32',
-    lastLoginLocation: '서울 강남구 (재택)',
-    name: '정수영',
-    permission: '인박스 + Work 읽기',
-    role: 'sales',
-    status: 'active',
-    twoFactor: 'totp',
+    avatar_color: '#fa8c16',
+    created_at: '2026-04-11T10:10:00+09:00',
+    email: 'new.operator@visionflow.kr',
+    id: 'bdc63ff6-8218-49c7-8644-012ff4444444',
+    last_login_at: null,
+    last_login_ip: null,
+    last_login_location: null,
+    name: '초대 발송',
+    role: 'Operator',
+    status: 'pending_invite',
+    updated_at: '2026-05-20T08:30:00+09:00',
   },
   {
-    email: 'choi.yerin@visionflow.kr',
-    id: 'u-5',
-    lastLoginAbsolute: '오늘 09:55',
-    lastLoginLocation: '서울 사무실 IP',
+    avatar_color: '#8c8c8c',
+    created_at: '2026-01-21T13:05:00+09:00',
+    email: 'old.viewer@visionflow.kr',
+    id: 'ced53cb5-c2b1-4388-80c5-fc4fa5555555',
+    last_login_at: '2026-04-26T16:45:00+09:00',
+    last_login_ip: '203.0.113.88',
+    last_login_location: 'Daegu, KR',
     name: '최예린',
-    permission: 'Work 작성 + Q&A 답변',
-    role: 'operator',
-    status: 'active',
-    twoFactor: 'totp',
-  },
-  {
-    email: 'han.jihoon@visionflow.kr',
-    id: 'u-6',
-    lastLoginAbsolute: '2일 전',
-    lastLoginLocation: '서울 사무실 IP',
-    name: '한지훈',
-    permission: 'Work 작성 + Q&A 답변',
-    role: 'operator',
-    status: 'active',
-    twoFactor: 'off',
-  },
-  {
-    email: 'yoon.chaehyun@visionflow.kr',
-    id: 'u-7',
-    lastLoginAbsolute: '3일 전',
-    lastLoginLocation: '서울 사무실 IP',
-    name: '윤채현',
-    permission: 'Work 작성 + Q&A 답변',
-    role: 'operator',
-    status: 'active',
-    twoFactor: 'totp',
-  },
-  {
-    email: 'kang.doyun@visionflow.kr',
-    id: 'u-8',
-    lastLoginAbsolute: '5일 전',
-    lastLoginLocation: '서울 사무실 IP',
-    name: '강도윤',
-    permission: 'Work 작성 + Q&A 답변',
-    role: 'operator',
-    status: 'active',
-    twoFactor: 'totp',
-  },
-  {
-    email: 'sshin@external-pr.co',
-    external: true,
-    id: 'u-9',
-    lastLoginAbsolute: '어제 14:22',
-    lastLoginLocation: '경기도 (외부 IP)',
-    name: '신가람',
-    permission: '읽기 전용',
-    role: 'viewer',
-    status: 'active',
-    twoFactor: 'totp',
-  },
-  {
-    email: 'lee.sumin@visionflow.kr',
-    id: 'u-10',
-    lastLoginAbsolute: '14일 전',
-    name: '이수민 (인턴)',
-    permission: '읽기 전용',
-    role: 'viewer',
+    role: 'Viewer',
     status: 'inactive',
-    twoFactor: 'none',
-  },
-  {
-    email: 'jang.minho@visionflow.kr',
-    id: 'u-11',
-    lastLoginAbsolute: null,
-    name: '미정 · 초대 발송됨',
-    permission: '23h 14m 후 만료',
-    role: 'operator',
-    status: 'pending',
-    tokenExpiry: '23h 14m 후 만료',
-    tokenInvitedBy: '4월 28일 SuperAdmin이 초대',
-    twoFactor: 'none',
-  },
-  {
-    email: 'consultant@partner-co.kr',
-    external: true,
-    id: 'u-12',
-    lastLoginAbsolute: null,
-    name: '미정 · 초대 발송됨',
-    permission: '4h 12m 후 만료',
-    role: 'viewer',
-    status: 'pending',
-    tokenExpiry: '4h 12m 후 만료',
-    tokenInvitedBy: '5월 8일 SuperAdmin이 초대',
-    twoFactor: 'none',
+    updated_at: '2026-05-01T09:00:00+09:00',
   },
 ];
 
-const KPIS = [
-  {
-    caption: '활성 10 · 비활성 2',
-    icon: UsersIcon,
-    label: '전체 사용자',
-    tone: 'blue' as const,
-    value: '12',
-  },
-  {
-    badge: 'LIVE',
-    caption: '현재 로그인 중',
-    icon: Activity,
-    label: '활성 세션',
-    tone: 'green' as const,
-    value: '7',
-  },
-  {
-    caption: '11/12 · SuperAdmin·Sales 전원',
-    icon: ShieldCheck,
-    label: '2FA 적용률',
-    tone: 'green' as const,
-    value: '92%',
-  },
-  {
-    caption: '24h 안에 만료 (1건)',
-    icon: AlertTriangle,
-    label: '대기중 초대',
-    tone: 'amber' as const,
-    value: '2',
-  },
+const STATUS_TABS: ReadonlyArray<{
+  key: StatusFilter;
+  label: string;
+}> = [
+  { key: 'all', label: '전체' },
+  { key: 'active', label: '활성' },
+  { key: 'inactive', label: '비활성' },
+  { key: 'pending_invite', label: '초대 대기' },
 ];
 
 export function UsersListPage() {
+  const [statusFilter, setStatusFilter] =
+    useState<StatusFilter>('all');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  const [searchText, setSearchText] = useState('');
+
   useTopbar(
     () => ({
       action: (
@@ -258,326 +187,369 @@ export function UsersListPage() {
     [],
   );
 
+  const filteredRows = useMemo(() => {
+    const normalizedSearch = searchText.trim().toLowerCase();
+
+    return USERS.filter((row) => {
+      if (statusFilter !== 'all' && row.status !== statusFilter) {
+        return false;
+      }
+
+      if (roleFilter !== 'all' && row.role !== roleFilter) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return [
+        row.name,
+        row.email,
+        row.role,
+        row.status,
+        row.last_login_ip,
+        row.last_login_location,
+      ]
+        .filter(Boolean)
+        .some((value) =>
+          String(value).toLowerCase().includes(normalizedSearch),
+        );
+    }).sort((a, b) => getTime(b.created_at) - getTime(a.created_at));
+  }, [roleFilter, searchText, statusFilter]);
+
+  const statusCounts = useMemo(
+    () =>
+      STATUS_TABS.reduce<Record<StatusFilter, number>>(
+        (acc, tab) => {
+          acc[tab.key] =
+            tab.key === 'all'
+              ? USERS.length
+              : USERS.filter((row) => row.status === tab.key).length;
+          return acc;
+        },
+        { active: 0, all: 0, inactive: 0, pending_invite: 0 },
+      ),
+    [],
+  );
+
+  const columnDefs = useMemo<ColDef<UserRow>[]>(
+    () => [
+      {
+        cellRenderer: ({ data }: ICellRendererParams<UserRow>) => {
+          if (!data) {
+            return null;
+          }
+
+          return (
+            <div className={styles.userCell}>
+              <Avatar
+                className={styles.avatar}
+                style={{
+                  backgroundColor: data.avatar_color || '#1677ff',
+                }}
+              >
+                {getInitial(data.name)}
+              </Avatar>
+              <div className={styles.userMeta}>
+                <Link
+                  className={styles.userName}
+                  href={ROUTES.ADMIN.USERS.DETAIL(data.id)}
+                >
+                  {data.name}
+                </Link>
+                <span>{data.email}</span>
+              </div>
+            </div>
+          );
+        },
+        field: 'name',
+        flex: 1,
+        headerName: '사용자',
+        minWidth: 280,
+      },
+      {
+        cellRenderer: ({
+          value,
+        }: ICellRendererParams<UserRow, UserRole>) =>
+          value ? <RoleTag role={value} /> : null,
+        field: 'role',
+        headerName: '역할',
+        maxWidth: 140,
+        minWidth: 120,
+      },
+      {
+        cellRenderer: ({
+          value,
+        }: ICellRendererParams<UserRow, UserStatus>) =>
+          value ? <StatusTag status={value} /> : null,
+        field: 'status',
+        headerName: '상태',
+        maxWidth: 140,
+        minWidth: 120,
+      },
+      {
+        cellRenderer: ({ data }: ICellRendererParams<UserRow>) => {
+          if (!data) {
+            return null;
+          }
+
+          return (
+            <div className={styles.loginCell}>
+              <span>{formatDateTime(data.last_login_at)}</span>
+              <small>
+                {data.last_login_ip || '-'}
+                {data.last_login_location
+                  ? ` · ${data.last_login_location}`
+                  : ''}
+              </small>
+            </div>
+          );
+        },
+        colId: 'lastLogin',
+        headerName: '최근 로그인',
+        minWidth: 220,
+      },
+      {
+        field: 'created_at',
+        headerName: '생성일',
+        maxWidth: 160,
+        minWidth: 140,
+        valueFormatter: ({ value }) => formatDate(value),
+      },
+      {
+        field: 'updated_at',
+        headerName: '수정일',
+        maxWidth: 160,
+        minWidth: 140,
+        valueFormatter: ({ value }) => formatDate(value),
+      },
+      {
+        cellRenderer: ({ data }: ICellRendererParams<UserRow>) => {
+          if (!data) {
+            return null;
+          }
+
+          return (
+            <Tooltip title="사용자 상세">
+              <Link
+                aria-label={`${data.name} 상세 보기`}
+                className={styles.iconLink}
+                href={ROUTES.ADMIN.USERS.DETAIL(data.id)}
+              >
+                <MoreHorizontal aria-hidden="true" size={16} />
+              </Link>
+            </Tooltip>
+          );
+        },
+        colId: 'actions',
+        headerName: '',
+        maxWidth: 76,
+        minWidth: 64,
+        sortable: false,
+      },
+    ],
+    [],
+  );
+
+  const defaultColDef = useMemo<ColDef<UserRow>>(
+    () => ({
+      filter: false,
+      resizable: true,
+      sortable: true,
+      suppressMovable: true,
+    }),
+    [],
+  );
+
   return (
     <div className={styles.page}>
-      <section aria-label="요약 지표" className={styles.kpiRow}>
-        {KPIS.map((kpi) => {
-          const Icon = kpi.icon;
-          return (
-            <article className={styles.kpiCard} key={kpi.label}>
-              <header className={styles.kpiTop}>
-                <span className={styles.kpiLabel}>{kpi.label}</span>
-                {'badge' in kpi && kpi.badge ? (
-                  <span className={styles.kpiBadge}>
-                    <span
-                      aria-hidden="true"
-                      className={styles.kpiBadgeDot}
-                    />
-                    {kpi.badge}
-                  </span>
-                ) : (
-                  <span
-                    aria-hidden="true"
-                    className={`${styles.kpiIcon} ${styles[`kpiIcon_${kpi.tone}`]}`}
-                  >
-                    <Icon size={16} strokeWidth={2} />
-                  </span>
-                )}
-              </header>
-              <div className={styles.kpiValueRow}>
-                <strong className={styles.kpiValue}>
-                  {kpi.value}
-                </strong>
-                <span
-                  className={`${styles.kpiCaption} ${styles[`kpiCaption_${kpi.tone}`]}`}
-                >
-                  {kpi.caption}
-                </span>
-              </div>
-            </article>
-          );
-        })}
-      </section>
-
-      <header className={styles.pageHeader}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>
-            사용자 관리
-            <span className={styles.pageCount}>12명</span>
-          </h1>
-        </div>
-        <div className={styles.headerActions}>
-          <button className={styles.secondaryButton} type="button">
-            <Globe aria-hidden="true" size={14} />
-            IP 화이트리스트 (3)
-          </button>
-          <button className={styles.secondaryButton} type="button">
-            <Download aria-hidden="true" size={14} />
-            CSV
-          </button>
-        </div>
-      </header>
-
-      <div
-        className={styles.tabsBar}
-        role="tablist"
-        aria-label="역할 필터"
+      <Flex
+        align="flex-start"
+        className={styles.pageHeader}
+        justify="space-between"
       >
-        {ROLE_FILTERS.map((tab, index) => (
-          <button
-            aria-selected={index === 0}
-            className={`${styles.tab} ${index === 0 ? styles.tabActive : ''}`}
-            key={tab.key}
-            role="tab"
-            type="button"
-          >
-            {tab.emoji ? (
-              <span aria-hidden="true" className={styles.tabEmoji}>
-                {tab.emoji}
+        <div>
+          <h1 className={styles.title}>사용자 관리</h1>
+          <p className={styles.description}>
+            관리자 계정의 역할, 초대 상태, 최근 로그인 정보를
+            확인합니다.
+          </p>
+        </div>
+        <Button icon={<Download size={14} />}>CSV 내보내기</Button>
+      </Flex>
+
+      <div className={styles.summaryGrid}>
+        <Card>
+          <Statistic
+            prefix={<Users size={18} />}
+            title="전체 사용자"
+            value={USERS.length}
+          />
+        </Card>
+        <Card>
+          <Statistic
+            prefix={<UserCheck size={18} />}
+            title="활성 사용자"
+            value={statusCounts.active}
+          />
+        </Card>
+        <Card>
+          <Statistic
+            prefix={<Mail size={18} />}
+            title="초대 대기"
+            value={statusCounts.pending_invite}
+          />
+        </Card>
+        <Card>
+          <Statistic
+            prefix={<ShieldCheck size={18} />}
+            title="SuperAdmin"
+            value={
+              USERS.filter((row) => row.role === 'SuperAdmin').length
+            }
+          />
+        </Card>
+      </div>
+
+      <Tabs
+        activeKey={statusFilter}
+        items={STATUS_TABS.map((tab) => ({
+          key: tab.key,
+          label: (
+            <span className={styles.tabLabel}>
+              <span>{tab.label}</span>
+              <span className={styles.tabCount}>
+                {statusCounts[tab.key]}
               </span>
-            ) : null}
-            <span
-              className={
-                tab.key !== 'all' && index !== 0
-                  ? `${styles.tabLabel} ${styles[`tabLabel_${tab.key}`]}`
-                  : styles.tabLabel
-              }
-            >
-              {tab.label}
             </span>
-            <span className={styles.tabCount}>{tab.count}</span>
-          </button>
-        ))}
-      </div>
+          ),
+        }))}
+        onChange={(key) => setStatusFilter(key as StatusFilter)}
+      />
 
-      <div className={styles.toolbar}>
-        <label className={styles.searchField}>
-          <Search
-            aria-hidden="true"
-            className={styles.searchIcon}
-            size={14}
-          />
-          <input
+      <Card className={styles.tableCard}>
+        <Flex className={styles.toolbar} gap={12} wrap="wrap">
+          <Input
+            allowClear
             className={styles.searchInput}
-            placeholder="이름, 이메일로 검색"
-            type="search"
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="이름, 이메일, IP, 위치 검색"
+            prefix={<Search aria-hidden="true" size={14} />}
+            value={searchText}
           />
-        </label>
-        <button className={styles.filterButton} type="button">
-          <Shield aria-hidden="true" size={14} />
-          2FA 상태
-          <ChevronDown aria-hidden="true" size={14} />
-        </button>
-        <button className={styles.filterButton} type="button">
-          <Sparkles aria-hidden="true" size={14} />
-          마지막 로그인
-          <ChevronDown aria-hidden="true" size={14} />
-        </button>
-        <button className={styles.filterButton} type="button">
-          <UserIcon aria-hidden="true" size={14} />
-          상태
-          <ChevronDown aria-hidden="true" size={14} />
-        </button>
-      </div>
+          <Select<RoleFilter>
+            className={styles.filterSelect}
+            onChange={setRoleFilter}
+            options={ROLE_OPTIONS}
+            value={roleFilter}
+          />
+          <Select<StatusFilter>
+            className={styles.filterSelect}
+            onChange={setStatusFilter}
+            options={STATUS_OPTIONS}
+            value={statusFilter}
+          />
+        </Flex>
 
-      <article className={styles.tableCard}>
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.checkboxCell}>
-                  <input aria-label="전체 선택" type="checkbox" />
-                </th>
-                <th>사용자</th>
-                <th>역할</th>
-                <th>권한 범위</th>
-                <th>
-                  마지막 로그인{' '}
-                  <ChevronDown
-                    aria-hidden="true"
-                    size={11}
-                    strokeWidth={2.5}
-                  />
-                </th>
-                <th>2FA</th>
-                <th>상태</th>
-                <th aria-label="action" />
-              </tr>
-            </thead>
-            <tbody>
-              {USERS.map((user) => (
-                <UserRow key={user.id} user={user} />
-              ))}
-            </tbody>
-          </table>
+        <div className={styles.tableHeader}>
+          <strong>사용자 목록</strong>
+          <span>
+            <Clock3 aria-hidden="true" size={13} />
+            {filteredRows.length.toLocaleString()}명 표시 중
+          </span>
         </div>
 
-        <footer className={styles.tableFooter}>
-          <div className={styles.pageSize}>
-            <span>1–12 / 12명</span>
-            <span className={styles.divider}>·</span>
-            <span>활성 10 · 초대 대기 2</span>
-          </div>
-          <p className={styles.bulkHint}>
-            <Briefcase aria-hidden="true" size={12} />
-            다중 선택 시 일괄 비활성화·역할 변경·삭제 가능
-          </p>
-        </footer>
-      </article>
+        <div className={`ag-theme-quartz ${styles.grid}`}>
+          <AgGridReact<UserRow>
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            noRowsOverlayComponent={() => (
+              <div className={styles.emptyState}>
+                조건에 맞는 사용자가 없습니다.
+              </div>
+            )}
+            pagination
+            paginationPageSize={10}
+            paginationPageSizeSelector={[10, 20, 50]}
+            rowData={filteredRows}
+            rowHeight={70}
+            rowSelection="multiple"
+            theme="legacy"
+          />
+        </div>
+      </Card>
     </div>
   );
 }
 
-function UserRow({ user }: { user: User }) {
-  const initial = user.name.charAt(0);
-  const isPending = user.status === 'pending';
-  const isInactive = user.status === 'inactive';
+function RoleTag({ role }: { role: UserRole }) {
+  const color =
+    role === 'SuperAdmin'
+      ? 'red'
+      : role === 'Operator'
+        ? 'blue'
+        : 'default';
 
-  return (
-    <tr
-      className={
-        isPending
-          ? styles.rowPending
-          : isInactive
-            ? styles.rowInactive
-            : ''
-      }
-    >
-      <td className={styles.checkboxCell}>
-        <input aria-label={`${user.name} 선택`} type="checkbox" />
-      </td>
-      <td>
-        <div className={styles.userCell}>
-          <span aria-hidden="true" className={styles.avatar}>
-            {isPending ? '✉' : initial}
-          </span>
-          <div className={styles.userInfo}>
-            <div className={styles.userNameRow}>
-              {isPending ? (
-                <span className={styles.userName}>{user.name}</span>
-              ) : (
-                <Link
-                  className={styles.userName}
-                  href={ROUTES.ADMIN.USERS.DETAIL(user.id)}
-                >
-                  {user.name}
-                </Link>
-              )}
-              {user.isMe ? (
-                <span className={styles.meTag}>ME</span>
-              ) : null}
-              {user.external ? (
-                <span className={styles.externalTag}>외부</span>
-              ) : null}
-            </div>
-            <span className={styles.userEmail}>{user.email}</span>
-          </div>
-        </div>
-      </td>
-      <td>
-        <RoleBadge role={user.role} />
-      </td>
-      <td>
-        <span className={styles.permission}>{user.permission}</span>
-      </td>
-      <td>
-        {isPending ? (
-          <span className={styles.tokenExpiry}>
-            {user.tokenExpiry}
-          </span>
-        ) : (
-          <div className={styles.lastLoginCell}>
-            <span>{user.lastLoginAbsolute}</span>
-            {user.lastLoginLocation ? (
-              <span className={styles.lastLoginSub}>
-                {user.lastLoginLocation}
-              </span>
-            ) : null}
-          </div>
-        )}
-      </td>
-      <td>
-        <TwoFactorBadge value={user.twoFactor} />
-      </td>
-      <td>
-        <StatusBadge status={user.status} />
-      </td>
-      <td className={styles.actionCell}>
-        {isPending ? (
-          <button className={styles.resendBtn} type="button">
-            <RefreshCcw aria-hidden="true" size={12} />
-            재전송
-          </button>
-        ) : (
-          <button
-            aria-label="더보기"
-            className={styles.moreButton}
-            type="button"
-          >
-            <MoreHorizontal aria-hidden="true" size={16} />
-          </button>
-        )}
-      </td>
-    </tr>
-  );
+  return <Tag color={color}>{ROLE_LABEL[role]}</Tag>;
 }
 
-function RoleBadge({ role }: { role: RoleKey }) {
-  return (
-    <span className={`${styles.roleBadge} ${styles[`role_${role}`]}`}>
-      <span aria-hidden="true" className={styles.roleDot} />
-      {ROLE_LABEL[role]}
-    </span>
-  );
+function StatusTag({ status }: { status: UserStatus }) {
+  const color =
+    status === 'active'
+      ? 'green'
+      : status === 'pending_invite'
+        ? 'gold'
+        : 'default';
+
+  return <Tag color={color}>{STATUS_LABEL[status]}</Tag>;
 }
 
-function TwoFactorBadge({ value }: { value: TwoFactor }) {
-  if (value === 'totp') {
-    return (
-      <span className={`${styles.twoFactorBadge} ${styles.totp}`}>
-        <Shield aria-hidden="true" size={10} />
-        TOTP
-      </span>
-    );
-  }
-  if (value === 'off') {
-    return (
-      <span className={`${styles.twoFactorBadge} ${styles.off}`}>
-        <AlertTriangle aria-hidden="true" size={10} />
-        OFF
-      </span>
-    );
-  }
-  return <span className={styles.twoFactorEmpty}>—</span>;
+function getInitial(name: string) {
+  return name.trim().slice(0, 1).toUpperCase() || '?';
 }
 
-function StatusBadge({ status }: { status: StatusKey }) {
-  if (status === 'active') {
-    return (
-      <span
-        className={`${styles.statusBadge} ${styles.statusActive}`}
-      >
-        <span aria-hidden="true" className={styles.statusDot} />
-        ACTIVE
-      </span>
-    );
+function getTime(value?: string | null) {
+  if (!value) {
+    return 0;
   }
-  if (status === 'pending') {
-    return (
-      <span
-        className={`${styles.statusBadge} ${styles.statusPending}`}
-      >
-        <Eye aria-hidden="true" size={10} />
-        초대 발송
-      </span>
-    );
+
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function formatDate(value?: string | null) {
+  if (!value) {
+    return '-';
   }
-  return (
-    <span
-      className={`${styles.statusBadge} ${styles.statusInactive}`}
-    >
-      <span aria-hidden="true" className={styles.statusDot} />
-      비활성
-    </span>
-  );
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) {
+    return '로그인 기록 없음';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
 }
