@@ -241,7 +241,10 @@ export function UsersListPage() {
   useTopbar(
     () => ({
       action: (
-        <Link className={styles.topbarPrimary} href={ROUTES.ADMIN.USERS.INVITE}>
+        <Link
+          className={styles.topbarPrimary}
+          href={ROUTES.ADMIN.USERS.INVITE}
+        >
           <Plus aria-hidden="true" size={14} strokeWidth={2.4} />
           사용자 초대
         </Link>
@@ -266,7 +269,10 @@ export function UsersListPage() {
                 <span className={styles.kpiLabel}>{kpi.label}</span>
                 {'badge' in kpi && kpi.badge ? (
                   <span className={styles.kpiBadge}>
-                    <span aria-hidden="true" className={styles.kpiBadgeDot} />
+                    <span
+                      aria-hidden="true"
+                      className={styles.kpiBadgeDot}
+                    />
                     {kpi.badge}
                   </span>
                 ) : (
@@ -279,8 +285,12 @@ export function UsersListPage() {
                 )}
               </header>
               <div className={styles.kpiValueRow}>
-                <strong className={styles.kpiValue}>{kpi.value}</strong>
-                <span className={`${styles.kpiCaption} ${styles[`kpiCaption_${kpi.tone}`]}`}>
+                <strong className={styles.kpiValue}>
+                  {kpi.value}
+                </strong>
+                <span
+                  className={`${styles.kpiCaption} ${styles[`kpiCaption_${kpi.tone}`]}`}
+                >
                   {kpi.caption}
                 </span>
               </div>
@@ -308,7 +318,11 @@ export function UsersListPage() {
         </div>
       </header>
 
-      <div className={styles.tabsBar} role="tablist" aria-label="역할 필터">
+      <div
+        className={styles.tabsBar}
+        role="tablist"
+        aria-label="역할 필터"
+      >
         {ROLE_FILTERS.map((tab, index) => (
           <button
             aria-selected={index === 0}
@@ -338,7 +352,11 @@ export function UsersListPage() {
 
       <div className={styles.toolbar}>
         <label className={styles.searchField}>
-          <Search aria-hidden="true" className={styles.searchIcon} size={14} />
+          <Search
+            aria-hidden="true"
+            className={styles.searchIcon}
+            size={14}
+          />
           <input
             className={styles.searchInput}
             placeholder="이름, 이메일로 검색"
@@ -374,7 +392,12 @@ export function UsersListPage() {
                 <th>역할</th>
                 <th>권한 범위</th>
                 <th>
-                  마지막 로그인 <ChevronDown aria-hidden="true" size={11} strokeWidth={2.5} />
+                  마지막 로그인{' '}
+                  <ChevronDown
+                    aria-hidden="true"
+                    size={11}
+                    strokeWidth={2.5}
+                  />
                 </th>
                 <th>2FA</th>
                 <th>상태</th>
@@ -411,7 +434,15 @@ function UserRow({ user }: { user: User }) {
   const isInactive = user.status === 'inactive';
 
   return (
-    <tr className={isPending ? styles.rowPending : isInactive ? styles.rowInactive : ''}>
+    <tr
+      className={
+        isPending
+          ? styles.rowPending
+          : isInactive
+            ? styles.rowInactive
+            : ''
+      }
+    >
       <td className={styles.checkboxCell}>
         <input aria-label={`${user.name} 선택`} type="checkbox" />
       </td>
@@ -425,12 +456,19 @@ function UserRow({ user }: { user: User }) {
               {isPending ? (
                 <span className={styles.userName}>{user.name}</span>
               ) : (
-                <Link className={styles.userName} href={ROUTES.ADMIN.USERS.DETAIL(user.id)}>
+                <Link
+                  className={styles.userName}
+                  href={ROUTES.ADMIN.USERS.DETAIL(user.id)}
+                >
                   {user.name}
                 </Link>
               )}
-              {user.isMe ? <span className={styles.meTag}>ME</span> : null}
-              {user.external ? <span className={styles.externalTag}>외부</span> : null}
+              {user.isMe ? (
+                <span className={styles.meTag}>ME</span>
+              ) : null}
+              {user.external ? (
+                <span className={styles.externalTag}>외부</span>
+              ) : null}
             </div>
             <span className={styles.userEmail}>{user.email}</span>
           </div>
@@ -444,12 +482,16 @@ function UserRow({ user }: { user: User }) {
       </td>
       <td>
         {isPending ? (
-          <span className={styles.tokenExpiry}>{user.tokenExpiry}</span>
+          <span className={styles.tokenExpiry}>
+            {user.tokenExpiry}
+          </span>
         ) : (
           <div className={styles.lastLoginCell}>
             <span>{user.lastLoginAbsolute}</span>
             {user.lastLoginLocation ? (
-              <span className={styles.lastLoginSub}>{user.lastLoginLocation}</span>
+              <span className={styles.lastLoginSub}>
+                {user.lastLoginLocation}
+              </span>
             ) : null}
           </div>
         )}
@@ -467,7 +509,11 @@ function UserRow({ user }: { user: User }) {
             재전송
           </button>
         ) : (
-          <button aria-label="더보기" className={styles.moreButton} type="button">
+          <button
+            aria-label="더보기"
+            className={styles.moreButton}
+            type="button"
+          >
             <MoreHorizontal aria-hidden="true" size={16} />
           </button>
         )}
@@ -508,7 +554,9 @@ function TwoFactorBadge({ value }: { value: TwoFactor }) {
 function StatusBadge({ status }: { status: StatusKey }) {
   if (status === 'active') {
     return (
-      <span className={`${styles.statusBadge} ${styles.statusActive}`}>
+      <span
+        className={`${styles.statusBadge} ${styles.statusActive}`}
+      >
         <span aria-hidden="true" className={styles.statusDot} />
         ACTIVE
       </span>
@@ -516,14 +564,18 @@ function StatusBadge({ status }: { status: StatusKey }) {
   }
   if (status === 'pending') {
     return (
-      <span className={`${styles.statusBadge} ${styles.statusPending}`}>
+      <span
+        className={`${styles.statusBadge} ${styles.statusPending}`}
+      >
         <Eye aria-hidden="true" size={10} />
         초대 발송
       </span>
     );
   }
   return (
-    <span className={`${styles.statusBadge} ${styles.statusInactive}`}>
+    <span
+      className={`${styles.statusBadge} ${styles.statusInactive}`}
+    >
       <span aria-hidden="true" className={styles.statusDot} />
       비활성
     </span>
