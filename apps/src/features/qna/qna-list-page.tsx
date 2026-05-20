@@ -210,12 +210,6 @@ export function QnaListPage() {
 
   useTopbar(
     () => ({
-      action: (
-        <button className={styles.topbarPrimary} type="button">
-          <Plus aria-hidden="true" size={14} strokeWidth={2.4} />
-          공지 등록
-        </button>
-      ),
       breadcrumb: [
         { href: ROUTES.ADMIN.HOME, label: '대시보드' },
         { label: '고객센터' },
@@ -433,6 +427,10 @@ export function QnaListPage() {
           <button className={styles.secondaryButton} type="button">
             <Download aria-hidden="true" size={14} strokeWidth={2} />
             CSV 내보내기
+          </button>
+          <button className={styles.topbarPrimary} type="button">
+            <Plus aria-hidden="true" size={14} strokeWidth={2.4} />
+            공지 등록
           </button>
         </div>
       </header>
