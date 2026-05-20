@@ -19,7 +19,6 @@ import {
 } from 'antd';
 import { ArrowLeft, ExternalLink, Save } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect } from 'react';
 
 import Loading from '@/components/loading/page';
 import { useUpdateWorkMutation } from '@/hooks/works/useWorkMutation';
@@ -48,29 +47,11 @@ type WorkFormValues = {
 
 export function WorkPortfolioDetailPage({ id }: { id: string }) {
   const [messageApi, contextHolder] = message.useMessage();
-  const [form] = Form.useForm<WorkFormValues>();
   const { data, isLoading } = useWorkViewQuery(id);
   const updateWorkMutation = useUpdateWorkMutation();
   const role = useUserRoleStore((state) => state.role);
   const canManageWork = role === 'SuperAdmin' || role === 'Operator';
   const work = data as WorkAdminRow | null | undefined;
-
-  useEffect(() => {
-    if (!work) {
-      return;
-    }
-
-    form.setFieldsValue({
-      category: work.category,
-      image: work.image ?? '',
-      industry: work.industry,
-      linkLabel: work.linkLabel ?? work.link_label ?? '',
-      linkUrl: work.linkUrl ?? work.link_url ?? '',
-      rolesText: work.roles.join(', '),
-      size: work.size,
-      title: work.title,
-    });
-  }, [form, work]);
 
   const handleFinish = async (values: WorkFormValues) => {
     if (!canManageWork) {
@@ -126,11 +107,20 @@ export function WorkPortfolioDetailPage({ id }: { id: string }) {
 
   const linkUrl = work.linkUrl ?? work.link_url;
   const createdAt = work.createdAt ?? work.created_at;
+  const initialValues: WorkFormValues = {
+    category: work.category,
+    image: work.image ?? '',
+    industry: work.industry,
+    linkLabel: work.linkLabel ?? work.link_label ?? '',
+    linkUrl: work.linkUrl ?? work.link_url ?? '',
+    rolesText: work.roles.join(', '),
+    size: work.size,
+    title: work.title,
+  };
 
   return (
     <section className={styles.page}>
       {contextHolder}
-      {canManageWork ? null : <Form component={false} form={form} />}
       <Flex align="flex-start" justify="space-between" gap={16} wrap>
         <div>
           <Link className={styles.backLink} href={ROUTES.ADMIN.WORK_PORTFOLIO.ROOT}>
@@ -185,7 +175,12 @@ export function WorkPortfolioDetailPage({ id }: { id: string }) {
 
         {canManageWork ? (
           <Card className={styles.panel} title="정보 수정">
-            <Form form={form} layout="vertical" onFinish={handleFinish} requiredMark={false}>
+            <Form
+              initialValues={initialValues}
+              layout="vertical"
+              onFinish={handleFinish}
+              requiredMark={false}
+            >
               <Form.Item
                 label="프로젝트 제목"
                 name="title"

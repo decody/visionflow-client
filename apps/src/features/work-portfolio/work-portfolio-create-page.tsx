@@ -43,7 +43,6 @@ const INITIAL_VALUES: WorkFormValues = {
 
 export function WorkPortfolioCreatePage() {
   const [messageApi, contextHolder] = message.useMessage();
-  const [form] = Form.useForm<WorkFormValues>();
   const router = useRouter();
   const createWorkMutation = useCreateWorkMutation();
 
@@ -88,7 +87,6 @@ export function WorkPortfolioCreatePage() {
 
       <Card className={styles.panel}>
         <Form
-          form={form}
           initialValues={INITIAL_VALUES}
           layout="vertical"
           onFinish={handleFinish}

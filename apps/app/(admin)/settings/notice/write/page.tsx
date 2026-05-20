@@ -36,7 +36,6 @@ type NoticeFormValues = Pick<
 export default function NoticeWritePage() {
   const router = useRouter();
   const createNoticeMutation = useCreateNoticeMutation();
-  const [form] = Form.useForm<NoticeFormValues>();
 
   const handleFinish = async (values: NoticeFormValues) => {
     try {
@@ -89,7 +88,6 @@ export default function NoticeWritePage() {
 
       <Card className={styles.panel}>
         <Form
-          form={form}
           initialValues={{
             category: 'Guide', // 카테고리 기본값을 'Guide'로 설정
             isImportant: false, // 중요 여부 기본값을 false(중요하지 않음)로 설정

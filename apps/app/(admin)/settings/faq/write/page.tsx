@@ -31,7 +31,6 @@ type FaqFormValues = Pick<
 export default function FaqWritePage() {
   const router = useRouter();
   const createFaqMutation = useCreateFaqMutation();
-  const [form] = Form.useForm();
 
   const handleFinish = async (values: FaqFormValues) => {
     try {
@@ -79,7 +78,6 @@ export default function FaqWritePage() {
 
       <Card className={styles.panel}>
         <Form
-          form={form}
           initialValues={{
             category: 'default',
             is_visible: true,

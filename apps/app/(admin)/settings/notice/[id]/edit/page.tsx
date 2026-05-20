@@ -20,8 +20,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
 import { useUpdateNoticeMutation } from '@/hooks/admin/notices/useUpdateNoticeMutation';
-import { ICreateNoticeRequest } from '@visionflow/shared';
-import { useEffect } from 'react';
+import type { ICreateNoticeRequest } from '@visionflow/shared';
 import styles from '../../page.module.css';
 const { Text, Title } = Typography;
 
@@ -40,23 +39,7 @@ export default function NoticeEditPage() {
   const params = useParams<{ id: string }>();
   const id = String(params.id);
   const { data: notice, isLoading } = useNoticeViewQuery(id);
-  const [form] = Form.useForm<NoticeFormValues>();
   const updateNoticeMutation = useUpdateNoticeMutation();
-
-  useEffect(() => {
-    if (!notice) {
-      return;
-    }
-
-    form.setFieldsValue({
-      category: notice.category,
-      contentHtml: notice.contentHtml ?? '',
-      description: notice.description ?? '',
-      isImportant: notice.isImportant,
-      isPublished: notice.isPublished,
-      title: notice.title,
-    });
-  }, [form, notice]);
 
   const handleFinish = async (values: NoticeFormValues) => {
     try {
@@ -105,6 +88,15 @@ export default function NoticeEditPage() {
     );
   }
 
+  const initialValues: NoticeFormValues = {
+    category: notice.category,
+    contentHtml: notice.contentHtml ?? '',
+    description: notice.description ?? '',
+    isImportant: notice.isImportant,
+    isPublished: notice.isPublished,
+    title: notice.title,
+  };
+
   return (
     <RoleGuard
       allowedRoles={['SuperAdmin', 'Operator']}
@@ -132,12 +124,7 @@ export default function NoticeEditPage() {
 
       <Card className={styles.panel}>
         <Form
-          form={form}
-          initialValues={{
-            category: 'Guide', // 카테고리 기본값을 'Guide'로 설정
-            isImportant: false, // 중요 여부 기본값을 false(중요하지 않음)로 설정
-            isPublished: true, // 공개 여부 기본값을 true(공개)로 설정
-          }}
+          initialValues={initialValues}
           layout="vertical"
           requiredMark={false}
           onFinish={handleFinish}

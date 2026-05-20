@@ -45,7 +45,6 @@ export default function FaqEditPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const router = useRouter();
-  const [form] = Form.useForm();
   const { data: faqData = [], isLoading } = useFaqListQuery();
   const updateFaqMutation = useUpdateFaqMutation();
 
@@ -114,7 +113,6 @@ export default function FaqEditPage() {
 
       <Card className={styles.panel}>
         <Form
-          form={form}
           initialValues={initialValues}
           layout="vertical"
           requiredMark={false}
