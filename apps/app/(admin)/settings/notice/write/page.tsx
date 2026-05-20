@@ -1,5 +1,6 @@
 'use client';
 
+import { RoleGuard } from '@/components/auth/role-guard';
 import { useCreateNoticeMutation } from '@/hooks/admin/notices/useCreateNoticeMutation';
 import { ROUTES } from '@visionflow/routes';
 import type { ICreateNoticeRequest } from '@visionflow/shared';
@@ -67,6 +68,10 @@ export default function NoticeWritePage() {
   };
 
   return (
+    <RoleGuard
+      allowedRoles={['SuperAdmin', 'Operator']}
+      fallbackPath={ROUTES.ADMIN.NOTICE.ROOT}
+    >
     <section className={styles.page}>
       <Flex align="flex-start" justify="space-between" gap={16} wrap>
         <div>
@@ -199,5 +204,6 @@ export default function NoticeWritePage() {
         </Form>
       </Card>
     </section>
+    </RoleGuard>
   );
 }

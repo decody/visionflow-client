@@ -24,6 +24,7 @@ import { useEffect } from 'react';
 import Loading from '@/components/loading/page';
 import { useUpdateWorkMutation } from '@/hooks/works/useWorkMutation';
 import { useWorkViewQuery } from '@/hooks/works/useWorkQuery';
+import { useUserRoleStore } from '@/stores/user-role-store';
 import styles from './work-portfolio-detail-page.module.css';
 
 const { Text, Title } = Typography;
@@ -50,6 +51,8 @@ export function WorkPortfolioDetailPage({ id }: { id: string }) {
   const [form] = Form.useForm<WorkFormValues>();
   const { data, isLoading } = useWorkViewQuery(id);
   const updateWorkMutation = useUpdateWorkMutation();
+  const role = useUserRoleStore((state) => state.role);
+  const canManageWork = role === 'SuperAdmin' || role === 'Operator';
   const work = data as WorkAdminRow | null | undefined;
 
   useEffect(() => {
@@ -70,6 +73,11 @@ export function WorkPortfolioDetailPage({ id }: { id: string }) {
   }, [form, work]);
 
   const handleFinish = async (values: WorkFormValues) => {
+    if (!canManageWork) {
+      messageApi.error('접근 권한이 없습니다.');
+      return;
+    }
+
     try {
       await updateWorkMutation.mutateAsync({
         values: {
@@ -91,7 +99,9 @@ export function WorkPortfolioDetailPage({ id }: { id: string }) {
       messageApi.success('Work 정보를 저장했습니다.');
     } catch (error) {
       messageApi.error(
-        error instanceof Error ? error.message : 'Work 저장 중 오류가 발생했습니다.',
+        error instanceof Error
+          ? error.message
+          : 'Work 저장 중 오류가 발생했습니다.',
       );
     }
   };
@@ -129,7 +139,7 @@ export function WorkPortfolioDetailPage({ id }: { id: string }) {
           <Title className={styles.title} level={2}>
             {work.title}
           </Title>
-          <Text type="secondary">Work 상세 정보를 확인하고 수정합니다.</Text>
+          <Text type="secondary">Work 상세 정보를 확인합니다.</Text>
         </div>
         {linkUrl ? (
           <a href={linkUrl} rel="noreferrer" target="_blank">
@@ -172,82 +182,84 @@ export function WorkPortfolioDetailPage({ id }: { id: string }) {
           )}
         </Card>
 
-        <Card className={styles.panel} title="정보 수정">
-          <Form form={form} layout="vertical" onFinish={handleFinish} requiredMark={false}>
-            <Form.Item
-              label="프로젝트 제목"
-              name="title"
-              rules={[{ message: '제목을 입력해주세요.', required: true }]}
-            >
-              <Input maxLength={120} showCount />
-            </Form.Item>
-
-            <div className={styles.formGrid}>
+        {canManageWork ? (
+          <Card className={styles.panel} title="정보 수정">
+            <Form form={form} layout="vertical" onFinish={handleFinish} requiredMark={false}>
               <Form.Item
-                label="카테고리"
-                name="category"
-                rules={[{ message: '카테고리를 입력해주세요.', required: true }]}
+                label="프로젝트 제목"
+                name="title"
+                rules={[{ message: '제목을 입력해주세요.', required: true }]}
               >
-                <Input />
+                <Input maxLength={120} showCount />
               </Form.Item>
 
-              <Form.Item
-                label="산업"
-                name="industry"
-                rules={[{ message: '산업을 입력해주세요.', required: true }]}
-              >
-                <Input />
-              </Form.Item>
-            </div>
-
-            <div className={styles.formGrid}>
-              <Form.Item label="노출 타입" name="size" rules={[{ required: true }]}>
-                <Select<WorkRow['size']>
-                  options={[
-                    { label: '일반 카드', value: 'short' },
-                    { label: '강조 카드', value: 'tall' },
-                  ]}
-                />
-              </Form.Item>
-
-              <Form.Item
-                extra="쉼표로 구분해서 입력하세요."
-                label="역할"
-                name="rolesText"
-                rules={[{ message: '역할을 하나 이상 입력해주세요.', required: true }]}
-              >
-                <Input />
-              </Form.Item>
-            </div>
-
-            <Form.Item label="대표 이미지 URL" name="image">
-              <Input />
-            </Form.Item>
-
-            <div className={styles.formGrid}>
-              <Form.Item label="외부 링크 URL" name="linkUrl">
-                <Input />
-              </Form.Item>
-
-              <Form.Item label="외부 링크 라벨" name="linkLabel">
-                <Input />
-              </Form.Item>
-            </div>
-
-            <Flex className={styles.actions} justify="flex-end" gap={8}>
-              <Space>
-                <Button
-                  htmlType="submit"
-                  icon={<Save size={14} />}
-                  loading={updateWorkMutation.isPending}
-                  type="primary"
+              <div className={styles.formGrid}>
+                <Form.Item
+                  label="카테고리"
+                  name="category"
+                  rules={[{ message: '카테고리를 입력해주세요.', required: true }]}
                 >
-                  저장
-                </Button>
-              </Space>
-            </Flex>
-          </Form>
-        </Card>
+                  <Input />
+                </Form.Item>
+
+                <Form.Item
+                  label="산업"
+                  name="industry"
+                  rules={[{ message: '산업을 입력해주세요.', required: true }]}
+                >
+                  <Input />
+                </Form.Item>
+              </div>
+
+              <div className={styles.formGrid}>
+                <Form.Item label="노출 타입" name="size" rules={[{ required: true }]}>
+                  <Select<WorkRow['size']>
+                    options={[
+                      { label: '일반 카드', value: 'short' },
+                      { label: '강조 카드', value: 'tall' },
+                    ]}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  extra="쉼표로 구분해서 입력하세요."
+                  label="역할"
+                  name="rolesText"
+                  rules={[{ message: '역할을 하나 이상 입력해주세요.', required: true }]}
+                >
+                  <Input />
+                </Form.Item>
+              </div>
+
+              <Form.Item label="대표 이미지 URL" name="image">
+                <Input />
+              </Form.Item>
+
+              <div className={styles.formGrid}>
+                <Form.Item label="외부 링크 URL" name="linkUrl">
+                  <Input />
+                </Form.Item>
+
+                <Form.Item label="외부 링크 라벨" name="linkLabel">
+                  <Input />
+                </Form.Item>
+              </div>
+
+              <Flex className={styles.actions} justify="flex-end" gap={8}>
+                <Space>
+                  <Button
+                    htmlType="submit"
+                    icon={<Save size={14} />}
+                    loading={updateWorkMutation.isPending}
+                    type="primary"
+                  >
+                    저장
+                  </Button>
+                </Space>
+              </Flex>
+            </Form>
+          </Card>
+        ) : null}
       </div>
     </section>
   );

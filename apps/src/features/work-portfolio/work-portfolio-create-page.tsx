@@ -17,6 +17,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+import { RoleGuard } from '@/components/auth/role-guard';
 import {
   useCreateWorkMutation,
   type WorkMutationValues,
@@ -64,6 +65,10 @@ export function WorkPortfolioCreatePage() {
   };
 
   return (
+    <RoleGuard
+      allowedRoles={['SuperAdmin', 'Operator']}
+      fallbackPath={ROUTES.ADMIN.WORK_PORTFOLIO.ROOT}
+    >
     <section className={styles.page}>
       {contextHolder}
       <Flex align="flex-start" justify="space-between" gap={16} wrap>
@@ -165,6 +170,7 @@ export function WorkPortfolioCreatePage() {
         </Form>
       </Card>
     </section>
+    </RoleGuard>
   );
 }
 

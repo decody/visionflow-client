@@ -25,6 +25,7 @@ import type { IFaq } from '@visionflow/shared';
 import { useTopbar } from '@/components/layout/topbar-context';
 import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/admin/faq/useFaqQuery';
+import { useUserRoleStore } from '@/stores/user-role-store';
 import styles from './page.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -77,6 +78,8 @@ export default function FaqPage() {
     useState<CategoryFilter>('all');
   const [visibilityFilter, setVisibilityFilter] =
     useState<VisibilityFilter>('all');
+
+  const { role, fetchRole, setRole, clearRole } = useUserRoleStore();
 
   const filteredFaqs = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -258,9 +261,12 @@ export default function FaqPage() {
             자주 묻는 질문을 등록하고 노출 상태를 관리합니다.
           </Text>
         </div>
-        <Link href={ROUTES.ADMIN.FAQ.WRITE()}>
-          <Button type="primary">FAQ 등록</Button>
-        </Link>
+
+        {role === 'SuperAdmin' || role === 'Operator' ? (
+          <Link href={ROUTES.ADMIN.FAQ.WRITE()}>
+            <Button type="primary">FAQ 등록</Button>
+          </Link>
+        ) : null}
       </Flex>
 
       <Card className={styles.panel}>

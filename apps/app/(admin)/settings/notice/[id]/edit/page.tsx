@@ -1,5 +1,6 @@
 'use client';
 
+import { RoleGuard } from '@/components/auth/role-guard';
 import Loading from '@/components/loading/page';
 import { useNoticeViewQuery } from '@/hooks/admin/notices/useNoticeQuery';
 import { ROUTES } from '@visionflow/routes';
@@ -105,6 +106,10 @@ export default function NoticeEditPage() {
   }
 
   return (
+    <RoleGuard
+      allowedRoles={['SuperAdmin', 'Operator']}
+      fallbackPath={ROUTES.ADMIN.NOTICE.DETAIL(id)}
+    >
     <section className={styles.page}>
       <Flex align="flex-start" justify="space-between" gap={16} wrap>
         <div>
@@ -243,5 +248,6 @@ export default function NoticeEditPage() {
         </Form>
       </Card>
     </section>
+    </RoleGuard>
   );
 }

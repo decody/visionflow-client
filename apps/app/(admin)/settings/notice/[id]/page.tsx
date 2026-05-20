@@ -5,6 +5,7 @@ import {
   useNoticeListQuery,
   useNoticeViewQuery,
 } from '@/hooks/admin/notices/useNoticeQuery';
+import { useUserRoleStore } from '@/stores/user-role-store';
 import { getNoticeDisplayNumberMap } from '@/utils/notices';
 import { ROUTES } from '@visionflow/routes';
 import { sanitizeContentHtml } from '@visionflow/shared';
@@ -57,6 +58,8 @@ export default function NoticeDetailPage() {
   const { data: notice, isError, isLoading } = useNoticeViewQuery(id);
   const { data: notices = [], isLoading: isListLoading } =
     useNoticeListQuery();
+  const role = useUserRoleStore((state) => state.role);
+  const canManageNotice = role === 'SuperAdmin' || role === 'Operator';
   const noticeNumberById = useMemo(() => {
     return getNoticeDisplayNumberMap(notices);
   }, [notices]);
@@ -99,9 +102,11 @@ export default function NoticeDetailPage() {
           <Link href={ROUTES.ADMIN.NOTICE.ROOT}>
             <Button>목록</Button>
           </Link>
-          <Link href={ROUTES.ADMIN.NOTICE.EDIT(id)}>
-            <Button type="primary">수정</Button>
-          </Link>
+          {canManageNotice ? (
+            <Link href={ROUTES.ADMIN.NOTICE.EDIT(id)}>
+              <Button type="primary">수정</Button>
+            </Link>
+          ) : null}
         </Space>
       </Flex>
 

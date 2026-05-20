@@ -17,6 +17,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+import { RoleGuard } from '@/components/auth/role-guard';
 import { useCreateFaqMutation } from '@/hooks/admin/faq/useCreateFaqMutation';
 import styles from '../page.module.css';
 
@@ -57,6 +58,10 @@ export default function FaqWritePage() {
   }
 
   return (
+    <RoleGuard
+      allowedRoles={['SuperAdmin', 'Operator']}
+      fallbackPath={ROUTES.ADMIN.FAQ.ROOT}
+    >
     <section className={styles.page}>
       <Flex align="flex-start" justify="space-between" gap={16} wrap>
         <div>
@@ -159,5 +164,6 @@ export default function FaqWritePage() {
         </Form>
       </Card>
     </section>
+    </RoleGuard>
   );
 }

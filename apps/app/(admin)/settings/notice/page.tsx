@@ -29,6 +29,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import { useTopbar } from '@/components/layout/topbar-context';
+import { useUserRoleStore } from '@/stores/user-role-store';
 import styles from './page.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -90,7 +91,7 @@ export default function NoticePage() {
     () => ({
       breadcrumb: [
         { href: ROUTES.ADMIN.HOME, label: '대시보드' },
-        { label: '인박스' },
+        { label: '콘텐츠' },
         { label: 'Notice' },
       ],
     }),
@@ -105,6 +106,8 @@ export default function NoticePage() {
     useState<PublishFilter>('all');
   const [importantFilter, setImportantFilter] =
     useState<ImportantFilter>('all');
+  const role = useUserRoleStore((state) => state.role);
+  const canManageNotice = role === 'SuperAdmin' || role === 'Operator';
 
   const filteredNotices = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -140,9 +143,7 @@ export default function NoticePage() {
         headerName: '번호',
         maxWidth: 92,
         minWidth: 80,
-        valueGetter: ({
-          data,
-        }: ValueGetterParams<INotice>) =>
+        valueGetter: ({ data }: ValueGetterParams<INotice>) =>
           data ? (noticeNumberById.get(data.id) ?? '-') : '-',
       },
       {
@@ -239,15 +240,17 @@ export default function NoticePage() {
               <Link href={ROUTES.ADMIN.NOTICE.DETAIL(data.id)}>
                 상세
               </Link>
-              <Link href={ROUTES.ADMIN.NOTICE.EDIT(data.id)}>
-                수정
-              </Link>
+              {canManageNotice ? (
+                <Link href={ROUTES.ADMIN.NOTICE.EDIT(data.id)}>
+                  수정
+                </Link>
+              ) : null}
             </Space>
           );
         },
       },
     ],
-    [noticeNumberById],
+    [canManageNotice, noticeNumberById],
   );
 
   const defaultColDef = useMemo<ColDef<INotice>>(
@@ -275,9 +278,11 @@ export default function NoticePage() {
             등록된 공지사항과 공개 상태를 확인합니다.
           </Text>
         </div>
-        <Link href={ROUTES.ADMIN.NOTICE.WRITE()}>
-          <Button type="primary">공지 등록</Button>
-        </Link>
+        {canManageNotice ? (
+          <Link href={ROUTES.ADMIN.NOTICE.WRITE()}>
+            <Button type="primary">공지 등록</Button>
+          </Link>
+        ) : null}
       </Flex>
 
       <div className={styles.summaryGrid}>

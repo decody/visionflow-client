@@ -24,6 +24,7 @@ import { useCallback, useMemo, useState } from 'react';
 import Loading from '@/components/loading/page';
 import { useDeleteWorkMutation } from '@/hooks/works/useWorkMutation';
 import { useWorkListQuery } from '@/hooks/works/useWorkQuery';
+import { useUserRoleStore } from '@/stores/user-role-store';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './work-portfolio-list-page.module.css';
 
@@ -49,6 +50,8 @@ export function WorkPortfolioListPage() {
   const [searchText, setSearchText] = useState('');
   const deleteWorkMutation = useDeleteWorkMutation();
   const { data: works = [], isLoading } = useWorkListQuery();
+  const role = useUserRoleStore((state) => state.role);
+  const canManageWork = role === 'SuperAdmin' || role === 'Operator';
 
   useTopbar(
     () => ({
@@ -145,7 +148,7 @@ export function WorkPortfolioListPage() {
     () => [
       {
         cellRenderer: ({ data }: ICellRendererParams<WorkAdminRow>) => {
-          if (!data) {
+          if (!data || !canManageWork) {
             return null;
           }
 
@@ -247,7 +250,7 @@ export function WorkPortfolioListPage() {
         sortable: false,
       },
     ],
-    [deleteWorkMutation.isPending, handleDeleteWork],
+    [canManageWork, deleteWorkMutation.isPending, handleDeleteWork],
   );
 
   const defaultColDef = useMemo<ColDef<WorkAdminRow>>(
@@ -309,11 +312,13 @@ export function WorkPortfolioListPage() {
           <Button icon={<Download size={14} />} onClick={handleExportCsv}>
             CSV 내보내기
           </Button>
-          <Link href={ROUTES.ADMIN.WORK_PORTFOLIO.CREATE}>
+          {canManageWork ? (
+            <Link href={ROUTES.ADMIN.WORK_PORTFOLIO.CREATE}>
             <Button icon={<Plus size={14} />} type="primary">
               Work 작성
             </Button>
-          </Link>
+            </Link>
+          ) : null}
         </div>
       </Flex>
 

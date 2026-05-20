@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 
+import { RoleGuard } from '@/components/auth/role-guard';
 import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/admin/faq/useFaqQuery';
 import { useUpdateFaqMutation } from '@/hooks/admin/faq/useUpdateFaqMutation';
@@ -87,6 +88,10 @@ export default function FaqEditPage() {
   }
 
   return (
+    <RoleGuard
+      allowedRoles={['SuperAdmin', 'Operator']}
+      fallbackPath={ROUTES.ADMIN.FAQ.DETAIL(id)}
+    >
     <section className={styles.page}>
       <Flex align="flex-start" justify="space-between" gap={16} wrap>
         <div>
@@ -193,5 +198,6 @@ export default function FaqEditPage() {
         </Form>
       </Card>
     </section>
+    </RoleGuard>
   );
 }

@@ -16,6 +16,7 @@ import { useParams } from 'next/navigation';
 
 import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/admin/faq/useFaqQuery';
+import { useUserRoleStore } from '@/stores/user-role-store';
 import styles from '../page.module.css';
 
 const { Paragraph, Text, Title } = Typography;
@@ -25,6 +26,8 @@ export default function FaqViewPage() {
   const params = useParams<{ id: string }>();
   const id = String(params.id);
   const faq = faqs.find((faq) => String(faq.id) === id);
+  const role = useUserRoleStore((state) => state.role);
+  const canManageFaq = role === 'SuperAdmin' || role === 'Operator';
 
   if (isLoading) {
     return <Loading />;
@@ -47,9 +50,11 @@ export default function FaqViewPage() {
           <Link href={ROUTES.ADMIN.FAQ.ROOT}>
             <Button>목록</Button>
           </Link>
-          <Link href={ROUTES.ADMIN.FAQ.EDIT(id)}>
-            <Button type="primary">수정</Button>
-          </Link>
+          {canManageFaq ? (
+            <Link href={ROUTES.ADMIN.FAQ.EDIT(id)}>
+              <Button type="primary">수정</Button>
+            </Link>
+          ) : null}
         </Space>
       </Flex>
 
@@ -85,9 +90,7 @@ export default function FaqViewPage() {
           <Title level={4}>{faq.question}</Title>
 
           <Text className={styles.label}>답변</Text>
-          <Paragraph className={styles.answer}>
-            {faq.answer}
-          </Paragraph>
+          <Paragraph className={styles.answer}>{faq.answer}</Paragraph>
         </div>
       </Card>
     </section>

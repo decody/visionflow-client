@@ -30,7 +30,7 @@ export type {
   Source,
   SourceType,
 } from './types/search';
-export type { IUser } from './types/users';
+export type { IUser, UserRole } from './types/users';
 export type { WorkRow, WorksData } from './types/works';
 export { apiClient } from './utils/api';
 export type { ApiPayload, ApiResponse } from './utils/api';
