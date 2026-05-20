@@ -16,12 +16,16 @@ export type ApiResponse<T> = {
 };
 
 export type ApiPayload = Record<string, unknown>;
-export type ApiQueryParams = Record<string, boolean | number | string | null | undefined>;
+export type ApiQueryParams = Record<
+  string,
+  boolean | number | string | null | undefined
+>;
 
 // apiClient 내부에서만 쓰는 최소 요청 옵션입니다.
 type RequestOptions = {
   body?: unknown;
   count?: 'exact';
+  headerMode?: 'edgeFunction' | 'rest';
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   returnRepresentation?: boolean;
   singleRow?: boolean;
@@ -42,60 +46,93 @@ const parseContentRangeCount = (value: string | null) => {
 
 // REST URL이 있으면 그대로 쓰고, 프로젝트 URL만 있으면 /rest/v1을 붙입니다.
 const getRestBaseUrl = () => {
-  const NEXT_PUBLIC_SUPABASE_REST_URL = process.env.NEXT_PUBLIC_SUPABASE_REST_URL;
-  const NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const NEXT_PUBLIC_SUPABASE_REST_URL =
+    process.env.NEXT_PUBLIC_SUPABASE_REST_URL;
+  const NEXT_PUBLIC_SUPABASE_URL =
+    process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  if (NEXT_PUBLIC_SUPABASE_REST_URL) return trimSlash(NEXT_PUBLIC_SUPABASE_REST_URL);
-  if (NEXT_PUBLIC_SUPABASE_URL) return `${trimSlash(NEXT_PUBLIC_SUPABASE_URL)}${SUPABASE_REST_PATH}`;
+  if (NEXT_PUBLIC_SUPABASE_REST_URL)
+    return trimSlash(NEXT_PUBLIC_SUPABASE_REST_URL);
+  if (NEXT_PUBLIC_SUPABASE_URL)
+    return `${trimSlash(NEXT_PUBLIC_SUPABASE_URL)}${SUPABASE_REST_PATH}`;
 
   throw new Error(
     'Supabase URL is required. Set NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_REST_URL.',
   );
 };
 
-const getSupabaseKey = () => {
-  const NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const getSupabaseApiKey = () => {
+  const NEXT_PUBLIC_SUPABASE_ANON_KEY =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  return NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return (
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
 };
+
+const getSupabaseAnonKey = () =>
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // DB는 snake_case, 프론트 타입은 camelCase로 쓰기 위해 key 이름만 변환합니다.
 const toCamelCase = (key: string) =>
-  key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
-const toSnakeCase = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+  key.replace(/_([a-z])/g, (_, letter: string) =>
+    letter.toUpperCase(),
+  );
+const toSnakeCase = (key: string) =>
+  key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 
-const mapObjectKeys = (value: unknown, mapKey: (key: string) => string): unknown => {
-  if (Array.isArray(value)) return value.map((item) => mapObjectKeys(item, mapKey));
+const mapObjectKeys = (
+  value: unknown,
+  mapKey: (key: string) => string,
+): unknown => {
+  if (Array.isArray(value))
+    return value.map((item) => mapObjectKeys(item, mapKey));
   if (!value || typeof value !== 'object') return value;
 
   return Object.fromEntries(
-    Object.entries(value).map(([key, item]) => [mapKey(key), mapObjectKeys(item, mapKey)]),
+    Object.entries(value).map(([key, item]) => [
+      mapKey(key),
+      mapObjectKeys(item, mapKey),
+    ]),
   );
 };
 
 const createHeaders = ({
   count,
+  headerMode = 'rest',
   returnRepresentation = false,
 }: {
   count?: RequestOptions['count'];
+  headerMode?: RequestOptions['headerMode'];
   returnRepresentation?: boolean;
 } = {}): HeadersInit => {
-  const key = getSupabaseKey();
+  const apiKey = getSupabaseApiKey();
   const preferences = [
     returnRepresentation ? 'return=representation' : undefined,
     count ? `count=${count}` : undefined,
   ].filter(Boolean);
 
-  if (!key) {
+  if (!apiKey) {
     throw new Error(
       'Supabase public key is required. Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY.',
     );
   }
 
+  const authorizationKey =
+    headerMode === 'edgeFunction' ? getSupabaseAnonKey() : apiKey;
+
+  if (!authorizationKey) {
+    throw new Error(
+      'Supabase anon JWT is required for Edge Function calls. Set NEXT_PUBLIC_SUPABASE_ANON_KEY; NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY cannot be used as a Bearer JWT.',
+    );
+  }
+
   return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
+    apikey: apiKey,
+    Authorization: `Bearer ${authorizationKey}`,
     'Content-Type': 'application/json',
     ...(preferences.length > 0 && { Prefer: preferences.join(',') }),
   };
@@ -139,7 +176,9 @@ const createUrl = (path: string, query?: ApiQueryParams) => {
 };
 
 const createRpcUrl = (functionName: string) => {
-  const normalizedFunctionName = functionName.trim().replace(/^\/+|\/+$/g, '');
+  const normalizedFunctionName = functionName
+    .trim()
+    .replace(/^\/+|\/+$/g, '');
 
   if (!normalizedFunctionName) {
     throw new Error('Supabase RPC function name is required.');
@@ -149,11 +188,16 @@ const createRpcUrl = (functionName: string) => {
 };
 
 const createFunctionUrl = (functionName: string) => {
-  const NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const normalizedFunctionName = functionName.trim().replace(/^\/+|\/+$/g, '');
+  const NEXT_PUBLIC_SUPABASE_URL =
+    process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const normalizedFunctionName = functionName
+    .trim()
+    .replace(/^\/+|\/+$/g, '');
 
   if (!NEXT_PUBLIC_SUPABASE_URL) {
-    throw new Error('Supabase URL is required. Set NEXT_PUBLIC_SUPABASE_URL.');
+    throw new Error(
+      'Supabase URL is required. Set NEXT_PUBLIC_SUPABASE_URL.',
+    );
   }
 
   if (!normalizedFunctionName) {
@@ -183,15 +227,23 @@ const assertSuccess = async (response: Response) => {
   const error = await parseBody(response);
 
   if (error && typeof error === 'object') {
-    const { details, message } = error as { details?: string; message?: string };
+    const { details, message } = error as {
+      details?: string;
+      message?: string;
+    };
     throw new Error(message ?? details ?? response.statusText);
   }
 
-  throw new Error(typeof error === 'string' ? error : response.statusText);
+  throw new Error(
+    typeof error === 'string' ? error : response.statusText,
+  );
 };
 
 // 요청 payload는 snake_case로 보내고, 응답 data는 camelCase로 돌려줍니다.
-const request = async <T>(url: string, options: RequestOptions): Promise<ApiResponse<T>> => {
+const request = async <T>(
+  url: string,
+  options: RequestOptions,
+): Promise<ApiResponse<T>> => {
   const response = await fetch(url, {
     body:
       options.body === undefined
@@ -199,6 +251,7 @@ const request = async <T>(url: string, options: RequestOptions): Promise<ApiResp
         : JSON.stringify(mapObjectKeys(options.body, toSnakeCase)),
     headers: createHeaders({
       count: options.count,
+      headerMode: options.headerMode,
       returnRepresentation: options.returnRepresentation,
     }),
     method: options.method,
@@ -207,10 +260,13 @@ const request = async <T>(url: string, options: RequestOptions): Promise<ApiResp
   await assertSuccess(response);
 
   const body = await parseBody(response);
-  const data = options.singleRow && Array.isArray(body) ? body[0] : body;
+  const data =
+    options.singleRow && Array.isArray(body) ? body[0] : body;
 
   return {
-    count: parseContentRangeCount(response.headers.get('content-range')),
+    count: parseContentRangeCount(
+      response.headers.get('content-range'),
+    ),
     data: mapObjectKeys(data, toCamelCase) as T,
   };
 };
@@ -243,7 +299,8 @@ export const apiClient = {
   patch<T>(path: string, payload: ApiPayload) {
     const { id, url } = createUrl(path);
 
-    if (!id) throw new Error('Supabase row id is required for update.');
+    if (!id)
+      throw new Error('Supabase row id is required for update.');
 
     return request<T>(url, {
       body: payload,
@@ -256,7 +313,8 @@ export const apiClient = {
   delete<T>(path: string) {
     const { id, url } = createUrl(path);
 
-    if (!id) throw new Error('Supabase row id is required for delete.');
+    if (!id)
+      throw new Error('Supabase row id is required for delete.');
 
     return request<T>(url, {
       method: 'DELETE',
@@ -275,6 +333,7 @@ export const apiClient = {
   invoke<T>(functionName: string, payload: ApiPayload = {}) {
     return request<T>(createFunctionUrl(functionName), {
       body: payload,
+      headerMode: 'edgeFunction',
       method: 'POST',
     });
   },
