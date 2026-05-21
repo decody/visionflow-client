@@ -1,8 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { providers } from '@visionflow/auth';
 import { ROUTES } from '@visionflow/routes';
-import { createClient } from '@supabase/supabase-js';
 import type { UserRole } from '@visionflow/shared';
+import bcrypt from 'bcryptjs';
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { headers } from 'next/headers';
@@ -90,6 +90,14 @@ const getLoginMetadata = async () => {
 };
 
 type LoginAuditStatus = 'success' | 'failure';
+
+type CredentialUserRecord = {
+  email: string;
+  id: string;
+  name: string | null;
+  password_hash: string | null;
+  status: string | null;
+};
 
 const writeLoginAuditLog = async ({
   email,
@@ -202,46 +210,83 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseAnonKey =
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-          process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+        const { data, error } = await supabaseAdmin
+          .from('users')
+          .select('id,email,name,status,password_hash')
+          .eq('email', email)
+          .maybeSingle();
 
-        if (!supabaseUrl || !supabaseAnonKey) {
+        if (error) {
           await writeLoginAuditLog({
             email,
             provider: 'credentials',
-            reason: 'supabase_auth_not_configured',
+            reason: error.message,
             status: 'failure',
           });
           return null;
         }
 
-        const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-          auth: {
-            persistSession: false,
-          },
-        });
-        const { data, error } =
-          await supabaseAuth.auth.signInWithPassword({
-            email,
-            password,
-          });
+        const appUser = data as CredentialUserRecord | null;
 
-        if (error || !data.user?.email) {
+        if (!appUser?.password_hash) {
           await writeLoginAuditLog({
             email,
             provider: 'credentials',
-            reason: error?.message ?? 'invalid_credentials',
+            reason: 'invalid_credentials',
             status: 'failure',
+          });
+          return null;
+        }
+
+        if (appUser.status !== 'active') {
+          await writeLoginAuditLog({
+            email,
+            provider: 'credentials',
+            reason: 'inactive_user',
+            status: 'failure',
+            userId: appUser.id,
+          });
+          return null;
+        }
+
+        const isValidPassword = await bcrypt.compare(
+          password,
+          appUser.password_hash,
+        );
+
+        if (!isValidPassword) {
+          await writeLoginAuditLog({
+            email,
+            provider: 'credentials',
+            reason: 'invalid_credentials',
+            status: 'failure',
+            userId: appUser.id,
+          });
+          return null;
+        }
+
+        const { user_agent: _userAgent, ...loginMetadata } =
+          await getLoginMetadata();
+        const { error: updateError } = await supabaseAdmin
+          .from('users')
+          .update(loginMetadata)
+          .eq('id', appUser.id);
+
+        if (updateError) {
+          await writeLoginAuditLog({
+            email,
+            provider: 'credentials',
+            reason: updateError.message,
+            status: 'failure',
+            userId: appUser.id,
           });
           return null;
         }
 
         return {
-          email: data.user.email,
-          id: data.user.id,
-          name: data.user.user_metadata?.name ?? data.user.email,
+          email: appUser.email,
+          id: appUser.id,
+          name: appUser.name ?? appUser.email,
         };
       },
     }),
@@ -268,6 +313,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       try {
+        if (account?.provider === 'credentials') {
+          await writeLoginAuditLog({
+            email: user.email,
+            provider: 'credentials',
+            status: 'success',
+            userId: user.id,
+          });
+          return true;
+        }
+
         const appUser = await upsertAppUser({
           email: user.email,
           name: user.name,
