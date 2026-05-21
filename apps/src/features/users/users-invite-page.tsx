@@ -7,10 +7,8 @@ import {
   ArrowRight,
   Bell,
   Check,
-  ChevronRight,
   Mail,
   Send,
-  ShieldCheck,
   Sparkles,
   Upload,
   X,
@@ -21,7 +19,7 @@ import { useState } from 'react';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './users-invite-page.module.css';
 
-type RoleKey = 'super_admin' | 'sales' | 'operator' | 'viewer';
+type RoleKey = 'super_admin' | 'operator' | 'viewer';
 
 const ROLE_OPTIONS: ReadonlyArray<{
   bullets: ReadonlyArray<string>;
@@ -44,18 +42,6 @@ const ROLE_OPTIONS: ReadonlyArray<{
     label: 'SuperAdmin',
     notice: '현재 1명',
     notice2: '⚠ 신중히',
-  },
-  {
-    bullets: [
-      '견적·제휴 인박스 답변',
-      'Q&A 비밀글 평문 조회',
-      'SLA 대시보드 조회',
-    ],
-    description: '인박스 응대 · 답변',
-    emoji: '💼',
-    key: 'sales',
-    label: 'Sales',
-    notice: '현재 3명',
   },
   {
     bullets: [
@@ -83,10 +69,23 @@ const ROLE_OPTIONS: ReadonlyArray<{
 ];
 
 const TOKEN_TIMELINE = [
-  { active: true, label: '발송', sub: '지금', tone: 'primary' as const },
-  { label: '리마인더 메일', sub: '12h 후 미수락', tone: 'amber' as const },
+  {
+    active: true,
+    label: '발송',
+    sub: '지금',
+    tone: 'primary' as const,
+  },
+  {
+    label: '리마인더 메일',
+    sub: '12h 후 미수락',
+    tone: 'amber' as const,
+  },
   { label: '경고 알림', sub: '20h 후', tone: 'amber' as const },
-  { label: '토큰 자동 폐기', sub: '24h 후 만료', tone: 'danger' as const },
+  {
+    label: '토큰 자동 폐기',
+    sub: '24h 후 만료',
+    tone: 'danger' as const,
+  },
 ];
 
 export function UsersInvitePage() {
@@ -96,7 +95,7 @@ export function UsersInvitePage() {
   const [emailInput, setEmailInput] = useState('');
   const [role, setRole] = useState<RoleKey>('operator');
   const [welcomeMessage, setWelcomeMessage] = useState(
-    '주현님, VisionFlow 운영 팀에 오신 것을 환영합니다. 시즌 캠페인 운영 + Q&A 답변을 맡아주실 예정입니다. 첫 출근 전까지 가입 완료 부탁드려요. — 이대표',
+    `홍길동님, VisionFlow 운영 팀에 오신 것을 환영합니다. 시즌 캠페인 운영 + Q&A 답변을 맡아주실 예정입니다. 첫 출근 전까지 가입 완료 부탁드려요. — 노대표`,
   );
 
   useTopbar(
@@ -126,7 +125,10 @@ export function UsersInvitePage() {
   return (
     <div className={styles.page}>
       <header className={styles.topbar}>
-        <Link className={styles.backLink} href={ROUTES.ADMIN.USERS.ROOT}>
+        <Link
+          className={styles.backLink}
+          href={ROUTES.ADMIN.USERS.ROOT}
+        >
           <ArrowLeft aria-hidden="true" size={14} />
           사용자 관리
         </Link>
@@ -140,7 +142,10 @@ export function UsersInvitePage() {
             <Upload aria-hidden="true" size={13} />
             일괄 초대 (CSV)
           </button>
-          <Link className={styles.cancelLink} href={ROUTES.ADMIN.USERS.ROOT}>
+          <Link
+            className={styles.cancelLink}
+            href={ROUTES.ADMIN.USERS.ROOT}
+          >
             취소
           </Link>
           <button className={styles.primaryButton} type="button">
@@ -152,9 +157,17 @@ export function UsersInvitePage() {
 
       <div className={styles.layout}>
         <div className={styles.formColumn}>
-          <Step number="01" title="초대할 이메일" hint="한 번에 여러 명 초대하려면 쉼표로 구분">
+          <Step
+            number="01"
+            title="초대할 이메일"
+            hint="한 번에 여러 명 초대하려면 쉼표로 구분"
+          >
             <div className={styles.emailField}>
-              <Mail aria-hidden="true" className={styles.emailFieldIcon} size={16} />
+              <Mail
+                aria-hidden="true"
+                className={styles.emailFieldIcon}
+                size={16}
+              />
               <div className={styles.emailChips}>
                 {emails.map((email) => (
                   <span className={styles.emailChip} key={email}>
@@ -217,22 +230,33 @@ export function UsersInvitePage() {
                   type="button"
                 >
                   <header className={styles.roleHeader}>
-                    <span aria-hidden="true" className={styles.roleEmoji}>
+                    <span
+                      aria-hidden="true"
+                      className={styles.roleEmoji}
+                    >
                       {option.emoji}
                     </span>
-                    <strong className={styles.roleLabel}>{option.label}</strong>
+                    <strong className={styles.roleLabel}>
+                      {option.label}
+                    </strong>
                     {option.notice ? (
-                      <span className={styles.roleNotice}>{option.notice}</span>
+                      <span className={styles.roleNotice}>
+                        {option.notice}
+                      </span>
                     ) : null}
                   </header>
-                  <p className={styles.roleDesc}>{option.description}</p>
+                  <p className={styles.roleDesc}>
+                    {option.description}
+                  </p>
                   <ul className={styles.roleBullets}>
                     {option.bullets.map((bullet) => (
                       <li key={bullet}>{bullet}</li>
                     ))}
                   </ul>
                   {option.notice2 ? (
-                    <span className={styles.roleWarn}>{option.notice2}</span>
+                    <span className={styles.roleWarn}>
+                      {option.notice2}
+                    </span>
                   ) : null}
                   {role === option.key ? (
                     <span className={styles.roleCheck}>
@@ -242,32 +266,41 @@ export function UsersInvitePage() {
                 </button>
               ))}
             </div>
-            <button className={styles.linkButton} type="button">
-              🔍 전체 권한 매트릭스 보기 <ChevronRight size={12} />
-            </button>
           </Step>
 
-          <Step number="03" title="인증 방식" hint="이메일 도메인에 따라 자동 결정">
+          <Step
+            number="03"
+            title="인증 방식"
+            hint="이메일 도메인에 따라 자동 결정"
+          >
             <div className={styles.authStack}>
-              <div className={`${styles.authRow} ${styles.authRowOk}`}>
+              <div
+                className={`${styles.authRow} ${styles.authRowOk}`}
+              >
                 <span aria-hidden="true" className={styles.authIcon}>
                   G
                 </span>
                 <div className={styles.authBody}>
                   <strong>Google Workspace SSO</strong>
-                  <p>@visionflow.kr 도메인 → 패스워드 입력 없이 1-click 가입</p>
+                  <p>
+                    @visionflow.kr 도메인 → 패스워드 입력 없이 1-click
+                    가입
+                  </p>
                 </div>
                 <span className={styles.authBadge}>자동 감지</span>
               </div>
-              <div className={styles.authRow}>
-                <span aria-hidden="true" className={`${styles.authIcon} ${styles.authIconSecure}`}>
+              {/* <div className={styles.authRow}>
+                <span
+                  aria-hidden="true"
+                  className={`${styles.authIcon} ${styles.authIconSecure}`}
+                >
                   <ShieldCheck size={14} />
                 </span>
                 <div className={styles.authBody}>
                   <strong>2FA TOTP — Operator는 선택</strong>
-                  <p>SuperAdmin·Sales는 필수 적용 · 가입 시 설정</p>
+                  <p>SuperAdmin은 필수 적용 · 가입 시 설정</p>
                 </div>
-              </div>
+              </div> */}
             </div>
           </Step>
 
@@ -285,9 +318,12 @@ export function UsersInvitePage() {
             />
             <div className={styles.welcomeMeta}>
               <span className={styles.welcomeHint}>
-                💡 **굵게**, *기울임*, [링크](url) 지원 · 이미지·HTML은 차단됨
+                💡 **굵게**, *기울임*, [링크](url) 지원 ·
+                이미지·HTML은 차단됨
               </span>
-              <span className={styles.welcomeCount}>{welcomeMessage.length} / 500자</span>
+              <span className={styles.welcomeCount}>
+                {welcomeMessage.length} / 500자
+              </span>
             </div>
           </Step>
         </div>
@@ -301,19 +337,27 @@ export function UsersInvitePage() {
             </span>
           </header>
           <div className={styles.previewTabs}>
-            <button className={`${styles.previewTab} ${styles.previewTabActive}`} type="button">
+            <button
+              className={`${styles.previewTab} ${styles.previewTabActive}`}
+              type="button"
+            >
               <Mail aria-hidden="true" size={12} />
               초대 메일
             </button>
-            <button className={styles.previewTab} type="button">
+            {/* <button className={styles.previewTab} type="button">
               🌐 가입 페이지
-            </button>
+            </button> */}
           </div>
 
           <article className={styles.emailPreview}>
             <header className={styles.emailPreviewHead}>
-              <p className={styles.emailService}>Gmail · 받은편지함</p>
-              <p className={styles.emailSubject}>VisionFlow Admin 초대 — Operator 권한</p>
+              <p className={styles.emailService}>
+                Gmail · 받은편지함
+              </p>
+              <p className={styles.emailSubject}>
+                VisionFlow Admin 초대 —{' '}
+                {role.toUpperCase().replace('_', '')} 권한
+              </p>
               <p className={styles.emailMeta}>
                 받는사람: {emails[0] ?? '—'} · 1분 전
               </p>
@@ -326,8 +370,9 @@ export function UsersInvitePage() {
                 <strong>ADMIN</strong>
               </div>
               <h3 className={styles.emailGreeting}>
-                {emails[0]?.split('@')[0]?.split('.').pop() ?? '주현'}님, 팀에
-                합류해주세요
+                {emails[0]?.split('@')[0]?.split('.').pop() ??
+                  '홍길동'}
+                님, 팀에 합류해주세요
               </h3>
               <p className={styles.emailIntro}>
                 VisionFlow Admin 콘솔에 초대되었습니다.
@@ -337,7 +382,7 @@ export function UsersInvitePage() {
               <dl className={styles.emailFacts}>
                 <div>
                   <dt>초대 발신자</dt>
-                  <dd>이대표 (SuperAdmin)</dd>
+                  {/* <dd>{user?.name ?? '—'} (SuperAdmin)</dd> */}
                 </div>
                 <div>
                   <dt>부여될 역할</dt>
@@ -352,15 +397,14 @@ export function UsersInvitePage() {
                 초대 수락하고 가입하기
                 <ArrowRight aria-hidden="true" size={14} />
               </button>
-              <p className={styles.emailLink}>
-                버튼이 안 보이면 아래 링크를 직접 클릭:
-                <br />
-                <code>admin.visionflow.kr/register?token=8f3a92b1-d2c4-4e7b-a1f5...</code>
-              </p>
               {welcomeMessage ? (
                 <div className={styles.emailNote}>
-                  <p className={styles.emailNoteTitle}>이대표님의 메시지</p>
-                  <p className={styles.emailNoteBody}>{welcomeMessage}</p>
+                  <p className={styles.emailNoteTitle}>
+                    노대표님의 메시지
+                  </p>
+                  <p className={styles.emailNoteBody}>
+                    {welcomeMessage}
+                  </p>
                 </div>
               ) : null}
             </div>
@@ -372,7 +416,9 @@ export function UsersInvitePage() {
               <strong>발송과 동시에 감사 로그 기록</strong>
             </header>
             <code className={styles.auditCode}>
-              user.invite_sent · 이대표(SuperAdmin) · {role.toUpperCase().replace('_', '')} 역할로 {emails.length}명 초대
+              user.invite_sent · 노대표(SuperAdmin) ·{' '}
+              {role.toUpperCase().replace('_', '')} 역할로{' '}
+              {emails.length}명 초대
             </code>
             <p className={styles.auditNote}>
               메일 발송 + 24h 토큰 생성 + 토큰 만료 시 자동 회수
@@ -407,7 +453,8 @@ export function UsersInvitePage() {
             </ol>
             <p className={styles.timelineHint}>
               <AlertTriangle aria-hidden="true" size={12} />
-              만료 후에도 사용자 관리 페이지에서 ↻ 재전송 가능 · 새 24h 토큰 발급
+              만료 후에도 사용자 관리 페이지에서 ↻ 재전송 가능 · 새
+              24h 토큰 발급
             </p>
           </article>
         </aside>
