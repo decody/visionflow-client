@@ -10,6 +10,7 @@ const rootEnvFiles = [
   process.env.NODE_ENV === 'production' ? '.env.production' : null,
   '.env.local',
 ].filter(Boolean);
+const initialEnvKeys = new Set(Object.keys(process.env));
 
 const parseRootEnvFile = (filePath) => {
   const entries = {};
@@ -46,7 +47,13 @@ rootEnvFiles.forEach((fileName) => {
 
   if (!existsSync(filePath)) return;
 
-  Object.assign(process.env, parseRootEnvFile(filePath));
+  const entries = parseRootEnvFile(filePath);
+
+  Object.entries(entries).forEach(([key, value]) => {
+    if (!initialEnvKeys.has(key)) {
+      process.env[key] = value;
+    }
+  });
 });
 
 const publicSupabaseEnv = {
