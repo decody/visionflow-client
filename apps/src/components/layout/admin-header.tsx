@@ -17,11 +17,14 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useMemo } from 'react';
 
+import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
 import { LogoMark } from '../brand/logo-mark';
 import styles from './admin-shell.module.css';
 
 type NavItem = {
+  badgeKey?: 'generalInquiryPending';
   badge?: number;
   href: string;
   icon: LucideIcon;
@@ -61,7 +64,7 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
         label: 'Partnership',
       },
       {
-        badge: 8,
+        badgeKey: 'generalInquiryPending',
         href: ROUTES.ADMIN.GENERAL_INQUIRY.ROOT,
         icon: MessagesSquare,
         label: 'General Inquiry',
@@ -104,6 +107,22 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
 
 export function AdminHeader() {
   const pathname = usePathname();
+  const { data: quicks } = useQuickListQuery();
+  const pendingGeneralInquiryCount = useMemo(
+    () =>
+      Array.isArray(quicks)
+        ? quicks.filter((quick) => quick.status === 'pending').length
+        : 0,
+    [quicks],
+  );
+
+  const getBadge = (item: NavItem) => {
+    if (item.badgeKey === 'generalInquiryPending') {
+      return pendingGeneralInquiryCount;
+    }
+
+    return item.badge ?? 0;
+  };
 
   return (
     <header className={styles.header}>
@@ -130,6 +149,7 @@ export function AdminHeader() {
               <ul className={styles.navList}>
                 {section.items.map((item) => {
                   const Icon = item.icon;
+                  const badge = getBadge(item);
                   const isActive =
                     item.href === ROUTES.ADMIN.HOME
                       ? pathname === ROUTES.ADMIN.HOME
@@ -151,9 +171,9 @@ export function AdminHeader() {
                         <span className={styles.navLabel}>
                           {item.label}
                         </span>
-                        {item.badge ? (
+                        {badge ? (
                           <span className={styles.navBadge}>
-                            {item.badge}
+                            {badge}
                           </span>
                         ) : null}
                       </Link>
