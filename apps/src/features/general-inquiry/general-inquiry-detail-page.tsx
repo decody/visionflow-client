@@ -16,7 +16,6 @@ import {
   Send,
   Timer,
 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -59,7 +58,6 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
     inquiryId: string;
     notice: ReplyNotice;
   } | null>(null);
-  const { data: session } = useSession();
   const sendReplyMutation = useSendQuickReplyMutation();
 
   const { data: quicks, isLoading } = useQuickListQuery();
@@ -166,8 +164,6 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
   const displayTitle = inquiry.subject?.trim() || '(제목 없음)';
   const sla = getSlaText(inquiry);
   const replySubject = `Re: ${inquiry.subject?.trim() || '일반 문의'}`;
-  const repliedBy =
-    session?.user?.email ?? session?.user?.name ?? null;
   const canSendReply =
     Boolean(inquiry.email?.trim()) && Boolean(reply.trim());
 
@@ -207,7 +203,6 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
       setCurrentReplyNotice(null);
       await sendReplyMutation.mutateAsync({
         inquiryId: inquiry.id,
-        repliedBy,
         replyContent,
         subject: replySubject,
         to,

@@ -1,11 +1,11 @@
 import type { IQuickInquiry } from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { auth } from '../../../../../auth';
 
 type ReplyPayload = {
   inquiryId?: string;
-  repliedBy?: string | null;
   replyContent?: string;
   subject?: string;
   to?: string;
@@ -68,6 +68,26 @@ const getProviderMessage = (detail: unknown) => {
   }
 
   return typeof detail === 'string' ? detail : null;
+};
+
+const getSessionUserId = async (email?: string | null) => {
+  const normalizedEmail = email?.trim();
+
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('email', normalizedEmail)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return typeof data?.id === 'string' ? data.id : null;
 };
 
 export async function POST(request: NextRequest) {
@@ -144,6 +164,7 @@ export async function POST(request: NextRequest) {
     const serviceRoleKey = getRequiredEnv(
       'SUPABASE_SERVICE_ROLE_KEY',
     );
+    const repliedBy = await getSessionUserId(session.user?.email);
     const now = new Date().toISOString();
     const updateResponse = await fetch(
       `${supabaseUrl}/rest/v1/quick_inquiries?id=eq.${encodeURIComponent(
@@ -152,7 +173,7 @@ export async function POST(request: NextRequest) {
       {
         body: JSON.stringify({
           replied_at: now,
-          replied_by: payload.repliedBy ?? null,
+          replied_by: repliedBy,
           reply_content: replyContent,
           status: 'resolved',
           updated_at: now,

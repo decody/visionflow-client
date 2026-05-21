@@ -18,7 +18,6 @@ type SendQuickReplyResponse =
 
 export type SendQuickReplyPayload = {
   inquiryId: string;
-  repliedBy?: string | null;
   replyContent: string;
   subject: string;
   to: string;
