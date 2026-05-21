@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import {
-  apiClient,
   type IQuickInquiry,
   type IQuickInquiryListResponse,
 } from '@visionflow/shared';
@@ -17,8 +16,13 @@ type QuickInquiryApiRow = Omit<
 
 const fetchQuickList =
   async (): Promise<IQuickInquiryListResponse> => {
-    const { data } =
-      await apiClient.get<QuickInquiryApiRow[]>(`/quick_inquiries`);
+    const response = await fetch('/api/quick-inquiries');
+
+    if (!response.ok) {
+      throw new Error('Failed to load quick inquiries.');
+    }
+
+    const data = (await response.json()) as QuickInquiryApiRow[];
 
     return data.map((item) => ({
       ...item,

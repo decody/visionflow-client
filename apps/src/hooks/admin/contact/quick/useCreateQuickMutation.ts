@@ -1,9 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type IQuickInquiry } from '@visionflow/shared';
+import { type IQuickInquiry } from '@visionflow/shared';
 
 type QuickInquiryApiRow = IQuickInquiry & {
   createdAt?: string;
   updatedAt?: string;
+};
+
+type CreateQuickPayload = Pick<
+  IQuickInquiry,
+  'name' | 'email' | 'subject' | 'content'
+>;
+
+type CreateQuickContext = {
+  optimisticId: string;
+  previousQuicks?: IQuickInquiry[];
 };
 
 const normalizeQuick = (quick: QuickInquiryApiRow): IQuickInquiry => ({
@@ -15,45 +25,91 @@ const normalizeQuick = (quick: QuickInquiryApiRow): IQuickInquiry => ({
 export const useCreateQuickMutation = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<
+    QuickInquiryApiRow,
+    Error,
+    CreateQuickPayload,
+    CreateQuickContext
+  >({
     mutationFn: async ({
       name,
       email,
       subject,
       content,
-    }: Pick<
-      IQuickInquiry,
-      'name' | 'email' | 'subject' | 'content'
-    >) => {
-      const now = new Date().toISOString();
-      const { data } = await apiClient.post<QuickInquiryApiRow>(
-        '/quick_inquiries',
-        {
-          name,
-          email,
-          subject,
+    }: CreateQuickPayload) => {
+      const response = await fetch('/api/quick-inquiries', {
+        body: JSON.stringify({
           content,
-          status: 'pending',
-          created_at: now,
-          updated_at: now,
+          email,
+          name,
+          subject,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create quick inquiry.');
+      }
+
+      const data = (await response.json()) as QuickInquiryApiRow;
 
       return data;
     },
-    onSuccess: async (createdQuick) => {
+    onError: (_error, _payload, context) => {
+      if (context?.previousQuicks) {
+        queryClient.setQueryData(
+          ['quick-list'],
+          context.previousQuicks,
+        );
+      }
+    },
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({
+        queryKey: ['quick-list'],
+      });
+
+      const previousQuicks =
+        queryClient.getQueryData<IQuickInquiry[]>(['quick-list']);
+      const now = new Date().toISOString();
+      const optimisticQuick: IQuickInquiry = {
+        content: payload.content,
+        created_at: now,
+        email: payload.email,
+        id: `quick-${Date.now()}`,
+        name: payload.name,
+        status: 'pending',
+        subject: payload.subject || null,
+        updated_at: now,
+      };
+
+      queryClient.setQueryData<IQuickInquiry[]>(
+        ['quick-list'],
+        (oldQuicks = []) => [optimisticQuick, ...oldQuicks],
+      );
+
+      return {
+        optimisticId: optimisticQuick.id,
+        previousQuicks,
+      };
+    },
+    onSuccess: (createdQuick, _payload, context) => {
       const normalizedQuick = normalizeQuick(createdQuick);
       queryClient.setQueryData<IQuickInquiry[]>(
         ['quick-list'],
         (oldQuicks = []) => {
           const exists = oldQuicks.some(
             (quick) =>
-              String(quick.id) === String(normalizedQuick.id),
+              String(quick.id) === String(normalizedQuick.id) ||
+              String(quick.id) === String(context?.optimisticId),
           );
 
           if (exists) {
             return oldQuicks.map((quick) =>
-              String(quick.id) === String(normalizedQuick.id)
+              String(quick.id) === String(normalizedQuick.id) ||
+              String(quick.id) === String(context?.optimisticId)
                 ? normalizedQuick
                 : quick,
             );
@@ -63,8 +119,9 @@ export const useCreateQuickMutation = () => {
         },
       );
 
-      await queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['quick-list'],
+        refetchType: 'none',
       });
     },
   });
