@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 
@@ -24,7 +23,6 @@ export function LoginFormPage({
 }: {
   initialAccessMode?: LoginAccessMode;
 }) {
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState<'KO' | 'EN'>('KO');
   const [accessMode, setAccessMode] =
@@ -62,7 +60,7 @@ export function LoginFormPage({
     setLoginError(null);
 
     const params = new URLSearchParams(window.location.search);
-    const callbackUrl = params.get('callbackUrl') ?? '/settings';
+    const callbackUrl = getSafeCallbackUrl(params.get('callbackUrl'));
     const result = await signIn('credentials', {
       callbackUrl,
       email: trimmedEmail,
@@ -73,8 +71,7 @@ export function LoginFormPage({
     setIsSubmitting(false);
 
     if (result?.ok) {
-      router.push(callbackUrl);
-      router.refresh();
+      window.location.assign(result.url ?? callbackUrl);
       return;
     }
 
@@ -176,6 +173,24 @@ export function LoginFormPage({
       </form>
     </main>
   );
+}
+
+function getSafeCallbackUrl(value: string | null) {
+  if (!value) {
+    return '/settings';
+  }
+
+  try {
+    const url = new URL(value, window.location.origin);
+
+    if (url.origin !== window.location.origin) {
+      return '/settings';
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return '/settings';
+  }
 }
 
 function SsoLoginPage() {

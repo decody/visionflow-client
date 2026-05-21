@@ -99,6 +99,9 @@ type CredentialUserRecord = {
   status: string | null;
 };
 
+const canUseCredentialsLogin = (status: string | null) =>
+  status === 'active' || status === 'pending_invite';
+
 const writeLoginAuditLog = async ({
   email,
   provider,
@@ -232,13 +235,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await writeLoginAuditLog({
             email,
             provider: 'credentials',
-            reason: 'invalid_credentials',
+            reason: 'missing_password_hash',
             status: 'failure',
+            userId: appUser?.id,
           });
           return null;
         }
 
-        if (appUser.status !== 'active') {
+        if (!canUseCredentialsLogin(appUser.status)) {
           await writeLoginAuditLog({
             email,
             provider: 'credentials',
@@ -269,7 +273,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await getLoginMetadata();
         const { error: updateError } = await supabaseAdmin
           .from('users')
-          .update(loginMetadata)
+          .update({
+            ...loginMetadata,
+            ...(appUser.status === 'pending_invite'
+              ? { status: 'active' }
+              : {}),
+          })
           .eq('id', appUser.id);
 
         if (updateError) {
