@@ -154,6 +154,15 @@ export async function POST(request: NextRequest) {
       return jsonError('Inquiry email is missing.', 400);
     }
 
+    const repliedBy = await getSessionUserId(session.user?.email);
+
+    if (!repliedBy) {
+      return jsonError(
+        'Admin user profile was not found. Please create or sync this account in users before sending replies.',
+        409,
+      );
+    }
+
     const resendApiKey = getRequiredEnv('RESEND_API_KEY');
     const from =
       process.env.RESEND_FROM_EMAIL ??
@@ -207,7 +216,6 @@ export async function POST(request: NextRequest) {
     const serviceRoleKey = getRequiredEnv(
       'SUPABASE_SERVICE_ROLE_KEY',
     );
-    const repliedBy = await getSessionUserId(session.user?.email);
     const now = new Date().toISOString();
     const updateResponse = await fetch(
       `${supabaseUrl}/rest/v1/quick_inquiries?id=eq.${encodeURIComponent(

@@ -15,6 +15,7 @@ import {
   MessageSquareText,
   Send,
   Timer,
+  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -30,6 +31,11 @@ type DetailTab = 'body' | 'compose' | 'log';
 type ReplyNotice = {
   message: string;
   tone: 'error' | 'success';
+};
+type ActivityLogEntry = {
+  icon: LucideIcon;
+  label: string;
+  time: string;
 };
 
 const STATUS_LABEL: Record<QuickInquiryStatus, string> = {
@@ -166,6 +172,7 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
   const replySubject = `Re: ${inquiry.subject?.trim() || '일반 문의'}`;
   const canSendReply =
     Boolean(inquiry.email?.trim()) && Boolean(reply.trim());
+  const activityLogs = getActivityLogs(inquiry);
 
   const handleOpenComposer = () => {
     setActiveTab('compose');
@@ -330,7 +337,9 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
           >
             {tab.label}
             {tab.key === 'log' ? (
-              <span className={styles.tabCount}>3</span>
+              <span className={styles.tabCount}>
+                {activityLogs.length}
+              </span>
             ) : null}
           </button>
         ))}
@@ -352,7 +361,9 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
           setReply={setCurrentReply}
         />
       ) : null}
-      {activeTab === 'log' ? <ActivityLog inquiry={inquiry} /> : null}
+      {activeTab === 'log' ? (
+        <ActivityLog logs={activityLogs} />
+      ) : null}
     </div>
   );
 }
@@ -531,8 +542,8 @@ function ReplyComposer({
   );
 }
 
-function ActivityLog({ inquiry }: { inquiry: IQuickInquiry }) {
-  const logs = [
+function getActivityLogs(inquiry: IQuickInquiry): ActivityLogEntry[] {
+  const logs: ActivityLogEntry[] = [
     {
       icon: Mail,
       label: '문의 접수',
@@ -543,19 +554,20 @@ function ActivityLog({ inquiry }: { inquiry: IQuickInquiry }) {
       label: `${STATUS_LABEL[inquiry.status]} 상태`,
       time: formatFullDate(inquiry.updated_at),
     },
-    {
-      icon: Check,
-      label:
-        inquiry.status === 'resolved'
-          ? '답변 발송 완료'
-          : '관리자 확인 대기',
-      time:
-        inquiry.status === 'resolved'
-          ? formatFullDate(inquiry.replied_at ?? inquiry.updated_at)
-          : '아직 처리 전',
-    },
   ];
 
+  if (inquiry.status === 'resolved') {
+    logs.push({
+      icon: Check,
+      label: '답변 발송 완료',
+      time: formatFullDate(inquiry.replied_at ?? inquiry.updated_at),
+    });
+  }
+
+  return logs;
+}
+
+function ActivityLog({ logs }: { logs: ActivityLogEntry[] }) {
   return (
     <article className={styles.infoCard}>
       <header className={styles.infoHeader}>
