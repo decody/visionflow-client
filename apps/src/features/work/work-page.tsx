@@ -774,7 +774,7 @@ export function WorkPage() {
                 필요한 단계에 맞춰 화면을 설계하고 구현합니다.
               </p>
             </div>
-            <Link className={styles.ctaButton} href={ROUTES.CONTACT}>
+            <Link className={styles.ctaButton} href={ROUTES.CONTACT.ROOT}>
               프로젝트 문의하기
             </Link>
           </div>

@@ -734,7 +734,7 @@ export function WorkDetailPage() {
               무료, 응답은 1영업일 이내.
             </p>
             <div className={styles.ctaButtons}>
-              <Link className={`${styles.ctaButton} ${styles.ctaButtonPrimary}`} href={ROUTES.CONTACT}>
+              <Link className={`${styles.ctaButton} ${styles.ctaButtonPrimary}`} href={ROUTES.CONTACT.ROOT}>
                 무료 견적 받기 <span aria-hidden="true">→</span>
               </Link>
               <Link className={`${styles.ctaButton} ${styles.ctaButtonGhost}`} href={ROUTES.KAKAO}>

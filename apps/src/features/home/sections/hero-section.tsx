@@ -59,7 +59,7 @@ export function HeroSection() {
         <div className={styles.heroCtas}>
           <Link
             className={`${styles.heroCta} ${styles.heroCtaPrimary}`}
-            href={ROUTES.CONTACT}
+            href={ROUTES.CONTACT.ROOT}
           >
             무료 견적 받기 <span aria-hidden="true">→</span>
           </Link>

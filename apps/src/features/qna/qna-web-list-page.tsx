@@ -42,8 +42,8 @@ const NOTICE_CATEGORY = '공지';
 const DEFAULT_CATEGORY = '서비스 일반';
 const DEFAULT_AUTHOR = '익명';
 const PAGE_SIZE = 10;
-const PUBLIC_DETAIL_PATH = `${ROUTES.CONTACT}/general/detail`;
-const SECRET_DETAIL_PATH = `${ROUTES.CONTACT}/general/detail/secret`;
+const PUBLIC_DETAIL_PATH = `${ROUTES.CONTACT.ROOT}/general/detail`;
+const SECRET_DETAIL_PATH = `${ROUTES.CONTACT.ROOT}/general/detail/secret`;
 const KNOWN_CATEGORIES = [DEFAULT_CATEGORY] as const;
 const EMPTY_QNAS: IQna[] = [];
 
@@ -217,7 +217,7 @@ export function QnaWebListPage() {
           </div>
           <Link
             className={styles.boardWrite}
-            href={`${ROUTES.CONTACT}/general/write`}
+            href={`${ROUTES.CONTACT.ROOT}/general/write`}
           >
             <span aria-hidden="true">+</span>
             글쓰기

@@ -9,13 +9,33 @@ import {
   Shield,
 } from 'lucide-react';
 import { signIn } from 'next-auth/react';
+import Link from 'next/link';
 import { useState } from 'react';
 
+import { ROUTES } from '@visionflow/routes';
 import styles from './login-page.module.css';
 
-export function LoginFormPage() {
+export type LoginAccessMode = 'sso' | 'partner';
+
+export function LoginFormPage({
+  initialAccessMode = 'sso',
+}: {
+  initialAccessMode?: LoginAccessMode;
+}) {
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState<'KO' | 'EN'>('KO');
+  const [accessMode, setAccessMode] =
+    useState<LoginAccessMode>(initialAccessMode);
+
+  const switchAccessMode = (mode: LoginAccessMode) => {
+    setAccessMode(mode);
+
+    const params = new URLSearchParams(window.location.search);
+    params.set('mode', mode);
+
+    const nextUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, '', nextUrl);
+  };
 
   return (
     <main className={styles.formArea}>
@@ -60,50 +80,130 @@ export function LoginFormPage() {
           </p>
         </header>
 
-        <section className={styles.ssoBlock}>
-          <div className={styles.ssoBadge}>
-            <span aria-hidden="true">✓</span>
-            RECOMMENDED · 사내 직원
-          </div>
+        <div
+          className={styles.formTabs}
+          aria-label="로그인 방식 선택"
+        >
           <button
-            className={styles.ssoButton}
-            onClick={() =>
-              void signIn('google', { callbackUrl: '/settings' })
+            aria-pressed={accessMode === 'sso'}
+            className={
+              accessMode === 'sso'
+                ? styles.formTabActive
+                : styles.formTab
             }
+            onClick={() => switchAccessMode('sso')}
             type="button"
           >
-            <GoogleIcon />
-            <span>Google Workspace로 계속하기</span>
+            SSO 인증
           </button>
           <button
-            className={styles.ssoButton}
-            onClick={() =>
-              void signIn('naver', { callbackUrl: '/settings' })
+            aria-pressed={accessMode === 'partner'}
+            className={
+              accessMode === 'partner'
+                ? styles.formTabActive
+                : styles.formTab
             }
+            onClick={() => switchAccessMode('partner')}
             type="button"
           >
-            <NaverIcon />
-            <span>네이버로 계속하기</span>
+            외부 협력자
           </button>
-          <button
-            className={styles.ssoButton}
-            type="button"
-            onClick={() =>
-              void signIn('kakao', { callbackUrl: '/settings' })
-            }
-          >
-            <KakaoIcon />
-            <span>카카오로 계속하기</span>
-          </button>
-          <p className={styles.ssoHint}>
-            Google Workspace, 네이버 또는 카카오 계정으로 로그인할 수
-            있습니다
-          </p>
-        </section>
-
-        <div className={styles.divider}>
-          <span>또는 외부 협력자</span>
         </div>
+
+        {accessMode === 'sso' ? (
+          <SsoLoginPage />
+        ) : (
+          <PartnerLoginPage
+            showPassword={showPassword}
+            onTogglePassword={() =>
+              setShowPassword((value) => !value)
+            }
+          />
+        )}
+      </form>
+    </main>
+  );
+}
+
+function SsoLoginPage() {
+  return (
+    <>
+      <section
+        className={styles.ssoBlock}
+        aria-labelledby="sso-login-title"
+      >
+        <div className={styles.ssoBadge}>
+          <span aria-hidden="true">✓</span>
+          RECOMMENDED · 사내 직원
+        </div>
+        <h3 className={styles.panelTitle} id="sso-login-title">
+          SSO 인증으로 로그인
+        </h3>
+        <p className={styles.panelDescription}>
+          사내 계정은 Google Workspace, 네이버 또는 카카오 계정으로
+          바로 인증합니다.
+        </p>
+        <button
+          className={styles.ssoButton}
+          onClick={() =>
+            void signIn('google', { callbackUrl: '/settings' })
+          }
+          type="button"
+        >
+          <GoogleIcon />
+          <span>Google Workspace로 계속하기</span>
+        </button>
+        <button
+          className={styles.ssoButton}
+          onClick={() =>
+            void signIn('naver', { callbackUrl: '/settings' })
+          }
+          type="button"
+        >
+          <NaverIcon />
+          <span>네이버로 계속하기</span>
+        </button>
+        <button
+          className={styles.ssoButton}
+          type="button"
+          onClick={() =>
+            void signIn('kakao', { callbackUrl: '/settings' })
+          }
+        >
+          <KakaoIcon />
+          <span>카카오로 계속하기</span>
+        </button>
+        <p className={styles.ssoHint}>
+          회사 도메인 계정은 SSO 정책에 따라 접근 권한이 자동
+          확인됩니다.
+        </p>
+      </section>
+
+      <SecurityPolicy />
+      <LoginHelp />
+    </>
+  );
+}
+
+function PartnerLoginPage({
+  showPassword,
+  onTogglePassword,
+}: {
+  showPassword: boolean;
+  onTogglePassword: () => void;
+}) {
+  return (
+    <>
+      <section
+        className={styles.partnerBlock}
+        aria-labelledby="partner-login-title"
+      >
+        <h3 className={styles.panelTitle} id="partner-login-title">
+          외부 협력자 로그인
+        </h3>
+        <p className={styles.panelDescription}>
+          초대받은 협력자는 발급된 이메일과 패스워드로 로그인합니다.
+        </p>
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="login-email">
@@ -155,7 +255,7 @@ export function LoginFormPage() {
               }
               aria-pressed={showPassword}
               className={styles.iconAction}
-              onClick={() => setShowPassword((value) => !value)}
+              onClick={onTogglePassword}
               type="button"
             >
               <Eye aria-hidden="true" size={16} />
@@ -183,29 +283,43 @@ export function LoginFormPage() {
           <span>로그인</span>
           <ArrowRight aria-hidden="true" size={18} />
         </button>
+      </section>
 
-        <aside className={styles.policy}>
-          <span aria-hidden="true" className={styles.policyIcon}>
-            <Info size={14} />
-          </span>
-          <div>
-            <strong className={styles.policyTitle}>보안 정책</strong>
-            <p className={styles.policyBody}>
-              SuperAdmin·Sales 역할은 TOTP 2단계 인증이 필수입니다.
-              8시간 비활동 시 자동 로그아웃 · 모든 로그인 시도는 감사
-              로그에 기록됩니다.
-            </p>
-          </div>
-        </aside>
+      <SecurityPolicy />
+      <LoginHelp />
+    </>
+  );
+}
 
-        <p className={styles.help}>
-          계정 문제가 있으신가요?{' '}
-          <a className={styles.helpLink} href="#">
-            IT 담당자에게 문의 →
-          </a>
+function SecurityPolicy() {
+  return (
+    <aside className={styles.policy}>
+      <span aria-hidden="true" className={styles.policyIcon}>
+        <Info size={14} />
+      </span>
+      <div>
+        <strong className={styles.policyTitle}>보안 정책</strong>
+        <p className={styles.policyBody}>
+          SuperAdmin·Sales 역할은 TOTP 2단계 인증이 필수입니다. 8시간
+          비활동 시 자동 로그아웃 · 모든 로그인 시도는 감사 로그에
+          기록됩니다.
         </p>
-      </form>
-    </main>
+      </div>
+    </aside>
+  );
+}
+
+function LoginHelp() {
+  return (
+    <p className={styles.help}>
+      계정 문제가 있으신가요?{' '}
+      <Link
+        className={styles.helpLink}
+        href={`${ROUTES.CONTACT.GENERAL}#quick-form`}
+      >
+        IT 담당자에게 문의 →
+      </Link>
+    </p>
   );
 }
 

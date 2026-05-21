@@ -17,7 +17,7 @@ const channels = [
     desc: '웹 3D · 광고 이미지 · 웹/앱 · 대시보드 프로젝트의 정식 견적을 받아보세요. 24시간 내 답변.',
     sla: '⏱ 24시간 내 1차 답변',
     ctaLabel: '견적 문의 →',
-    ctaHref: `${ROUTES.CONTACT}/quote`,
+    ctaHref: `${ROUTES.CONTACT.ROOT}/quote`,
     main: true,
   },
   {
@@ -27,7 +27,7 @@ const channels = [
     desc: '외주 협력사 · 리셀러 · 기술 파트너 · 콘텐츠 파트너 등 사업 협력 제안.',
     sla: '⏱ 1~3 영업일 내 답변',
     ctaLabel: '제휴 제안 →',
-    ctaHref: `${ROUTES.CONTACT}/partnership`,
+    ctaHref: `${ROUTES.CONTACT.ROOT}/partnership`,
     main: false,
   },
   {
@@ -37,7 +37,7 @@ const channels = [
     desc: '서비스 관련 일반 질문 또는 Q&A 게시판. 비밀글 작성 가능 (NDA 검토).',
     sla: '⏱ 1~2 영업일 내 답변',
     ctaLabel: '문의 작성 →',
-    ctaHref: `${ROUTES.CONTACT}/general`,
+    ctaHref: `${ROUTES.CONTACT.ROOT}/general`,
     main: false,
   },
 ] as const;

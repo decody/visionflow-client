@@ -82,8 +82,8 @@ const INITIAL_MESSAGE: ChatMessage = {
 const ONBOARDING_SOURCES: Source[] = [
   { label: '서비스 보기', href: ROUTES.WEB_3D, type: 'contact' },
   { label: '작업 사례 보기', href: ROUTES.WORK, type: 'work' },
-  { label: '견적 문의하기', href: ROUTES.CONTACT, type: 'contact' },
-  { label: 'FAQ 보기', href: `${ROUTES.CONTACT}#faq`, type: 'faq' },
+  { label: '견적 문의하기', href: ROUTES.CONTACT.ROOT, type: 'contact' },
+  { label: 'FAQ 보기', href: `${ROUTES.CONTACT.ROOT}#faq`, type: 'faq' },
 ];
 
 const RECOMMENDED_PLANS: Record<PlanKey, RecommendationResult> = {
@@ -281,12 +281,12 @@ function isAnsweredQna(qna: QnaRow) {
 
 function getQnaHref(qna: QnaRow) {
   if (!isAnsweredQna(qna)) {
-    return `${ROUTES.CONTACT}/general#board`;
+    return `${ROUTES.CONTACT.ROOT}/general#board`;
   }
 
   return qna.isSecret
-    ? `${ROUTES.CONTACT}/general/detail/secret`
-    : `${ROUTES.CONTACT}/general/detail`;
+    ? `${ROUTES.CONTACT.ROOT}/general/detail/secret`
+    : `${ROUTES.CONTACT.ROOT}/general/detail`;
 }
 
 function getWorkHref(workId: number) {
@@ -302,12 +302,12 @@ function buildSources(data: SearchResponse): Source[] {
     })),
     ...data.sources.faqs.map((faq) => ({
       label: `FAQ · ${faq.question}`,
-      href: `${ROUTES.CONTACT}#faq`,
+      href: `${ROUTES.CONTACT.ROOT}#faq`,
       type: 'faq' as const,
     })),
     ...data.sources.contacts.map((contact) => ({
       label: `문의 · ${contact.title}`,
-      href: `${ROUTES.CONTACT}/general#quick-form`,
+      href: `${ROUTES.CONTACT.ROOT}/general#quick-form`,
       type: 'contact' as const,
     })),
     ...data.sources.qnas.map((qna) => ({
@@ -732,7 +732,7 @@ export default function ChatSearch() {
           },
           {
             label: '견적 문의하기',
-            href: ROUTES.CONTACT,
+            href: ROUTES.CONTACT.ROOT,
             type: 'contact',
           },
         ],
@@ -779,7 +779,7 @@ export default function ChatSearch() {
           sources: [
             {
               label: '견적 문의하기',
-              href: ROUTES.CONTACT,
+              href: ROUTES.CONTACT.ROOT,
               type: 'contact',
             },
           ],

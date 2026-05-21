@@ -356,13 +356,13 @@ export function ContactPartnershipPage() {
             <div className={styles.ctaActions}>
               <Link
                 className={`${styles.ctaButton} ${styles.ctaButtonOnPrimary}`}
-                href={`${ROUTES.CONTACT}#quote`}
+                href={`${ROUTES.CONTACT.ROOT}#quote`}
               >
                 견적 문의 →
               </Link>
               <Link
                 className={`${styles.ctaButton} ${styles.ctaButtonGhost}`}
-                href={`${ROUTES.CONTACT}/general`}
+                href={`${ROUTES.CONTACT.ROOT}/general`}
               >
                 일반 문의 →
               </Link>

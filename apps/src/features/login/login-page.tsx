@@ -1,14 +1,21 @@
 'use client';
 
 import { LoginBrandPage } from './login-brand-page';
-import { LoginFormPage } from './login-form-page';
+import {
+  LoginFormPage,
+  type LoginAccessMode,
+} from './login-form-page';
 import styles from './login-page.module.css';
 
-export function LoginPage() {
+export function LoginPage({
+  initialAccessMode,
+}: {
+  initialAccessMode?: LoginAccessMode;
+}) {
   return (
     <div className={styles.shell}>
       <LoginBrandPage />
-      <LoginFormPage />
+      <LoginFormPage initialAccessMode={initialAccessMode} />
     </div>
   );
 }

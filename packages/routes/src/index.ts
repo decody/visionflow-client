@@ -23,7 +23,14 @@ export const ROUTES = {
   // 공통 페이지
   ABOUT: '/about',
   WORK: '/work',
-  CONTACT: '/contact',
+
+  CONTACT: {
+    ROOT: '/contact',
+    GENERAL: '/contact/general',
+    QUOTE: '/contact/quote',
+    PARTNERSHIP: '/contact/partnership',
+  },
+
   KAKAO: '/kakao',
   QNA: '/qna',
 
@@ -56,16 +63,20 @@ export const ROUTES = {
     },
     GENERAL_INQUIRY: {
       ROOT: '/settings/general-inquiry',
-      DETAIL: (id: string | number) => `/settings/general-inquiry/${id}`,
+      DETAIL: (id: string | number) =>
+        `/settings/general-inquiry/${id}`,
     },
     QUOTE_REQUEST: {
       ROOT: '/settings/quote-request',
-      DETAIL: (id: string | number) => `/settings/quote-request/${id}`,
+      DETAIL: (id: string | number) =>
+        `/settings/quote-request/${id}`,
     },
     WORK_PORTFOLIO: {
       ROOT: '/settings/work-portfolio',
-      DETAIL: (id: string | number) => `/settings/work-portfolio/${id}`,
-      EDIT: (id: string | number) => `/settings/work-portfolio/${id}/edit`,
+      DETAIL: (id: string | number) =>
+        `/settings/work-portfolio/${id}`,
+      EDIT: (id: string | number) =>
+        `/settings/work-portfolio/${id}/edit`,
       CREATE: '/settings/work-portfolio/new',
       WRITE: () => '/settings/work-portfolio/write',
     },

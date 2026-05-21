@@ -42,7 +42,7 @@ export function WebHeader() {
           ))}
         </nav>
 
-        <Link className={styles.cta} href={ROUTES.CONTACT}>
+        <Link className={styles.cta} href={ROUTES.CONTACT.ROOT}>
           무료 견적 받기
         </Link>
       </div>

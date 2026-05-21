@@ -219,13 +219,13 @@ export function ContactGeneralPage() {
             <div className={styles.hintActions}>
               <Link
                 className={`${styles.hintCta} ${styles.hintCtaPrimary}`}
-                href={`${ROUTES.CONTACT}/quote`}
+                href={`${ROUTES.CONTACT.ROOT}/quote`}
               >
                 견적 문의 →
               </Link>
               <Link
                 className={`${styles.hintCta} ${styles.hintCtaSecondary}`}
-                href={`${ROUTES.CONTACT}/partnership`}
+                href={`${ROUTES.CONTACT.ROOT}/partnership`}
               >
                 제휴 문의 →
               </Link>

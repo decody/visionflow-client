@@ -72,7 +72,7 @@ export function ContactGeneralWritePage() {
         title,
       });
 
-      router.push(`${ROUTES.CONTACT}/general#board`);
+      router.push(`${ROUTES.CONTACT.ROOT}/general#board`);
       router.refresh();
     } catch {
       setMessage(
@@ -88,7 +88,7 @@ export function ContactGeneralWritePage() {
           <div className={styles.writeHeader}>
             <Link
               className={styles.writeBackLink}
-              href={`${ROUTES.CONTACT}/general#board`}
+              href={`${ROUTES.CONTACT.ROOT}/general#board`}
             >
               <ArrowLeft aria-hidden="true" size={16} />
               목록으로
@@ -234,7 +234,7 @@ export function ContactGeneralWritePage() {
             <div className={styles.writeActions}>
               <Link
                 className={styles.writeCancel}
-                href={`${ROUTES.CONTACT}/general#board`}
+                href={`${ROUTES.CONTACT.ROOT}/general#board`}
               >
                 취소
               </Link>

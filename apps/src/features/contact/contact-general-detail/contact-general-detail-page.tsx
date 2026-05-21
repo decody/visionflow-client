@@ -10,9 +10,9 @@ type Breadcrumb =
   | { label: string; current: true };
 
 const breadcrumbs: Breadcrumb[] = [
-  { label: '문의하기', href: ROUTES.CONTACT },
-  { label: '일반 문의', href: `${ROUTES.CONTACT}/general` },
-  { label: 'Q&A 게시판', href: `${ROUTES.CONTACT}/general#board` },
+  { label: '문의하기', href: ROUTES.CONTACT.ROOT },
+  { label: '일반 문의', href: `${ROUTES.CONTACT.ROOT}/general` },
+  { label: 'Q&A 게시판', href: `${ROUTES.CONTACT.ROOT}/general#board` },
   { label: '123번 게시글', current: true },
 ];
 
@@ -110,13 +110,13 @@ const comments: Comment[] = [
 const prevPost = {
   no: 124,
   title: '🆕 Three.js로 만든 3D 컨피규레이터 견적은 어느 정도일까요?',
-  href: `${ROUTES.CONTACT}/general#post-124`,
+  href: `${ROUTES.CONTACT.ROOT}/general#post-124`,
 };
 
 const nextPost = {
   no: 122,
   title: '🔒 내부 시스템 연동 프로젝트 NDA 검토 요청드립니다',
-  href: `${ROUTES.CONTACT}/general#post-122`,
+  href: `${ROUTES.CONTACT.ROOT}/general#post-122`,
 };
 
 export function ContactGeneralDetailPage() {
@@ -144,7 +144,7 @@ export function ContactGeneralDetailPage() {
               </li>
             ))}
           </ol>
-          <Link className={styles.backToList} href={`${ROUTES.CONTACT}/general#board`}>
+          <Link className={styles.backToList} href={`${ROUTES.CONTACT.ROOT}/general#board`}>
             <span aria-hidden="true">←</span> 목록으로
           </Link>
         </nav>
@@ -277,7 +277,7 @@ export function ContactGeneralDetailPage() {
                     견적 폼을 통해 요청하시면 24시간 내에 견적서를 받아보실 수 있습니다.
                   </p>
                 </div>
-                <Link className={styles.answerCtaButton} href={`${ROUTES.CONTACT}#quote`}>
+                <Link className={styles.answerCtaButton} href={`${ROUTES.CONTACT.ROOT}#quote`}>
                   견적 문의 →
                 </Link>
               </div>

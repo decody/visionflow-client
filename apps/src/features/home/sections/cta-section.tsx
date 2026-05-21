@@ -22,7 +22,7 @@ export function CtaSection() {
         <div className={styles.ctaButtons}>
           <Link
             className={`${styles.ctaButton} ${styles.ctaButtonPrimary}`}
-            href={ROUTES.CONTACT}
+            href={ROUTES.CONTACT.ROOT}
           >
             무료 견적 받기 <span aria-hidden="true">→</span>
           </Link>
