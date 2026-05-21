@@ -264,12 +264,6 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
             </span>
             <span className={styles.categoryProposal}>일반 문의</span>
           </div>
-          <div className={styles.metaActions}>
-            <button className={styles.metaButton} type="button">
-              상태 변경
-              <ChevronDown aria-hidden="true" size={14} />
-            </button>
-          </div>
         </header>
 
         <h1 className={styles.questionTitle}>{displayTitle}</h1>
