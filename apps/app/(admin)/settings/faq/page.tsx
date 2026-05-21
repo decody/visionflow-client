@@ -79,7 +79,7 @@ export default function FaqPage() {
   const [visibilityFilter, setVisibilityFilter] =
     useState<VisibilityFilter>('all');
 
-  const { role, fetchRole, setRole, clearRole } = useUserRoleStore();
+  const { role } = useUserRoleStore();
 
   const filteredFaqs = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();

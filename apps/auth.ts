@@ -10,6 +10,22 @@ import { headers } from 'next/headers';
 const USER_ROLES = ['SuperAdmin', 'Operator', 'Viewer'] as const;
 const EIGHT_HOURS_IN_SECONDS = 8 * 60 * 60;
 
+const isVercelRuntime =
+  process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+
+const authUrl = process.env.AUTH_URL;
+if (isVercelRuntime && authUrl) {
+  try {
+    const { hostname } = new URL(authUrl);
+
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      delete process.env.AUTH_URL;
+    }
+  } catch {
+    delete process.env.AUTH_URL;
+  }
+}
+
 const isUserRole = (role: unknown): role is UserRole =>
   typeof role === 'string' &&
   USER_ROLES.includes(role as (typeof USER_ROLES)[number]);

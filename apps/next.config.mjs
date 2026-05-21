@@ -5,11 +5,14 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
-const rootEnvFiles = [
-  '.env',
-  process.env.NODE_ENV === 'production' ? '.env.production' : null,
-  '.env.local',
-].filter(Boolean);
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+const rootEnvFiles = isVercel
+  ? []
+  : [
+      '.env',
+      process.env.NODE_ENV === 'production' ? '.env.production' : null,
+      '.env.local',
+    ].filter(Boolean);
 const initialEnvKeys = new Set(Object.keys(process.env));
 
 const parseRootEnvFile = (filePath) => {
