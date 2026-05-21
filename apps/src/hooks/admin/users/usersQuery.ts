@@ -1,14 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient, type IUser } from '@visionflow/shared';
+import type { IUser } from '@visionflow/shared';
 
 const fetchUsersList = async (): Promise<IUser[]> => {
-  const { data } = await apiClient.get<IUser[] | null>('users');
-  console.log(data);
+  const response = await fetch('/api/admin/users');
 
-  return data ?? [];
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+
+    throw new Error(error?.message ?? 'Failed to fetch users.');
+  }
+
+  return (await response.json()) as IUser[];
 };
 
-export const usersListQuery = () => {
+export const useUsersListQuery = () => {
   return useQuery<IUser[]>({
     queryKey: ['users-list'],
     queryFn: fetchUsersList,

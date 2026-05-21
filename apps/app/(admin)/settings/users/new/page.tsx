@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 
+import { RoleGuard } from '@/components/auth/role-guard';
 import { UsersInvitePage } from '@/features/users/users-invite-page';
+import { ROUTES } from '@visionflow/routes';
 
 export const metadata: Metadata = {
   description: 'VisionFlow CMS 새 사용자 초대 — 역할·인증·환영 메시지',
@@ -8,5 +10,12 @@ export const metadata: Metadata = {
 };
 
 export default function UsersInvite() {
-  return <UsersInvitePage />;
+  return (
+    <RoleGuard
+      allowedRoles={['SuperAdmin']}
+      fallbackPath={ROUTES.ADMIN.HOME}
+    >
+      <UsersInvitePage />
+    </RoleGuard>
+  );
 }

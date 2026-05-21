@@ -76,6 +76,22 @@ const getSupabaseApiKey = () => {
 const getSupabaseAnonKey = () =>
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+const getSupabaseAuthorizationKey = () => {
+  const anonKey = getSupabaseAnonKey();
+
+  if (anonKey) return anonKey;
+
+  const apiKey = getSupabaseApiKey();
+
+  if (apiKey?.startsWith('sb_publishable_')) {
+    throw new Error(
+      'Supabase anon JWT is required for Authorization. Set NEXT_PUBLIC_SUPABASE_ANON_KEY; NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY can only be used as apikey.',
+    );
+  }
+
+  return apiKey;
+};
+
 // DB는 snake_case, 프론트 타입은 camelCase로 쓰기 위해 key 이름만 변환합니다.
 const toCamelCase = (key: string) =>
   key.replace(/_([a-z])/g, (_, letter: string) =>
@@ -122,7 +138,9 @@ const createHeaders = ({
   }
 
   const authorizationKey =
-    headerMode === 'edgeFunction' ? getSupabaseAnonKey() : apiKey;
+    headerMode === 'edgeFunction'
+      ? getSupabaseAnonKey()
+      : getSupabaseAuthorizationKey();
 
   if (!authorizationKey) {
     throw new Error(

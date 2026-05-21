@@ -117,10 +117,9 @@ Deno.serve(async (request) => {
       );
     }
 
-    const supabaseUrl = requiredEnv('SUPABASE_URL').replace(
-      /\/+$/,
-      '',
-    );
+    const supabaseUrl = requiredEnv(
+      'NEXT_PUBLIC_SUPABASE_URL',
+    ).replace(/\/+$/, '');
     const serviceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
     const now = new Date().toISOString();
     const updateResponse = await fetch(

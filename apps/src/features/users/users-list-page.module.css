@@ -1,8 +1,6 @@
 .page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 28px;
+  display: grid;
+  gap: 18px;
 }
 
 .pageHeader {
@@ -43,20 +41,87 @@
 
 .summaryGrid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.summaryGrid :global(.ant-card) {
+  border-color: var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.summaryGrid :global(.ant-statistic-title) {
+  color: var(--color-text-secondary);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+}
+
+.summaryGrid :global(.ant-statistic-content) {
+  color: var(--color-text);
+  font-weight: var(--fw-bold);
+}
+
+.summaryGrid :global(.ant-statistic-content-prefix) {
+  color: var(--color-primary);
+}
+
+.statusTabs {
+  align-self: flex-start;
+}
+
+.statusTabs :global(.ant-tabs-nav) {
+  margin: 0;
+}
+
+.statusTabs :global(.ant-tabs-nav::before) {
+  border-bottom: 0;
+}
+
+.statusTabs :global(.ant-tabs-nav-list) {
+  gap: 4px;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.statusTabs :global(.ant-tabs-tab) {
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+}
+
+.statusTabs :global(.ant-tabs-tab:hover) {
+  color: var(--color-text);
+}
+
+.statusTabs :global(.ant-tabs-tab-active) {
+  background: var(--color-text);
+}
+
+.statusTabs :global(.ant-tabs-tab-active .ant-tabs-tab-btn),
+.statusTabs :global(.ant-tabs-tab-active .ant-tabs-tab-btn:hover) {
+  color: #ffffff;
+}
+
+.statusTabs :global(.ant-tabs-ink-bar) {
+  display: none;
 }
 
 .tabLabel {
   align-items: center;
   display: inline-flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .tabCount {
   align-items: center;
-  background: #f3f4f6;
-  border-radius: 999px;
+  background: var(--color-surface);
+  border-radius: var(--radius-pill);
   color: #6b7280;
   display: inline-flex;
   font-size: 11px;
@@ -67,16 +132,35 @@
   padding: 0 7px;
 }
 
+.statusTabs :global(.ant-tabs-tab-active) .tabCount {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
 .tableCard {
-  border-radius: 8px;
+  border-color: var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.tableCard :global(.ant-card-body) {
+  padding: 0;
 }
 
 .toolbar {
-  margin-bottom: 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  padding: 16px 18px;
 }
 
 .searchInput {
-  max-width: 420px;
+  flex: 1;
+  min-width: 320px;
+  max-width: 560px;
+}
+
+.searchInput :global(.ant-input-prefix) {
+  color: var(--color-text-secondary);
 }
 
 .filterSelect {
@@ -85,28 +169,68 @@
 
 .tableHeader {
   align-items: center;
-  border-top: 1px solid #f0f0f0;
   color: #111827;
   display: flex;
   justify-content: space-between;
-  margin-bottom: 14px;
-  padding-top: 16px;
+  padding: 14px 18px;
 }
 
 .tableHeader strong {
-  font-size: 15px;
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
 }
 
 .tableHeader span {
   align-items: center;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   display: inline-flex;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   gap: 6px;
 }
 
+.tableWrap {
+  overflow-x: auto;
+}
+
 .grid {
-  height: 610px;
+  height: 650px;
+  min-width: 1020px;
+  width: 100%;
+}
+
+.grid :global(.ag-root-wrapper) {
+  border: 0;
+}
+
+.grid :global(.ag-header) {
+  background: var(--color-surface);
+  border-bottom-color: var(--color-border);
+}
+
+.grid :global(.ag-header-cell-label) {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.grid :global(.ag-row) {
+  border-bottom-color: var(--color-border);
+}
+
+.grid :global(.ag-row-hover) {
+  background: #f8fafc;
+}
+
+.grid :global(.ag-cell) {
+  align-items: center;
+  display: flex;
+  line-height: 1.35;
+}
+
+.grid :global(.ag-cell-wrapper) {
   width: 100%;
 }
 
@@ -120,6 +244,7 @@
 .avatar {
   flex: 0 0 auto;
   font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
 }
 
 .userMeta {
@@ -130,21 +255,65 @@
 }
 
 .userName {
-  color: #111827;
-  font-weight: 700;
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
   text-decoration: none;
 }
 
 .userName:hover {
-  color: #1677ff;
+  color: var(--color-primary);
 }
 
 .userMeta span {
-  color: #6b7280;
-  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-caption);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.roleBadge,
+.statusBadge {
+  align-items: center;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  justify-content: center;
+  min-width: 82px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.role_SuperAdmin {
+  background: #fee2e2;
+  color: #b42318;
+}
+
+.role_Operator {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.role_Viewer {
+  background: #f3f4f6;
+  color: #475467;
+}
+
+.status_active {
+  background: #dcfce7;
+  color: #03995f;
+}
+
+.status_inactive {
+  background: #f3f4f6;
+  color: #667085;
+}
+
+.status_pending_invite {
+  background: #fef3c7;
+  color: #b45309;
 }
 
 .loginCell {
@@ -156,13 +325,24 @@
 }
 
 .loginCell span {
-  color: #111827;
-  font-weight: 600;
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
 }
 
 .loginCell small {
-  color: #6b7280;
-  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dateCell {
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
 }
 
 .iconLink {
@@ -181,15 +361,14 @@
 }
 
 .emptyState {
-  color: #6b7280;
-  padding: 24px;
+  color: var(--color-text-secondary);
+  display: grid;
+  font-size: var(--fs-small);
+  height: 180px;
+  place-items: center;
 }
 
 @media (max-width: 900px) {
-  .page {
-    padding: 20px;
-  }
-
   .summaryGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

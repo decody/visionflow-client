@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseUrl = (
-      process.env.SUPABASE_URL ??
+      process.env.NEXT_PUBLIC_SUPABASE_URL ??
       getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL')
     ).replace(/\/+$/, '');
     const serviceRoleKey = getRequiredEnv(
