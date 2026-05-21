@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import type { FormEvent } from 'react';
 import { useState } from 'react';
 
 import { ROUTES } from '@visionflow/routes';
@@ -22,10 +24,15 @@ export function LoginFormPage({
 }: {
   initialAccessMode?: LoginAccessMode;
 }) {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState<'KO' | 'EN'>('KO');
   const [accessMode, setAccessMode] =
     useState<LoginAccessMode>(initialAccessMode);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const switchAccessMode = (mode: LoginAccessMode) => {
     setAccessMode(mode);
@@ -35,6 +42,45 @@ export function LoginFormPage({
 
     const nextUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState(null, '', nextUrl);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (accessMode !== 'partner') {
+      return;
+    }
+
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail || !password) {
+      setLoginError('이메일과 패스워드를 모두 입력해 주세요.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setLoginError(null);
+
+    const params = new URLSearchParams(window.location.search);
+    const callbackUrl = params.get('callbackUrl') ?? '/settings';
+    const result = await signIn('credentials', {
+      callbackUrl,
+      email: trimmedEmail,
+      password,
+      redirect: false,
+    });
+
+    setIsSubmitting(false);
+
+    if (result?.ok) {
+      router.push(callbackUrl);
+      router.refresh();
+      return;
+    }
+
+    setLoginError(
+      '로그인에 실패했습니다. 이메일과 패스워드를 다시 확인해 주세요.',
+    );
   };
 
   return (
@@ -69,9 +115,7 @@ export function LoginFormPage({
 
       <form
         className={styles.form}
-        onSubmit={(event) => {
-          event.preventDefault();
-        }}
+        onSubmit={handleSubmit}
       >
         <header className={styles.formHeader}>
           <h2 className={styles.formTitle}>로그인</h2>
@@ -114,10 +158,22 @@ export function LoginFormPage({
           <SsoLoginPage />
         ) : (
           <PartnerLoginPage
+            email={email}
+            errorMessage={loginError}
+            isSubmitting={isSubmitting}
+            onChangeEmail={(value) => {
+              setEmail(value);
+              setLoginError(null);
+            }}
+            onChangePassword={(value) => {
+              setPassword(value);
+              setLoginError(null);
+            }}
             showPassword={showPassword}
             onTogglePassword={() =>
               setShowPassword((value) => !value)
             }
+            password={password}
           />
         )}
       </form>
@@ -186,11 +242,23 @@ function SsoLoginPage() {
 }
 
 function PartnerLoginPage({
+  email,
+  errorMessage,
+  isSubmitting,
+  onChangeEmail,
+  onChangePassword,
   showPassword,
   onTogglePassword,
+  password,
 }: {
+  email: string;
+  errorMessage: string | null;
+  isSubmitting: boolean;
+  onChangeEmail: (value: string) => void;
+  onChangePassword: (value: string) => void;
   showPassword: boolean;
   onTogglePassword: () => void;
+  password: string;
 }) {
   return (
     <>
@@ -218,10 +286,14 @@ function PartnerLoginPage({
             <input
               autoComplete="email"
               className={styles.input}
+              disabled={isSubmitting}
               id="login-email"
               name="email"
+              onChange={(event) => onChangeEmail(event.target.value)}
               placeholder="name@example.com"
+              required
               type="email"
+              value={email}
             />
           </div>
         </div>
@@ -244,10 +316,14 @@ function PartnerLoginPage({
             <input
               autoComplete="current-password"
               className={styles.input}
+              disabled={isSubmitting}
               id="login-password"
               name="password"
+              onChange={(event) => onChangePassword(event.target.value)}
               placeholder="••••••••••••"
+              required
               type={showPassword ? 'text' : 'password'}
+              value={password}
             />
             <button
               aria-label={
@@ -264,23 +340,28 @@ function PartnerLoginPage({
         </div>
 
         <div className={styles.toggleRow}>
-          <label className={styles.checkbox}>
-            <input
-              className={styles.checkboxInput}
-              name="remember"
-              type="checkbox"
-            />
-            <span aria-hidden="true" className={styles.checkboxBox} />
-            <span>7일간 로그인 유지</span>
-          </label>
+          <span className={styles.twoFa}>
+            <Shield aria-hidden="true" size={12} />
+            8시간 보안 세션
+          </span>
           <span className={styles.twoFa}>
             <Shield aria-hidden="true" size={12} />
             2FA 다음 단계
           </span>
         </div>
 
-        <button className={styles.submit} type="submit">
-          <span>로그인</span>
+        {errorMessage ? (
+          <p className={styles.formError} role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
+
+        <button
+          className={styles.submit}
+          disabled={isSubmitting}
+          type="submit"
+        >
+          <span>{isSubmitting ? '로그인 중' : '로그인'}</span>
           <ArrowRight aria-hidden="true" size={18} />
         </button>
       </section>
@@ -300,9 +381,9 @@ function SecurityPolicy() {
       <div>
         <strong className={styles.policyTitle}>보안 정책</strong>
         <p className={styles.policyBody}>
-          SuperAdmin·Sales 역할은 TOTP 2단계 인증이 필수입니다. 8시간
-          비활동 시 자동 로그아웃 · 모든 로그인 시도는 감사 로그에
-          기록됩니다.
+          {/* SuperAdmin·Operator 역할은 TOTP 2단계 인증이 필수입니다. */}
+          8시간 비활동 시 자동 로그아웃 · 모든 로그인 시도는 감사
+          로그에 기록됩니다.
         </p>
       </div>
     </aside>

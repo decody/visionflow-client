@@ -7,6 +7,7 @@ export type {
   IQuickInquiryListResponse,
   QuickInquiryStatus,
 } from './types/contact/quick';
+export type { AuthAuditLog, AuthAuditStatus } from './types/auth';
 export type { ICreateFaqRequest, IFaq } from './types/faq';
 export type {
   ICreateNoticeRequest,
