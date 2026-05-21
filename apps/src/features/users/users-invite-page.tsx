@@ -101,12 +101,6 @@ export function UsersInvitePage() {
 
   useTopbar(
     () => ({
-      action: (
-        <button className={styles.topbarPrimary} type="button">
-          <Send aria-hidden="true" size={14} strokeWidth={2.4} />
-          초대 메일 발송
-        </button>
-      ),
       breadcrumb: [
         { href: ROUTES.ADMIN.HOME, label: '대시보드' },
         { label: '운영' },

@@ -113,10 +113,7 @@ export function LoginFormPage({
         </button>
       </nav>
 
-      <form
-        className={styles.form}
-        onSubmit={handleSubmit}
-      >
+      <form className={styles.form} onSubmit={handleSubmit}>
         <header className={styles.formHeader}>
           <h2 className={styles.formTitle}>로그인</h2>
           <p className={styles.formSubtitle}>
@@ -303,9 +300,9 @@ function PartnerLoginPage({
             <label className={styles.label} htmlFor="login-password">
               패스워드
             </label>
-            <a className={styles.smallLink} href="#">
+            {/* <a className={styles.smallLink} href="#">
               잊으셨나요?
-            </a>
+            </a> */}
           </div>
           <div className={styles.inputWrap}>
             <KeyRound
@@ -319,7 +316,9 @@ function PartnerLoginPage({
               disabled={isSubmitting}
               id="login-password"
               name="password"
-              onChange={(event) => onChangePassword(event.target.value)}
+              onChange={(event) =>
+                onChangePassword(event.target.value)
+              }
               placeholder="••••••••••••"
               required
               type={showPassword ? 'text' : 'password'}

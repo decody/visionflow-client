@@ -125,26 +125,6 @@
   background: var(--color-primary-dark);
 }
 
-.topbarPrimary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 14px;
-  background: var(--color-primary);
-  border: 0;
-  border-radius: var(--radius-md);
-  color: #ffffff;
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--fs-small);
-  font-weight: var(--fw-semibold);
-}
-
-.topbarPrimary:hover {
-  background: var(--color-primary-dark);
-}
-
 /* ─────────── Layout */
 .layout {
   display: grid;
