@@ -204,8 +204,6 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
       await sendReplyMutation.mutateAsync({
         inquiryId: inquiry.id,
         replyContent,
-        subject: replySubject,
-        to,
       });
       setCurrentReplyNotice({
         message:

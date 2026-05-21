@@ -19,8 +19,6 @@ type SendQuickReplyResponse =
 export type SendQuickReplyPayload = {
   inquiryId: string;
   replyContent: string;
-  subject: string;
-  to: string;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

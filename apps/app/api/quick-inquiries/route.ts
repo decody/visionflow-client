@@ -12,6 +12,12 @@ type QuickInquiryPayload = {
   subject?: string | null;
 };
 
+const MAX_NAME_LENGTH = 100;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_SUBJECT_LENGTH = 200;
+const MAX_CONTENT_LENGTH = 5000;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const getRequiredEnv = (name: string) => {
   const value = process.env[name];
 
@@ -59,14 +65,50 @@ const parseProviderError = async (response: Response) => {
   }
 };
 
-const normalizePayload = (payload: QuickInquiryPayload) => {
+const normalizePayload = (
+  payload: QuickInquiryPayload,
+):
+  | {
+      content: string;
+      created_at: string;
+      email: string;
+      name: string;
+      status: 'pending';
+      subject: string | null;
+      updated_at: string;
+    }
+  | {
+      error: string;
+    } => {
   const name = payload.name?.trim();
   const email = payload.email?.trim();
   const subject = payload.subject?.trim() || null;
   const content = payload.content?.trim();
 
   if (!name || !email || !content) {
-    return null;
+    return { error: 'name, email, and content are required.' };
+  }
+
+  if (name.length > MAX_NAME_LENGTH) {
+    return {
+      error: `name must be ${MAX_NAME_LENGTH} characters or fewer.`,
+    };
+  }
+
+  if (email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email)) {
+    return { error: 'email must be a valid email address.' };
+  }
+
+  if (subject && subject.length > MAX_SUBJECT_LENGTH) {
+    return {
+      error: `subject must be ${MAX_SUBJECT_LENGTH} characters or fewer.`,
+    };
+  }
+
+  if (content.length > MAX_CONTENT_LENGTH) {
+    return {
+      error: `content must be ${MAX_CONTENT_LENGTH} characters or fewer.`,
+    };
   }
 
   const now = new Date().toISOString();
@@ -124,8 +166,8 @@ export async function POST(request: NextRequest) {
       (await request.json()) as QuickInquiryPayload,
     );
 
-    if (!payload) {
-      return jsonError('name, email, and content are required.', 400);
+    if ('error' in payload) {
+      return jsonError(payload.error, 400);
     }
 
     const url = new URL(getSupabaseRestUrl());

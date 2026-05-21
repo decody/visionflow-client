@@ -7,9 +7,10 @@ import { auth } from '../../../../../auth';
 type ReplyPayload = {
   inquiryId?: string;
   replyContent?: string;
-  subject?: string;
-  to?: string;
 };
+
+const ALLOWED_REPLY_ROLES = ['SuperAdmin', 'Operator'] as const;
+const MAX_REPLY_CONTENT_LENGTH = 5000;
 
 const getRequiredEnv = (name: string) => {
   const value = process.env[name];
@@ -70,6 +71,9 @@ const getProviderMessage = (detail: unknown) => {
   return typeof detail === 'string' ? detail : null;
 };
 
+const canSendReply = (role?: string | null) =>
+  ALLOWED_REPLY_ROLES.some((allowedRole) => allowedRole === role);
+
 const getSessionUserId = async (email?: string | null) => {
   const normalizedEmail = email?.trim();
 
@@ -90,6 +94,23 @@ const getSessionUserId = async (email?: string | null) => {
   return typeof data?.id === 'string' ? data.id : null;
 };
 
+const getInquiry = async (inquiryId: string) => {
+  const { data, error } = await supabaseAdmin
+    .from('quick_inquiries')
+    .select('id,email,subject,status')
+    .eq('id', inquiryId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as Pick<
+    IQuickInquiry,
+    'email' | 'id' | 'status' | 'subject'
+  > | null;
+};
+
 export async function POST(request: NextRequest) {
   const session = await auth();
 
@@ -97,18 +118,40 @@ export async function POST(request: NextRequest) {
     return jsonError('Unauthorized', 401);
   }
 
+  if (!canSendReply(session.user?.role)) {
+    return jsonError('Forbidden', 403);
+  }
+
   try {
     const payload = (await request.json()) as ReplyPayload;
     const inquiryId = payload.inquiryId?.trim();
-    const to = payload.to?.trim();
-    const subject = payload.subject?.trim();
     const replyContent = payload.replyContent?.trim();
 
-    if (!inquiryId || !to || !subject || !replyContent) {
+    if (!inquiryId || !replyContent) {
       return jsonError(
-        'inquiryId, to, subject, and replyContent are required.',
+        'inquiryId and replyContent are required.',
         400,
       );
+    }
+
+    if (replyContent.length > MAX_REPLY_CONTENT_LENGTH) {
+      return jsonError(
+        `replyContent must be ${MAX_REPLY_CONTENT_LENGTH} characters or fewer.`,
+        400,
+      );
+    }
+
+    const inquiry = await getInquiry(inquiryId);
+
+    if (!inquiry) {
+      return jsonError('Inquiry was not found.', 404);
+    }
+
+    const to = inquiry.email.trim();
+    const subject = `Re: ${inquiry.subject?.trim() || 'General inquiry'}`;
+
+    if (!to) {
+      return jsonError('Inquiry email is missing.', 400);
     }
 
     const resendApiKey = getRequiredEnv('RESEND_API_KEY');
@@ -199,16 +242,16 @@ export async function POST(request: NextRequest) {
     }
 
     const rows = (await updateResponse.json()) as IQuickInquiry[];
-    const inquiry = rows[0];
+    const updatedInquiry = rows[0];
 
-    if (!inquiry) {
+    if (!updatedInquiry) {
       return jsonError(
         'Reply email was sent, but inquiry was not found.',
         404,
       );
     }
 
-    return NextResponse.json(inquiry);
+    return NextResponse.json(updatedInquiry);
   } catch (error) {
     return jsonError(
       error instanceof Error ? error.message : 'Unexpected error',
