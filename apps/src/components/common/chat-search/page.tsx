@@ -17,7 +17,14 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { Group, Mesh, MeshBasicMaterial } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -60,6 +67,19 @@ type RecommendationQuestion = {
   text: string;
 };
 
+type RobotPosition = {
+  x: number;
+  y: number;
+};
+
+type RobotDragState = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startX: number;
+  startY: number;
+};
+
 type ChatbotRobotModelProps = {
   floating?: boolean;
   positionY?: number;
@@ -69,6 +89,36 @@ type ChatbotRobotModelProps = {
 };
 
 const PROVIDER: AiProvider = 'gemini';
+const ROBOT_TRIGGER_SIZE = 58;
+const ROBOT_DRAG_MARGIN = 16;
+
+const getDefaultRobotPosition = () => ({
+  x:
+    window.innerWidth -
+    Math.max(ROBOT_DRAG_MARGIN, Math.min(window.innerWidth * 0.03, 32)) -
+    ROBOT_TRIGGER_SIZE,
+  y:
+    window.innerHeight -
+    Math.max(18, Math.min(window.innerWidth * 0.04, 32)) -
+    ROBOT_TRIGGER_SIZE,
+});
+
+const clampRobotPosition = (position: RobotPosition) => ({
+  x: Math.min(
+    Math.max(ROBOT_DRAG_MARGIN, position.x),
+    Math.max(
+      ROBOT_DRAG_MARGIN,
+      window.innerWidth - ROBOT_TRIGGER_SIZE - ROBOT_DRAG_MARGIN,
+    ),
+  ),
+  y: Math.min(
+    Math.max(ROBOT_DRAG_MARGIN, position.y),
+    Math.max(
+      ROBOT_DRAG_MARGIN,
+      window.innerHeight - ROBOT_TRIGGER_SIZE - ROBOT_DRAG_MARGIN,
+    ),
+  ),
+});
 
 const INITIAL_MESSAGE: ChatMessage = {
   role: 'ai',
@@ -555,9 +605,144 @@ export default function ChatSearch() {
   const [recommendationAnswers, setRecommendationAnswers] = useState<
     PlanOption[]
   >([]);
+  const [draggingRobot, setDraggingRobot] = useState(false);
+  const floatingRef = useRef<HTMLElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const peekRobotRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const robotPositionRef = useRef<RobotPosition | null>(null);
+  const robotBasePositionRef = useRef<RobotPosition | null>(null);
+  const robotDragRef = useRef<RobotDragState | null>(null);
+  const robotDragFrameRef = useRef(0);
+  const robotPendingPositionRef = useRef<RobotPosition | null>(null);
+  const robotWasDraggedRef = useRef(false);
+  const manualRobotPositionRef = useRef(false);
+
+  const updateRobotPosition = useCallback((position: RobotPosition) => {
+    const nextPosition = clampRobotPosition(position);
+    const basePosition = robotBasePositionRef.current ?? nextPosition;
+    robotPositionRef.current = nextPosition;
+
+    if (triggerRef.current) {
+      triggerRef.current.style.transform = `translate3d(${nextPosition.x}px, ${nextPosition.y}px, 0)`;
+    }
+
+    floatingRef.current?.style.setProperty(
+      '--chatbot-drag-x',
+      `${nextPosition.x - basePosition.x}px`,
+    );
+    floatingRef.current?.style.setProperty(
+      '--chatbot-drag-y',
+      `${nextPosition.y - basePosition.y}px`,
+    );
+  }, []);
+
+  const scheduleRobotPosition = useCallback(
+    (position: RobotPosition) => {
+      robotPendingPositionRef.current = position;
+
+      if (robotDragFrameRef.current) return;
+
+      robotDragFrameRef.current = window.requestAnimationFrame(() => {
+        robotDragFrameRef.current = 0;
+        const pendingPosition = robotPendingPositionRef.current;
+        if (!pendingPosition) return;
+
+        updateRobotPosition(pendingPosition);
+      });
+    },
+    [updateRobotPosition],
+  );
+
+  const beginRobotDrag = (
+    event: ReactPointerEvent<HTMLElement>,
+  ) => {
+    if (event.button !== 0 || !robotPositionRef.current) return;
+
+    robotWasDraggedRef.current = false;
+    robotDragRef.current = {
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startX: robotPositionRef.current.x,
+      startY: robotPositionRef.current.y,
+    };
+    setDraggingRobot(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moveRobotDrag = (
+    event: ReactPointerEvent<HTMLElement>,
+  ) => {
+    const dragState = robotDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - dragState.startClientX;
+    const deltaY = event.clientY - dragState.startClientY;
+
+    if (Math.hypot(deltaX, deltaY) > 4) {
+      robotWasDraggedRef.current = true;
+      manualRobotPositionRef.current = true;
+    }
+
+    scheduleRobotPosition({
+      x: dragState.startX + deltaX,
+      y: dragState.startY + deltaY,
+    });
+  };
+
+  const endRobotDrag = (
+    event: ReactPointerEvent<HTMLElement>,
+  ) => {
+    const dragState = robotDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    robotDragRef.current = null;
+    const pendingPosition = robotPendingPositionRef.current;
+    robotPendingPositionRef.current = null;
+    if (robotDragFrameRef.current) {
+      window.cancelAnimationFrame(robotDragFrameRef.current);
+      robotDragFrameRef.current = 0;
+    }
+    updateRobotPosition(
+      pendingPosition ??
+        robotPositionRef.current ?? {
+          x: dragState.startX,
+          y: dragState.startY,
+        },
+    );
+    setDraggingRobot(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  useEffect(() => {
+    const setInitialPosition = () => {
+      const defaultPosition = clampRobotPosition(getDefaultRobotPosition());
+      robotBasePositionRef.current = defaultPosition;
+
+      if (!manualRobotPositionRef.current) {
+        updateRobotPosition(defaultPosition);
+        return;
+      }
+
+      if (robotPositionRef.current) {
+        updateRobotPosition(robotPositionRef.current);
+      }
+    };
+
+    setInitialPosition();
+    window.addEventListener('resize', setInitialPosition);
+    return () => {
+      window.removeEventListener('resize', setInitialPosition);
+      if (robotDragFrameRef.current) {
+        window.cancelAnimationFrame(robotDragFrameRef.current);
+      }
+    };
+  }, [updateRobotPosition]);
 
   useEffect(() => {
     if (!open) return;
@@ -570,13 +755,20 @@ export default function ChatSearch() {
   }, [open]);
 
   useEffect(() => {
-    if (open || !triggerRef.current) return;
+    if (
+      open ||
+      !triggerRef.current ||
+      manualRobotPositionRef.current ||
+      !robotPositionRef.current
+    ) {
+      return;
+    }
 
     let animationFrame = 0;
     let nextTargetAt = 0;
     // 이 변수들은 채팅 창의 트리거(버튼)가 화면의 어느 위치에 떠 있을지 초기 위치와 타겟 위치를 의미합니다.
-    let x = Math.max(window.innerWidth - 50, 24); // x: 화면 오른쪽 아래에 채팅 버튼 위치 (최소 24px 여유)
-    let y = Math.max(window.innerHeight - 50, 24); // y: 화면 아래쪽에 채팅 버튼 위치 (최소 24px 여유)
+    let x = robotPositionRef.current.x; // x: 화면 오른쪽 아래에 채팅 버튼 위치 (최소 24px 여유)
+    let y = robotPositionRef.current.y; // y: 화면 아래쪽에 채팅 버튼 위치 (최소 24px 여유)
     let targetX = x; // 움직일 목표 x좌표
     let targetY = y; // 움직일 목표 y좌표
 
@@ -614,6 +806,11 @@ export default function ChatSearch() {
       const trigger = triggerRef.current;
       if (!trigger) return;
 
+      if (robotDragRef.current) {
+        animationFrame = window.requestAnimationFrame(animate);
+        return;
+      }
+
       const now = performance.now();
       if (now >= nextTargetAt) {
         pickTarget();
@@ -621,6 +818,7 @@ export default function ChatSearch() {
 
       x += (targetX - x) * 0.0045;
       y += (targetY - y) * 0.0045;
+      robotPositionRef.current = { x, y };
       trigger.style.transform = `translate3d(${x}px, ${y}px, 0)`;
       animationFrame = window.requestAnimationFrame(animate);
     };
@@ -647,6 +845,25 @@ export default function ChatSearch() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      if (panelRef.current?.contains(target)) return;
+      if (peekRobotRef.current?.contains(target)) return;
+
+      setOpen(false);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [open]);
 
   const resetConversation = () => {
     setMode('idle');
@@ -855,8 +1072,15 @@ export default function ChatSearch() {
   };
 
   return (
-    <aside className={styles.floating} aria-label="AI 안내 도우미">
+    <aside
+      ref={floatingRef}
+      className={`${styles.floating} ${
+        draggingRobot ? styles.floatingDragging : ''
+      }`}
+      aria-label="AI 안내 도우미"
+    >
       <section
+        ref={panelRef}
         className={`${styles.panel} ${open ? styles.panelOpen : ''}`}
         aria-hidden={!open}
       >
@@ -1004,8 +1228,22 @@ export default function ChatSearch() {
       </section>
 
       {open ? (
-        <div className={styles.peekRobot} aria-hidden="true">
-          <Canvas camera={{ position: [0, 0.35, 5.2], fov: 40 }}>
+        <div
+          ref={peekRobotRef}
+          className={`${styles.peekRobot} ${
+            draggingRobot ? styles.robotDragging : ''
+          }`}
+          aria-hidden="true"
+          onPointerDown={beginRobotDrag}
+          onPointerMove={moveRobotDrag}
+          onPointerUp={endRobotDrag}
+          onPointerCancel={endRobotDrag}
+        >
+          <Canvas
+            camera={{ position: [0, 0.35, 5.2], fov: 40 }}
+            dpr={[1, 1.35]}
+            gl={{ antialias: true, powerPreference: 'low-power' }}
+          >
             <ambientLight intensity={1.6} />
             <directionalLight
               position={[2.5, 3, 4]}
@@ -1027,14 +1265,35 @@ export default function ChatSearch() {
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className={`${styles.trigger} ${open ? styles.triggerOpen : ''}`}
+        onClick={(event) => {
+          if (robotWasDraggedRef.current) {
+            event.preventDefault();
+            robotWasDraggedRef.current = false;
+            return;
+          }
+
+          if (robotPositionRef.current) {
+            updateRobotPosition(robotPositionRef.current);
+          }
+          setOpen((prev) => !prev);
+        }}
+        onPointerDown={beginRobotDrag}
+        onPointerMove={moveRobotDrag}
+        onPointerUp={endRobotDrag}
+        onPointerCancel={endRobotDrag}
+        className={`${styles.trigger} ${open ? styles.triggerOpen : ''} ${
+          draggingRobot ? styles.robotDragging : ''
+        }`}
         aria-label={open ? 'AI 가이드 닫기' : 'AI 가이드 열기'}
         aria-expanded={open}
       >
         {!open ? (
           <span className={styles.robotCanvas} aria-hidden="true">
-            <Canvas camera={{ position: [0, 0.1, 5], fov: 38 }}>
+            <Canvas
+              camera={{ position: [0, 0.1, 5], fov: 38 }}
+              dpr={[1, 1.35]}
+              gl={{ antialias: true, powerPreference: 'low-power' }}
+            >
               <ambientLight intensity={1.6} />
               <directionalLight
                 position={[2.5, 3, 4]}

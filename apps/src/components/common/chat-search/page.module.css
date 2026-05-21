@@ -19,17 +19,18 @@
   box-shadow: 0 24px 80px rgba(17, 24, 39, 0.18);
   opacity: 0;
   pointer-events: none;
-  transform: translateY(12px) scale(0.98);
+  transform: translate3d(var(--chatbot-drag-x, 0), calc(var(--chatbot-drag-y, 0) + 12px), 0) scale(0.98);
   transform-origin: bottom right;
   transition:
     opacity var(--transition-base),
     transform var(--transition-base);
+  will-change: transform, opacity;
 }
 
 .panelOpen {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0) scale(1);
+  transform: translate3d(var(--chatbot-drag-x, 0), var(--chatbot-drag-y, 0), 0) scale(1);
 }
 
 .header {
@@ -412,7 +413,11 @@
   background: transparent;
   border-radius: 50%;
   box-shadow: none;
+  cursor: grab;
   pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  will-change: transform;
 }
 
 .triggerOpen {
@@ -428,9 +433,26 @@
   width: 190px;
   height: 190px;
   overflow: visible;
-  pointer-events: none;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
   animation: peekRobotEnter 640ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
   transform-origin: 85% 58%;
+  will-change: transform;
+}
+
+.floatingDragging .panel {
+  transition: opacity var(--transition-base);
+}
+
+.floatingDragging .peekRobot {
+  animation: none;
+  transform: translate3d(var(--chatbot-drag-x, 0), var(--chatbot-drag-y, 0), 0);
+}
+
+.robotDragging {
+  cursor: grabbing;
 }
 
 .peekRobot canvas {
@@ -479,17 +501,28 @@
 @keyframes peekRobotEnter {
   from {
     opacity: 0;
-    transform: translate(54px, 22px) rotate(10deg) scale(0.92);
+    transform: translate3d(
+        calc(var(--chatbot-drag-x, 0) + 54px),
+        calc(var(--chatbot-drag-y, 0) + 22px),
+        0
+      )
+      rotate(10deg) scale(0.92);
   }
 
   62% {
     opacity: 1;
-    transform: translate(-8px, -3px) rotate(-2deg) scale(1.02);
+    transform: translate3d(
+        calc(var(--chatbot-drag-x, 0) - 8px),
+        calc(var(--chatbot-drag-y, 0) - 3px),
+        0
+      )
+      rotate(-2deg) scale(1.02);
   }
 
   to {
     opacity: 1;
-    transform: translate(0, 0) rotate(0) scale(1);
+    transform: translate3d(var(--chatbot-drag-x, 0), var(--chatbot-drag-y, 0), 0)
+      rotate(0) scale(1);
   }
 }
 
