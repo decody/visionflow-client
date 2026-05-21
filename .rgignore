@@ -1,0 +1,38 @@
+# Environment and secret files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Credentials, keys, and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+credentials.*
+secrets.*
+service-account*.json
+firebase-adminsdk*.json
+
+# Dependency and build outputs
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.turbo/
+.vercel/
+out/
+
+# Logs and local caches
+*.log
+.cache/
+.npm/
+.pnpm-store/
