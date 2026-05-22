@@ -158,12 +158,12 @@
   color: var(--color-danger);
 }
 
-.status_in_progress {
+.status_processing {
   background: #fef3c7;
   color: #b45309;
 }
 
-.status_resolved {
+.status_completed {
   background: #dcfce7;
   color: #03995f;
 }

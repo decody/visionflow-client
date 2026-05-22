@@ -262,7 +262,7 @@ export default function FaqPage() {
           </Text>
         </div>
 
-        {role === 'SuperAdmin' || role === 'Operator' ? (
+        {role === 'SuperAdmin' || role === 'admin' ? (
           <Link href={ROUTES.ADMIN.FAQ.WRITE()}>
             <Button type="primary">FAQ 등록</Button>
           </Link>

@@ -57,7 +57,7 @@ export function WorkPortfolioListPage() {
     isLoading,
   } = useWorkListQuery();
   const role = useUserRoleStore((state) => state.role);
-  const canManageWork = role === 'SuperAdmin' || role === 'Operator';
+  const canManageWork = role === 'SuperAdmin' || role === 'admin';
 
   useTopbar(
     () => ({

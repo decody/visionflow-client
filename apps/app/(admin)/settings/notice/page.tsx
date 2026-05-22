@@ -107,7 +107,7 @@ export default function NoticePage() {
   const [importantFilter, setImportantFilter] =
     useState<ImportantFilter>('all');
   const role = useUserRoleStore((state) => state.role);
-  const canManageNotice = role === 'SuperAdmin' || role === 'Operator';
+  const canManageNotice = role === 'SuperAdmin' || role === 'admin';
 
   const filteredNotices = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();

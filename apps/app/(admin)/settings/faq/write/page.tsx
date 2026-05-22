@@ -58,7 +58,7 @@ export default function FaqWritePage() {
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'Operator']}
+      allowedRoles={['SuperAdmin', 'admin']}
       fallbackPath={ROUTES.ADMIN.FAQ.ROOT}
     >
     <section className={styles.page}>

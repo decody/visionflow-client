@@ -116,7 +116,7 @@ export function QuoteRequestDetailPage({ id }: { id: string }) {
         <header className={styles.companyMeta}>
           <div className={styles.metaBadges}>
             <span className={styles.idBadge}>#{id}</span>
-            <span className={styles.statusNew}>NEW</span>
+            <span className={styles.status_new}>NEW</span>
             <span className={styles.servicePill}>광고 이미지</span>
             <span className={styles.sizePill}>11–50인</span>
           </div>

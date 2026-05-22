@@ -14,10 +14,13 @@ type QnaListQueryParams = {
 
 const normalizeQna = (qna: IQna): IQna => ({
   ...qna,
+  author_name: qna.author_name ?? qna.authorName,
   created_at: qna.created_at ?? qna.createdAt,
   is_notice: qna.is_notice ?? qna.isNotice,
-  is_visible: qna.is_visible ?? qna.isVisible,
+  is_secret: qna.is_secret ?? qna.isSecret,
+  question: qna.question ?? qna.title ?? '',
   updated_at: qna.updated_at ?? qna.updatedAt,
+  view_count: qna.view_count ?? qna.viewCount,
 });
 
 const fetchQnaList = async ({

@@ -382,13 +382,13 @@
   font-weight: var(--fw-bold);
 }
 
-.statusPending,
-.statusInProgress {
+.status_pending,
+.status_in_progress {
   background: rgba(0, 79, 255, 0.1);
   color: var(--color-primary);
 }
 
-.statusDone {
+.status_done {
   background: rgba(3, 199, 90, 0.12);
   color: var(--color-success);
 }

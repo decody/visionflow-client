@@ -259,7 +259,7 @@ function SecretPostView() {
       <article className={styles.postCard}>
         <header className={styles.postHeader}>
           <div className={styles.postBadgeRow}>
-            <span className={`${styles.statusBadge} ${styles.statusProgress}`}>
+            <span className={`${styles.statusBadge} ${styles.status_progress}`}>
               <span aria-hidden="true" className={styles.statusDot} /> NDA 검토 진행중
             </span>
             <span className={styles.secretBadge}>

@@ -19,7 +19,7 @@ import { useState } from 'react';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './users-invite-page.module.css';
 
-type RoleKey = 'super_admin' | 'operator' | 'viewer';
+type RoleKey = 'super_admin' | 'admin' | 'viewer';
 
 const ROLE_OPTIONS: ReadonlyArray<{
   bullets: ReadonlyArray<string>;
@@ -51,8 +51,8 @@ const ROLE_OPTIONS: ReadonlyArray<{
     ],
     description: 'Work 작성 · Q&A 답변',
     emoji: '⚙',
-    key: 'operator',
-    label: 'Operator',
+    key: 'admin',
+    label: 'admin',
     notice: '현재 5명',
   },
   {
@@ -93,7 +93,7 @@ export function UsersInvitePage() {
     'lee.juhyun@visionflow.kr',
   ]);
   const [emailInput, setEmailInput] = useState('');
-  const [role, setRole] = useState<RoleKey>('operator');
+  const [role, setRole] = useState<RoleKey>('admin');
   const [welcomeMessage, setWelcomeMessage] = useState(
     `홍길동님, VisionFlow 운영 팀에 오신 것을 환영합니다. 시즌 캠페인 운영 + Q&A 답변을 맡아주실 예정입니다. 첫 출근 전까지 가입 완료 부탁드려요. — 노대표`,
   );
@@ -297,7 +297,7 @@ export function UsersInvitePage() {
                   <ShieldCheck size={14} />
                 </span>
                 <div className={styles.authBody}>
-                  <strong>2FA TOTP — Operator는 선택</strong>
+                  <strong>2FA TOTP — admin은 선택</strong>
                   <p>SuperAdmin은 필수 적용 · 가입 시 설정</p>
                 </div>
               </div> */}

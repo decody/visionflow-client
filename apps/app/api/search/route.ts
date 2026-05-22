@@ -186,7 +186,7 @@ function getBooleanValue(
 }
 
 function normalizeQnaSource(row: Record<string, unknown>): QnaRow {
-  const question = getStringValue(row, ['question']);
+  const question = getStringValue(row, ['content', 'question']);
   const title =
     getStringValue(row, ['title', 'subject']) ||
     question.split('\n')[0]?.trim() ||
@@ -380,9 +380,8 @@ export async function POST(req: NextRequest) {
               .from('qna')
               .select('*')
               .or(
-                `question.ilike.${pattern},answer.ilike.${pattern},category.ilike.${pattern}`,
+                `title.ilike.${pattern},content.ilike.${pattern},author_name.ilike.${pattern}`,
               )
-              .eq('is_visible', true)
               .limit(5),
           ]);
 

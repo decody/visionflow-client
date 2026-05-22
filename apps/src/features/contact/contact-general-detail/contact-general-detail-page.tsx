@@ -152,7 +152,7 @@ export function ContactGeneralDetailPage() {
         <article className={styles.postCard}>
           <header className={styles.postHeader}>
             <div className={styles.postBadgeRow}>
-              <span className={`${styles.statusBadge} ${styles.statusDone}`}>
+              <span className={`${styles.statusBadge} ${styles.status_done}`}>
                 <span aria-hidden="true">✓</span> {post.status}
               </span>
               <span className={styles.categoryBadge}>{post.category}</span>

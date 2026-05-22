@@ -100,7 +100,7 @@ const assertReplyCompleted = (
     );
   }
 
-  if (quick.status !== 'resolved') {
+  if (quick.status !== 'completed') {
     throw new Error('답변 처리가 완료되지 않았습니다. 메일 발송 결과를 확인해 주세요.');
   }
 

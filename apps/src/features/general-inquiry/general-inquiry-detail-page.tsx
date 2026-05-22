@@ -39,9 +39,9 @@ type ActivityLogEntry = {
 };
 
 const STATUS_LABEL: Record<QuickInquiryStatus, string> = {
-  in_progress: '확인 중',
+  processing: '확인 중',
+  completed: '답변 완료',
   pending: '미답변',
-  resolved: '답변 완료',
 };
 
 const TABS: ReadonlyArray<{
@@ -550,7 +550,7 @@ function getActivityLogs(inquiry: IQuickInquiry): ActivityLogEntry[] {
     },
   ];
 
-  if (inquiry.status === 'resolved') {
+  if (inquiry.status === 'completed') {
     logs.push({
       icon: Check,
       label: '답변 발송 완료',
@@ -615,7 +615,7 @@ function formatFullDate(value?: string) {
 }
 
 function getSlaText(inquiry: IQuickInquiry) {
-  if (inquiry.status === 'resolved') {
+  if (inquiry.status === 'completed') {
     return {
       meta: `마지막 변경 ${formatFullDate(inquiry.updated_at)}`,
       title: '답변이 완료된 문의입니다.',

@@ -1,10 +1,10 @@
-// pending: 접수됐지만 아직 처리되지 않음
-// in_progress: 처리 중
-// resolved: 답변 완료 또는 해결됨
+// pending: received but not processed yet
+// processing: currently being handled
+// completed: reply sent
 export type QuickInquiryStatus =
   | 'pending'
-  | 'in_progress'
-  | 'resolved';
+  | 'processing'
+  | 'completed';
 
 export interface IQuickInquiry {
   id: string;

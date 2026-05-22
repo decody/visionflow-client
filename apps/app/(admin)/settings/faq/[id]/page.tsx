@@ -27,7 +27,7 @@ export default function FaqViewPage() {
   const id = String(params.id);
   const faq = faqs.find((faq) => String(faq.id) === id);
   const role = useUserRoleStore((state) => state.role);
-  const canManageFaq = role === 'SuperAdmin' || role === 'Operator';
+  const canManageFaq = role === 'SuperAdmin' || role === 'admin';
 
   if (isLoading) {
     return <Loading />;

@@ -22,10 +22,13 @@ export const useCreateWorkMutation = () => {
         image: values.image?.trim() || null,
         linkLabel: values.linkLabel?.trim() || null,
         linkUrl: values.linkUrl?.trim() || null,
-        roles: values.roles.filter(Boolean),
+        roles: values.roles.filter(Boolean).join(', '),
       });
 
-      return data;
+      return {
+        ...data,
+        roles: values.roles.filter(Boolean),
+      };
     },
     onSuccess: async (createdWork) => {
       queryClient.setQueryData<WorkRow[]>(['works-list'], (oldWorks = []) => {

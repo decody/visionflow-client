@@ -99,7 +99,7 @@ export default function NoticeEditPage() {
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'Operator']}
+      allowedRoles={['SuperAdmin', 'admin']}
       fallbackPath={ROUTES.ADMIN.NOTICE.DETAIL(id)}
     >
     <section className={styles.page}>

@@ -43,7 +43,7 @@ export type ContactRow = {
 export type QnaRow = {
   id: string;
   question: string;
-  answer: string;
+  answer?: string | null;
   category?: string | null;
   isNotice?: boolean | null;
   isSecret?: boolean | null;

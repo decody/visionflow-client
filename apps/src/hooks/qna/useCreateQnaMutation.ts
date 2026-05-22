@@ -14,10 +14,13 @@ export type CreateQnaValues = {
 
 const normalizeQna = (qna: IQna): IQna => ({
   ...qna,
+  author_name: qna.author_name ?? qna.authorName,
   created_at: qna.created_at ?? qna.createdAt,
   is_notice: qna.is_notice ?? qna.isNotice,
-  is_visible: qna.is_visible ?? qna.isVisible,
+  is_secret: qna.is_secret ?? qna.isSecret,
+  question: qna.question ?? qna.title ?? '',
   updated_at: qna.updated_at ?? qna.updatedAt,
+  view_count: qna.view_count ?? qna.viewCount,
 });
 
 const shouldRetryWithMinimalPayload = (error: unknown) => {
@@ -40,25 +43,21 @@ export const useCreateQnaMutation = () => {
   return useMutation({
     mutationFn: async (values: CreateQnaValues) => {
       const now = new Date().toISOString();
-      const question = `${values.title}\n\n${values.content}`;
       const minimalPayload: ApiPayload = {
-        answer: '',
-        category: values.category,
+        authorName: values.author,
+        content: values.content,
         createdAt: now,
         isNotice: false,
-        isVisible: true,
-        question,
+        isSecret: values.isSecret,
+        status: 'pending',
+        title: values.title,
         updatedAt: now,
+        viewCount: 0,
       };
       const fullPayload: ApiPayload = {
         ...minimalPayload,
-        author: values.author,
-        content: values.content,
-        isSecret: values.isSecret,
+        category: values.category,
         password: values.password || null,
-        status: 'pending',
-        title: values.title,
-        views: 0,
       };
 
       try {

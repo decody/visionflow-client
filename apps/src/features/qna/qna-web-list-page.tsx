@@ -19,7 +19,7 @@ type CategoryChip = {
   label: string;
 };
 
-type PostStatus = 'pending' | 'inProgress' | 'done';
+type PostStatus = 'pending' | 'in_progress' | 'done';
 
 type BoardPost = {
   author: string;
@@ -49,14 +49,14 @@ const EMPTY_QNAS: IQna[] = [];
 
 const statusLabel: Record<PostStatus, string> = {
   done: '답변 완료',
-  inProgress: '진행중',
+  in_progress: '진행중',
   pending: '답변 대기',
 };
 
 const statusClass: Record<PostStatus, string> = {
-  done: 'statusDone',
-  inProgress: 'statusInProgress',
-  pending: 'statusPending',
+  done: 'status_done',
+  in_progress: 'status_in_progress',
+  pending: 'status_pending',
 };
 
 export function QnaWebListPage() {
@@ -453,14 +453,10 @@ function getStatus(qna: IQna): PostStatus {
 
   if (
     status === 'pending' ||
-    status === 'inProgress' ||
+    status === 'in_progress' ||
     status === 'done'
   ) {
     return status;
-  }
-
-  if (status === 'in_progress') {
-    return 'inProgress';
   }
 
   return qna.answer?.trim() ? 'done' : 'pending';

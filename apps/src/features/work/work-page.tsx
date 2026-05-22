@@ -192,7 +192,7 @@ const mapWorkToCaseItem = (work: WorkRow): CaseItem => ({
   industry: getWorkIndustry(work),
   roles: getWorkRoles(work),
   title: work.title,
-  size: work.size,
+  size: work.size === 'short' ? 'short' : 'tall',
   image: work.image ? { src: work.image } : undefined,
 });
 

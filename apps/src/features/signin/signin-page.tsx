@@ -132,10 +132,10 @@ export function SigninPage() {
                 <strong className={styles.stepTitle}>{step.title}</strong>
                 <span className={styles.stepDesc}>{step.description}</span>
               </span>
-              {step.status === 'done' ? <span className={styles.statusDone}>완료</span> : null}
+              {step.status === 'done' ? <span className={styles.status_done}>완료</span> : null}
               {step.status === 'active' ? (
-                <span className={styles.statusActive}>
-                  <span className={styles.statusActiveDot} />
+                <span className={styles.status_active}>
+                  <span className={styles.status_active_dot} />
                   진행중
                 </span>
               ) : null}
@@ -200,7 +200,7 @@ export function SigninPage() {
             <div className={styles.inviteBody}>
               <div className={styles.inviteHeadRow}>
                 <strong className={styles.inviteFrom}>이대표 (SuperAdmin) 님의 초대</strong>
-                <span className={styles.roleBadge}>OPERATOR</span>
+                <span className={styles.roleBadge}>admin</span>
               </div>
               <p className={styles.inviteRole}>Work 케이스 작성·관리 권한으로 초대받았습니다</p>
               <p className={styles.inviteExpire}>
@@ -319,7 +319,7 @@ export function SigninPage() {
               <div className={styles.totpHead}>
                 <strong className={styles.totpTitle}>2단계 인증 (TOTP)</strong>
                 <p className={styles.totpDesc}>
-                  OPERATOR 역할은 선택 — Sales·SuperAdmin은 필수
+                  admin 역할은 선택 — Sales·SuperAdmin은 필수
                 </p>
               </div>
               <span className={styles.totpBadge}>선택 권장</span>

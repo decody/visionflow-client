@@ -1,6 +1,7 @@
 import type { IQuickInquiry } from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { auth } from '../../../auth';
 
 export const dynamic = 'force-dynamic';
@@ -18,52 +19,11 @@ const MAX_SUBJECT_LENGTH = 200;
 const MAX_CONTENT_LENGTH = 5000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const getRequiredEnv = (name: string) => {
-  const value = process.env[name];
-
-  if (!value) {
-    throw new Error(`${name} is required`);
-  }
-
-  return value;
-};
-
-const getSupabaseRestUrl = () => {
-  const supabaseUrl = getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL');
-
-  return `${supabaseUrl.replace(/\/+$/, '')}/rest/v1/quick_inquiries`;
-};
-
-const getServiceHeaders = (prefer?: string): HeadersInit => {
-  const serviceRoleKey = getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY');
-
-  return {
-    apikey: serviceRoleKey,
-    Authorization: `Bearer ${serviceRoleKey}`,
-    'Content-Type': 'application/json',
-    ...(prefer ? { Prefer: prefer } : {}),
-  };
-};
-
 const jsonError = (
   message: string,
   status: number,
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
-
-const parseProviderError = async (response: Response) => {
-  const text = await response.text();
-
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return text;
-  }
-};
 
 const normalizePayload = (
   payload: QuickInquiryPayload,
@@ -132,26 +92,16 @@ export async function GET() {
   }
 
   try {
-    const url = new URL(getSupabaseRestUrl());
-    url.searchParams.set('select', '*');
-    url.searchParams.set('order', 'created_at.desc');
+    const { data, error } = await supabaseAdmin
+      .from('quick_inquiries')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    const response = await fetch(url, {
-      headers: getServiceHeaders(),
-      method: 'GET',
-    });
-
-    if (!response.ok) {
-      return jsonError(
-        'Failed to load quick inquiries.',
-        502,
-        await parseProviderError(response),
-      );
+    if (error) {
+      return jsonError('Failed to load quick inquiries.', 502, error);
     }
 
-    const rows = (await response.json()) as IQuickInquiry[];
-
-    return NextResponse.json(rows);
+    return NextResponse.json((data ?? []) as IQuickInquiry[]);
   } catch (error) {
     return jsonError(
       error instanceof Error ? error.message : 'Unexpected error',
@@ -170,31 +120,17 @@ export async function POST(request: NextRequest) {
       return jsonError(payload.error, 400);
     }
 
-    const url = new URL(getSupabaseRestUrl());
-    url.searchParams.set('select', '*');
+    const { data: inquiry, error } = await supabaseAdmin
+      .from('quick_inquiries')
+      .insert(payload)
+      .select('*')
+      .single();
 
-    const response = await fetch(url, {
-      body: JSON.stringify(payload),
-      headers: getServiceHeaders('return=representation'),
-      method: 'POST',
-    });
-
-    if (!response.ok) {
-      return jsonError(
-        'Failed to create quick inquiry.',
-        502,
-        await parseProviderError(response),
-      );
+    if (error) {
+      return jsonError('Failed to create quick inquiry.', 502, error);
     }
 
-    const rows = (await response.json()) as IQuickInquiry[];
-    const inquiry = rows[0];
-
-    if (!inquiry) {
-      return jsonError('Created inquiry was not returned.', 502);
-    }
-
-    return NextResponse.json(inquiry, { status: 201 });
+    return NextResponse.json(inquiry as IQuickInquiry, { status: 201 });
   } catch (error) {
     return jsonError(
       error instanceof Error ? error.message : 'Unexpected error',

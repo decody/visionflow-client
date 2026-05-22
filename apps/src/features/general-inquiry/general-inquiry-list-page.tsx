@@ -32,14 +32,14 @@ const STATUS_TABS: ReadonlyArray<{
 }> = [
   { key: 'all', label: '전체' },
   { key: 'pending', label: '미답변' },
-  { key: 'in_progress', label: '확인 중' },
-  { key: 'resolved', label: '답변 완료' },
+  { key: 'processing', label: '확인 중' },
+  { key: 'completed', label: '답변 완료' },
 ];
 
 const STATUS_LABEL: Record<QuickInquiryStatus, string> = {
-  in_progress: '확인 중',
+  processing: '확인 중',
+  completed: '답변 완료',
   pending: '미답변',
-  resolved: '답변 완료',
 };
 
 const DATE_OPTIONS: { label: string; value: DateFilter }[] = [
@@ -125,9 +125,9 @@ export function GeneralInquiryListPage() {
       },
       {
         all: 0,
-        in_progress: 0,
+        processing: 0,
+        completed: 0,
         pending: 0,
-        resolved: 0,
       },
     );
   }, [quickList]);
@@ -281,7 +281,7 @@ export function GeneralInquiryListPage() {
             return null;
           }
 
-          if (data.status !== 'resolved') {
+          if (data.status !== 'completed') {
             return <span className={styles.replyDash}>-</span>;
           }
 
@@ -367,7 +367,7 @@ export function GeneralInquiryListPage() {
         <article className={styles.summaryItem}>
           <Check aria-hidden="true" size={16} />
           <span>답변 완료</span>
-          <strong>{statusCounts.resolved.toLocaleString()}</strong>
+          <strong>{statusCounts.completed.toLocaleString()}</strong>
         </article>
       </section>
 

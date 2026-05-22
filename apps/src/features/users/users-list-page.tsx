@@ -46,8 +46,8 @@ type StatusFilter = UserStatus | 'all';
 type UserRow = IUser;
 
 const ROLE_LABEL: Record<UserRole, string> = {
-  Operator: 'Operator',
   SuperAdmin: 'SuperAdmin',
+  admin: 'admin',
   Viewer: 'Viewer',
 };
 
@@ -60,7 +60,7 @@ const STATUS_LABEL: Record<UserStatus, string> = {
 const ROLE_OPTIONS: { label: string; value: RoleFilter }[] = [
   { label: '전체 역할', value: 'all' },
   { label: 'SuperAdmin', value: 'SuperAdmin' },
-  { label: 'Operator', value: 'Operator' },
+  { label: 'admin', value: 'admin' },
   { label: 'Viewer', value: 'Viewer' },
 ];
 

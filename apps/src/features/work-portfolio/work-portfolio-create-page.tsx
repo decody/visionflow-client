@@ -65,7 +65,7 @@ export function WorkPortfolioCreatePage() {
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'Operator']}
+      allowedRoles={['SuperAdmin', 'admin']}
       fallbackPath={ROUTES.ADMIN.WORK_PORTFOLIO.ROOT}
     >
     <section className={styles.page}>

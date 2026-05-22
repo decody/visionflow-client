@@ -29,7 +29,7 @@ import { useState } from 'react';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './users-detail-page.module.css';
 
-type RoleKey = 'super_admin' | 'sales' | 'operator' | 'viewer';
+type RoleKey = 'super_admin' | 'sales' | 'admin' | 'viewer';
 
 const ROLE_OPTIONS: ReadonlyArray<{
   count: string;
@@ -58,8 +58,8 @@ const ROLE_OPTIONS: ReadonlyArray<{
     current: true,
     description: 'Work 작성 · Q&A 답변',
     emoji: '⚙',
-    key: 'operator',
-    label: 'Operator',
+    key: 'admin',
+    label: 'admin',
   },
   {
     count: '',
@@ -80,21 +80,21 @@ const ACCESS_LABEL: Record<AccessKey, string> = {
 
 const PERMISSIONS: ReadonlyArray<{
   highRisk?: boolean;
-  operator: AccessKey;
+  admin: AccessKey;
   resource: string;
   sales: AccessKey;
   superAdmin: AccessKey;
   viewer: AccessKey;
 }> = [
   {
-    operator: 'read',
+    admin: 'read',
     resource: '견적 인박스 — 상태 변경·답변',
     sales: 'allow',
     superAdmin: 'allow',
     viewer: 'read',
   },
   {
-    operator: 'read',
+    admin: 'read',
     resource: '제휴 인박스 — 모든 작업',
     sales: 'allow',
     superAdmin: 'allow',
@@ -102,42 +102,42 @@ const PERMISSIONS: ReadonlyArray<{
   },
   {
     highRisk: true,
-    operator: 'deny',
+    admin: 'deny',
     resource: 'Q&A — 비밀글 평문 조회',
     sales: 'allow',
     superAdmin: 'allow',
     viewer: 'deny',
   },
   {
-    operator: 'allow',
+    admin: 'allow',
     resource: 'Work 케이스 — 생성·수정',
     sales: 'read',
     superAdmin: 'allow',
     viewer: 'read',
   },
   {
-    operator: 'deny',
+    admin: 'deny',
     resource: 'Work 케이스 — 클라이언트 공개 단계 변경',
     sales: 'deny',
     superAdmin: 'allow',
     viewer: 'deny',
   },
   {
-    operator: 'deny',
+    admin: 'deny',
     resource: '사용자 관리 (역할 부여·회수)',
     sales: 'deny',
     superAdmin: 'allow',
     viewer: 'deny',
   },
   {
-    operator: 'read',
+    admin: 'read',
     resource: 'SLA 대시보드 — 조회',
     sales: 'read',
     superAdmin: 'allow',
     viewer: 'deny',
   },
   {
-    operator: 'allow',
+    admin: 'allow',
     resource: '미디어 — 업로드·삭제',
     sales: 'read',
     superAdmin: 'allow',
@@ -206,7 +206,7 @@ const RECENT_ACTIVITY = [
 ];
 
 export function UsersDetailPage({ id: _id }: { id: string }) {
-  const [selectedRole, setSelectedRole] = useState<RoleKey>('operator');
+  const [selectedRole, setSelectedRole] = useState<RoleKey>('admin');
 
   useTopbar(
     () => ({
@@ -214,7 +214,7 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
         { href: ROUTES.ADMIN.HOME, label: '대시보드' },
         { label: '운영' },
         { href: ROUTES.ADMIN.USERS.ROOT, label: '사용자 관리' },
-        { label: '박서준 (Operator)' },
+        { label: '박서준 (admin)' },
       ],
     }),
     [],
@@ -269,7 +269,7 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
             <h1 className={styles.userName}>박서준</h1>
             <p className={styles.userEmail}>park.seojun@visionflow.kr</p>
             <div className={styles.profileBadges}>
-              <span className={styles.profileRole}>OPERATOR</span>
+              <span className={styles.profileRole}>admin</span>
               <span className={styles.ssoBadge}>
                 <span aria-hidden="true" className={styles.googleG}>
                   G
@@ -316,7 +316,7 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
             <h2 className={styles.cardTitle}>계정 정보</h2>
           </header>
           <dl className={styles.infoList}>
-            <InfoRow icon={Briefcase} label="직책" value="Senior Operator" />
+            <InfoRow icon={Briefcase} label="직책" value="Senior admin" />
             <InfoRow icon={UsersIcon} label="팀" value="Content Operations" />
             <InfoRow icon={Calendar} label="입사일" value="2025년 6월 12일" />
             <InfoRow icon={IdCard} label="계정 생성" value="2025-06-12 09:30" />
@@ -355,7 +355,7 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
               <CircleDot aria-hidden="true" size={16} />
               <div>
                 <strong>IP 화이트리스트 적용</strong>
-                <span>Operator는 미적용</span>
+                <span>admin은 미적용</span>
               </div>
             </li>
           </ul>
@@ -401,7 +401,7 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
       <article className={styles.card}>
         <header className={styles.cardHeader}>
           <div>
-            <h2 className={styles.cardTitle}>권한 매트릭스 — Operator</h2>
+            <h2 className={styles.cardTitle}>권한 매트릭스 — admin</h2>
             <p className={styles.cardSubtitle}>
               4단계 RBAC · 비교를 위해 다른 역할도 함께 표시
             </p>
@@ -419,7 +419,7 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
                 <th className={styles.matrixHeadResource}>리소스 / 액션</th>
                 <th>SuperAdmin</th>
                 <th>Sales</th>
-                <th className={styles.matrixHeadCurrent}>Operator (현재)</th>
+                <th className={styles.matrixHeadCurrent}>admin (현재)</th>
                 <th>Viewer</th>
               </tr>
             </thead>
@@ -439,7 +439,7 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
                     <AccessChip value={perm.sales} />
                   </td>
                   <td className={styles.matrixCellCurrent}>
-                    <AccessChip value={perm.operator} />
+                    <AccessChip value={perm.admin} />
                   </td>
                   <td>
                     <AccessChip value={perm.viewer} />

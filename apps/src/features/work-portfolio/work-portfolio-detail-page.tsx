@@ -50,7 +50,7 @@ export function WorkPortfolioDetailPage({ id }: { id: string }) {
   const { data, isLoading } = useWorkViewQuery(id);
   const updateWorkMutation = useUpdateWorkMutation();
   const role = useUserRoleStore((state) => state.role);
-  const canManageWork = role === 'SuperAdmin' || role === 'Operator';
+  const canManageWork = role === 'SuperAdmin' || role === 'admin';
   const work = data as WorkAdminRow | null | undefined;
 
   const handleFinish = async (values: WorkFormValues) => {

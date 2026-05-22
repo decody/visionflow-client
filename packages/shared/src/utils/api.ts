@@ -137,6 +137,16 @@ const createHeaders = ({
     );
   }
 
+  const headers: HeadersInit = {
+    apikey: apiKey,
+    'Content-Type': 'application/json',
+    ...(preferences.length > 0 && { Prefer: preferences.join(',') }),
+  };
+
+  if (headerMode === 'rest' && apiKey.startsWith('sb_publishable_')) {
+    return headers;
+  }
+
   const authorizationKey =
     headerMode === 'edgeFunction'
       ? getSupabaseAnonKey()
@@ -149,10 +159,8 @@ const createHeaders = ({
   }
 
   return {
-    apikey: apiKey,
+    ...headers,
     Authorization: `Bearer ${authorizationKey}`,
-    'Content-Type': 'application/json',
-    ...(preferences.length > 0 && { Prefer: preferences.join(',') }),
   };
 };
 

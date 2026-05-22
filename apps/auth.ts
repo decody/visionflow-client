@@ -2,12 +2,11 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { providers } from '@visionflow/auth';
 import { ROUTES } from '@visionflow/routes';
 import type { UserRole } from '@visionflow/shared';
-import bcrypt from 'bcryptjs';
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { headers } from 'next/headers';
 
-const USER_ROLES = ['SuperAdmin', 'Operator', 'Viewer'] as const;
+const USER_ROLES = ['SuperAdmin', 'admin', 'Viewer'] as const;
 const EIGHT_HOURS_IN_SECONDS = 8 * 60 * 60;
 
 const isVercelRuntime =
@@ -111,12 +110,11 @@ type CredentialUserRecord = {
   email: string;
   id: string;
   name: string | null;
-  password_hash: string | null;
   status: string | null;
 };
 
 const canUseCredentialsLogin = (status: string | null) =>
-  status === 'active' || status === 'pending_invite';
+  !status || status === 'active' || status === 'pending_invite';
 
 const writeLoginAuditLog = async ({
   email,
@@ -150,55 +148,94 @@ const writeLoginAuditLog = async ({
   }
 };
 
+const findAuthUserByEmail = async (email: string) => {
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (
+    data.users.find(
+      (user) => user.email?.toLowerCase() === email.toLowerCase(),
+    ) ?? null
+  );
+};
+
+const ensureDefaultRole = async (userId: string) => {
+  const { data, error } = await supabaseAdmin
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (data) {
+    return;
+  }
+
+  const { error: insertError } = await supabaseAdmin
+    .from('user_roles')
+    .insert({ role: 'Viewer', user_id: userId });
+
+  if (insertError) {
+    throw insertError;
+  }
+};
+
+const getRoleByUserId = async (userId: string) => {
+  const { data, error } = await supabaseAdmin
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return isUserRole(data?.role) ? data.role : 'Viewer';
+};
+
 const upsertAppUser = async ({
   email,
+  id,
   name,
 }: {
   email: string;
+  id: string;
   name?: string | null;
 }) => {
-  const { data: existingUser } = await supabaseAdmin
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle();
   const { user_agent: _userAgent, ...loginMetadata } =
     await getLoginMetadata();
 
-  if (existingUser) {
-    const { data, error } = await supabaseAdmin
-      .from('users')
-      .update({
-        name,
-        ...loginMetadata,
-      })
-      .eq('email', email)
-      .select('id')
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    return data;
-  }
-
   const { data, error } = await supabaseAdmin
-    .from('users')
-    .insert({
-      email,
-      ...loginMetadata,
-      name,
-      role: 'Viewer',
-    })
-    .select('id')
+    .from('profiles')
+    .upsert(
+      {
+        id,
+        ...loginMetadata,
+        name,
+        status: 'active',
+      },
+      { onConflict: 'id' },
+    )
+    .select('id,name,status')
     .single();
 
   if (error) {
     throw error;
   }
 
-  return data;
+  await ensureDefaultRole(id);
+
+  return { ...data, email } as CredentialUserRecord;
 };
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -229,11 +266,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const { data, error } = await supabaseAdmin
-          .from('users')
-          .select('id,email,name,status,password_hash')
-          .eq('email', email)
-          .maybeSingle();
+        const { data: authData, error } =
+          await supabaseAdmin.auth.signInWithPassword({
+            email,
+            password,
+          });
 
         if (error) {
           await writeLoginAuditLog({
@@ -245,67 +282,96 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const appUser = data as CredentialUserRecord | null;
-
-        if (!appUser?.password_hash) {
+        if (!authData.user?.id || !authData.user.email) {
           await writeLoginAuditLog({
             email,
             provider: 'credentials',
-            reason: 'missing_password_hash',
+            reason: 'missing_auth_user',
             status: 'failure',
-            userId: appUser?.id,
-          });
-          return null;
-        }
-
-        if (!canUseCredentialsLogin(appUser.status)) {
-          await writeLoginAuditLog({
-            email,
-            provider: 'credentials',
-            reason: 'inactive_user',
-            status: 'failure',
-            userId: appUser.id,
-          });
-          return null;
-        }
-
-        const isValidPassword = await bcrypt.compare(
-          password,
-          appUser.password_hash,
-        );
-
-        if (!isValidPassword) {
-          await writeLoginAuditLog({
-            email,
-            provider: 'credentials',
-            reason: 'invalid_credentials',
-            status: 'failure',
-            userId: appUser.id,
           });
           return null;
         }
 
         const { user_agent: _userAgent, ...loginMetadata } =
           await getLoginMetadata();
-        const { error: updateError } = await supabaseAdmin
-          .from('users')
-          .update({
-            ...loginMetadata,
-            ...(appUser.status === 'pending_invite'
-              ? { status: 'active' }
-              : {}),
-          })
-          .eq('id', appUser.id);
+        const { data: existingProfile, error: existingProfileError } =
+          await supabaseAdmin
+            .from('profiles')
+            .select('name,status')
+            .eq('id', authData.user.id)
+            .maybeSingle();
 
-        if (updateError) {
+        if (existingProfileError) {
           await writeLoginAuditLog({
             email,
             provider: 'credentials',
-            reason: updateError.message,
+            reason: existingProfileError.message,
             status: 'failure',
-            userId: appUser.id,
+            userId: authData.user.id,
           });
           return null;
+        }
+
+        if (!canUseCredentialsLogin(existingProfile?.status ?? null)) {
+          await writeLoginAuditLog({
+            email,
+            provider: 'credentials',
+            reason: 'inactive_user',
+            status: 'failure',
+            userId: authData.user.id,
+          });
+          return null;
+        }
+
+        const { data: profile, error: profileError } =
+          await supabaseAdmin
+            .from('profiles')
+            .upsert(
+              {
+                id: authData.user.id,
+                ...loginMetadata,
+                name:
+                  existingProfile?.name ??
+                  authData.user.user_metadata?.name ??
+                  authData.user.email,
+                status: existingProfile?.status ?? 'active',
+              },
+              { onConflict: 'id' },
+            )
+            .select('id,name,status')
+            .single();
+
+        if (profileError) {
+          await writeLoginAuditLog({
+            email,
+            provider: 'credentials',
+            reason: profileError.message,
+            status: 'failure',
+            userId: authData.user.id,
+          });
+          return null;
+        }
+
+        const appUser = {
+          email: authData.user.email,
+          id: authData.user.id,
+          name:
+            typeof profile.name === 'string'
+              ? profile.name
+              : authData.user.email,
+          status:
+            typeof profile.status === 'string'
+              ? profile.status
+              : null,
+        };
+
+        await ensureDefaultRole(appUser.id);
+
+        if (appUser.status === 'pending_invite') {
+          await supabaseAdmin
+            .from('profiles')
+            .update({ status: 'active' })
+            .eq('id', appUser.id);
         }
 
         return {
@@ -348,8 +414,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return true;
         }
 
+        let authUser = await findAuthUserByEmail(user.email);
+
+        if (!authUser) {
+          const { data: createdUser, error: createUserError } =
+            await supabaseAdmin.auth.admin.createUser({
+              email: user.email,
+              email_confirm: true,
+              user_metadata: { name: user.name },
+            });
+
+          if (createUserError) {
+            throw createUserError;
+          }
+
+          authUser = createdUser.user;
+        }
+
+        if (!authUser) {
+          throw new Error('auth_user_sync_failed');
+        }
+
         const appUser = await upsertAppUser({
           email: user.email,
+          id: authUser.id,
           name: user.name,
         });
 
@@ -381,14 +469,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       if (token.email) {
-        const { data } = await supabaseAdmin
-          .from('users')
-          .select('role')
-          .eq('email', token.email)
-          .maybeSingle();
-
-        const role = data?.role;
-        token.role = isUserRole(role) ? role : 'Viewer';
+        const authUser = await findAuthUserByEmail(String(token.email));
+        token.role = authUser
+          ? await getRoleByUserId(authUser.id)
+          : 'Viewer';
       }
 
       return token;

@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 type ReplyPayload = {
   inquiryId?: string;
   inquiry_id?: string;
@@ -117,45 +119,32 @@ Deno.serve(async (request) => {
       );
     }
 
-    const supabaseUrl = requiredEnv(
-      'NEXT_PUBLIC_SUPABASE_URL',
-    ).replace(/\/+$/, '');
+    const supabaseUrl = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
     const serviceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
     const now = new Date().toISOString();
-    const updateResponse = await fetch(
-      `${supabaseUrl}/rest/v1/quick_inquiries?id=eq.${encodeURIComponent(inquiryId)}&select=*`,
-      {
-        body: JSON.stringify({
-          replied_at: now,
-          replied_by: payload.repliedBy ?? payload.replied_by ?? null,
-          reply_content: replyContent,
-          status: 'resolved',
-          updated_at: now,
-        }),
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-          'Content-Type': 'application/json',
-          Prefer: 'return=representation',
-        },
-        method: 'PATCH',
-      },
-    );
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const { data: inquiry, error: updateError } = await supabase
+      .from('quick_inquiries')
+      .update({
+        replied_at: now,
+        replied_by: payload.repliedBy ?? payload.replied_by ?? null,
+        reply_content: replyContent,
+        status: 'completed',
+        updated_at: now,
+      })
+      .eq('id', inquiryId)
+      .select('*')
+      .single();
 
-    if (!updateResponse.ok) {
-      const detail = await updateResponse.text();
-
+    if (updateError) {
       return json(
         {
-          details: detail,
+          details: updateError,
           message: 'Reply email was sent, but inquiry update failed.',
         },
         { status: 502 },
       );
     }
-
-    const rows = await updateResponse.json();
-    const inquiry = Array.isArray(rows) ? rows[0] : rows;
 
     if (!inquiry) {
       return json(

@@ -18,7 +18,7 @@ export default async function WorkPortfolioEdit({
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'Operator']}
+      allowedRoles={['SuperAdmin', 'admin']}
       fallbackPath={ROUTES.ADMIN.WORK_PORTFOLIO.DETAIL(id)}
     >
       <WorkPortfolioDetailPage id={id} />

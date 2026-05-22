@@ -395,7 +395,7 @@ function SecurityPolicy() {
       <div>
         <strong className={styles.policyTitle}>보안 정책</strong>
         <p className={styles.policyBody}>
-          {/* SuperAdmin·Operator 역할은 TOTP 2단계 인증이 필수입니다. */}
+          {/* SuperAdmin·admin 역할은 TOTP 2단계 인증이 필수입니다. */}
           8시간 비활동 시 자동 로그아웃 · 모든 로그인 시도는 감사
           로그에 기록됩니다.
         </p>

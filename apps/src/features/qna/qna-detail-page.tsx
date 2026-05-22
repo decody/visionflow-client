@@ -119,7 +119,7 @@ export function QnaDetailPage({ id }: { id: string }) {
         <header className={styles.questionMeta}>
           <div className={styles.metaBadges}>
             <span className={styles.idBadge}>#{id}</span>
-            <span className={styles.statusPending}>답변 대기</span>
+            <span className={styles.status_pending}>답변 대기</span>
             <span className={styles.categoryPill}>광고 이미지</span>
           </div>
           <button className={styles.statusChange} type="button">

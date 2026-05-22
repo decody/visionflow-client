@@ -1,4 +1,4 @@
-export type UserRole = 'SuperAdmin' | 'Operator' | 'Viewer';
+export type UserRole = 'SuperAdmin' | 'admin' | 'Viewer';
 
 export type UserStatus = 'active' | 'inactive' | 'pending_invite';
 

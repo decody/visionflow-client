@@ -68,7 +68,7 @@ export default function NoticeWritePage() {
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'Operator']}
+      allowedRoles={['SuperAdmin', 'admin']}
       fallbackPath={ROUTES.ADMIN.NOTICE.ROOT}
     >
     <section className={styles.page}>

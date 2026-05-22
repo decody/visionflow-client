@@ -1,10 +1,10 @@
 export type WorkRow = {
-  id: number; // BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+  id: string | number; // UUID in the current Supabase schema
   category: string; // TEXT NOT NULL
   industry: string; // TEXT NOT NULL
-  roles: string[]; // TEXT[] NOT NULL
+  roles: string[]; // UI-normalized from the current Supabase TEXT column
   title: string; // TEXT NOT NULL
-  size: 'tall' | 'short'; // TEXT NOT NULL CHECK (size IN ('tall', 'short'))
+  size: 'tall' | 'short' | string; // TEXT NOT NULL
   image?: string | null; // TEXT (nullable)
   link_url?: string | null; // TEXT (nullable)
   link_label?: string | null; // TEXT (nullable)

@@ -235,7 +235,7 @@
   font-size: var(--fs-caption);
 }
 
-.statusDone {
+.status_done {
   padding: 4px 10px;
   background: rgba(3, 199, 90, 0.18);
   border: 1px solid rgba(3, 199, 90, 0.4);
@@ -245,7 +245,7 @@
   font-weight: var(--fw-semibold);
 }
 
-.statusActive {
+.status_active {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -258,7 +258,7 @@
   font-weight: var(--fw-semibold);
 }
 
-.statusActiveDot {
+.status_active_dot {
   width: 6px;
   height: 6px;
   background: #5b8dff;

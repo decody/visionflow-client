@@ -21,7 +21,7 @@ const _categories = [
   { label: '기타', active: false },
 ] as const;
 
-type PostStatus = 'pending' | 'inProgress' | 'done';
+type PostStatus = 'pending' | 'in_progress' | 'done';
 
 interface Post {
   no: number;
@@ -81,7 +81,7 @@ const _posts: Post[] = [
     date: '2025.04.30',
     views: 8,
     replies: 1,
-    status: 'inProgress',
+    status: 'in_progress',
     locked: true,
   },
   {
@@ -125,14 +125,14 @@ const _posts: Post[] = [
 
 const _statusLabel: Record<PostStatus, string> = {
   pending: '답변대기',
-  inProgress: '진행중',
+  in_progress: '진행중',
   done: '답변완료',
 };
 
 const _statusClass: Record<PostStatus, string> = {
-  pending: 'statusPending',
-  inProgress: 'statusInProgress',
-  done: 'statusDone',
+  pending: 'status_pending',
+  in_progress: 'status_in_progress',
+  done: 'status_done',
 };
 
 const _pageNumbers = [1, 2, 3, 4, 5];

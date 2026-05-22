@@ -137,7 +137,7 @@
   font-weight: var(--fw-bold);
 }
 
-.statusNew {
+.status_new {
   padding: 3px 10px;
   background: #e8f0ff;
   border-radius: var(--radius-pill);

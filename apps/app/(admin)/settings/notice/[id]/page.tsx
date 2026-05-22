@@ -59,7 +59,7 @@ export default function NoticeDetailPage() {
   const { data: notices = [], isLoading: isListLoading } =
     useNoticeListQuery();
   const role = useUserRoleStore((state) => state.role);
-  const canManageNotice = role === 'SuperAdmin' || role === 'Operator';
+  const canManageNotice = role === 'SuperAdmin' || role === 'admin';
   const noticeNumberById = useMemo(() => {
     return getNoticeDisplayNumberMap(notices);
   }, [notices]);

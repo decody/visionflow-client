@@ -9,7 +9,7 @@ type ReplyPayload = {
   replyContent?: string;
 };
 
-const ALLOWED_REPLY_ROLES = ['SuperAdmin', 'Operator'] as const;
+const ALLOWED_REPLY_ROLES = ['SuperAdmin', 'admin'] as const;
 const MAX_REPLY_CONTENT_LENGTH = 5000;
 
 const getRequiredEnv = (name: string) => {
@@ -81,17 +81,20 @@ const getSessionUserId = async (email?: string | null) => {
     return null;
   }
 
-  const { data, error } = await supabaseAdmin
-    .from('users')
-    .select('id')
-    .eq('email', normalizedEmail)
-    .maybeSingle();
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
 
   if (error) {
     throw error;
   }
 
-  return typeof data?.id === 'string' ? data.id : null;
+  return (
+    data.users.find(
+      (user) => user.email?.toLowerCase() === normalizedEmail.toLowerCase(),
+    )?.id ?? null
+  );
 };
 
 const getInquiry = async (inquiryId: string) => {
@@ -156,13 +159,6 @@ export async function POST(request: NextRequest) {
 
     const repliedBy = await getSessionUserId(session.user?.email);
 
-    if (!repliedBy) {
-      return jsonError(
-        'Admin user profile was not found. Please create or sync this account in users before sending replies.',
-        409,
-      );
-    }
-
     const resendApiKey = getRequiredEnv('RESEND_API_KEY');
     const from =
       process.env.RESEND_FROM_EMAIL ??
@@ -209,53 +205,26 @@ export async function POST(request: NextRequest) {
       return jsonError('Failed to send reply email.', 502, detail);
     }
 
-    const supabaseUrl = (
-      process.env.NEXT_PUBLIC_SUPABASE_URL ??
-      getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL')
-    ).replace(/\/+$/, '');
-    const serviceRoleKey = getRequiredEnv(
-      'SUPABASE_SERVICE_ROLE_KEY',
-    );
     const now = new Date().toISOString();
-    const updateResponse = await fetch(
-      `${supabaseUrl}/rest/v1/quick_inquiries?id=eq.${encodeURIComponent(
-        inquiryId,
-      )}&select=*`,
-      {
-        body: JSON.stringify({
+    const { data: updatedInquiry, error: updateError } =
+      await supabaseAdmin
+        .from('quick_inquiries')
+        .update({
           replied_at: now,
           replied_by: repliedBy,
           reply_content: replyContent,
-          status: 'resolved',
+          status: 'completed',
           updated_at: now,
-        }),
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-          'Content-Type': 'application/json',
-          Prefer: 'return=representation',
-        },
-        method: 'PATCH',
-      },
-    );
+        })
+        .eq('id', inquiryId)
+        .select('*')
+        .single();
 
-    if (!updateResponse.ok) {
-      const detail = await updateResponse.text();
-
+    if (updateError) {
       return jsonError(
         'Reply email was sent, but inquiry update failed.',
         502,
-        detail,
-      );
-    }
-
-    const rows = (await updateResponse.json()) as IQuickInquiry[];
-    const updatedInquiry = rows[0];
-
-    if (!updatedInquiry) {
-      return jsonError(
-        'Reply email was sent, but inquiry was not found.',
-        404,
+        updateError,
       );
     }
 

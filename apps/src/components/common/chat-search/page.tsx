@@ -339,7 +339,7 @@ function getQnaHref(qna: QnaRow) {
     : `${ROUTES.CONTACT.ROOT}/general/detail`;
 }
 
-function getWorkHref(workId: number) {
+function getWorkHref(workId: string | number) {
   return workId === 0 ? `${ROUTES.WORK}/detail` : ROUTES.WORK;
 }
 
