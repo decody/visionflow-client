@@ -144,11 +144,11 @@ export default function NoticeEditPage() {
           >
             <Select
               options={[
-                { label: '공지', value: 'Guide' },
-                { label: '서비스', value: 'Service' },
-                { label: '업데이트', value: 'Update' },
-                { label: '이벤트', value: 'Event' },
-                { label: '점검', value: 'maintenance' },
+                { label: '공지', value: '공지' },
+                { label: '서비스', value: '서비스' },
+                { label: '업데이트', value: '업데이트' },
+                { label: '이벤트', value: '이벤트' },
+                { label: '점검', value: '점검' },
               ]}
               placeholder="카테고리를 선택해주세요."
             />

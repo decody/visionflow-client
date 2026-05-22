@@ -44,6 +44,28 @@ const toNotice = (row: NoticeRow): INotice => ({
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
+const noticeCategoryMap: Record<string, string> = {
+  Event: '이벤트',
+  Guide: '공지',
+  Service: '서비스',
+  Update: '업데이트',
+  announcement: '공지',
+  event: '이벤트',
+  maintenance: '점검',
+  service: '서비스',
+  update: '업데이트',
+};
+
+const normalizeNoticeCategory = (category?: string | null) => {
+  const trimmedCategory = category?.trim();
+
+  if (!trimmedCategory) {
+    return '공지';
+  }
+
+  return noticeCategoryMap[trimmedCategory] ?? trimmedCategory;
+};
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -79,7 +101,7 @@ export async function PATCH(
     const { data, error } = await supabaseAdmin
       .from('notices')
       .update({
-        category: payload.category?.trim() || 'Guide',
+        category: normalizeNoticeCategory(payload.category),
         content_html: contentHtml,
         content_json: payload.contentJson ?? null,
         date: payload.date ?? getToday(),

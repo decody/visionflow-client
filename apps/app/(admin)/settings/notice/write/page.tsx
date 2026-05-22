@@ -94,7 +94,7 @@ export default function NoticeWritePage() {
       <Card className={styles.panel}>
         <Form
           initialValues={{
-            category: 'Guide', // 카테고리 기본값을 'Guide'로 설정
+            category: '공지',
             isImportant: false, // 중요 여부 기본값을 false(중요하지 않음)로 설정
             isPublished: true, // 공개 여부 기본값을 true(공개)로 설정
           }}
@@ -112,10 +112,10 @@ export default function NoticeWritePage() {
           >
             <Select
               options={[
-                { label: '공지', value: 'Guide' },
-                { label: '서비스', value: 'Service' },
-                { label: '업데이트', value: 'Update' },
-                { label: '이벤트', value: 'Event' },
+                { label: '공지', value: '공지' },
+                { label: '서비스', value: '서비스' },
+                { label: '업데이트', value: '업데이트' },
+                { label: '이벤트', value: '이벤트' },
               ]}
               placeholder="카테고리를 선택해주세요."
             />

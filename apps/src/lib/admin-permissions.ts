@@ -28,7 +28,7 @@ export function normalizeUserRole(role: unknown): UserRole | null {
     return 'admin';
   }
 
-  if (normalizedRole === 'viewer') {
+  if (normalizedRole === 'viewer' || normalizedRole === 'user') {
     return 'Viewer';
   }
 

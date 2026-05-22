@@ -2,6 +2,7 @@ import type { IUser } from '@visionflow/shared';
 import { NextResponse } from 'next/server';
 
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { normalizeUserRole } from '@/lib/admin-permissions';
 import { auth } from '../../../../auth';
 
 const jsonError = (message: string, status: number) =>
@@ -58,7 +59,7 @@ export async function GET() {
           user.user_metadata?.name ??
           user.email ??
           'Unknown user',
-        role: roleByUserId.get(user.id) ?? 'Viewer',
+        role: normalizeUserRole(roleByUserId.get(user.id)) ?? 'Viewer',
         status: profile?.status ?? 'active',
         updated_at: profile?.updated_at ?? user.updated_at ?? user.created_at,
       };

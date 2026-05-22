@@ -6,8 +6,8 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { headers } from 'next/headers';
 
-const USER_ROLES = ['SuperAdmin', 'admin', 'Viewer'] as const;
 const EIGHT_HOURS_IN_SECONDS = 8 * 60 * 60;
+const DEFAULT_DB_ROLE = 'user';
 
 const isVercelRuntime =
   process.env.VERCEL === '1' || process.env.VERCEL === 'true';
@@ -40,7 +40,7 @@ const normalizeUserRole = (role: unknown): UserRole | null => {
     return 'admin';
   }
 
-  if (normalizedRole === 'viewer') {
+  if (normalizedRole === 'viewer' || normalizedRole === 'user') {
     return 'Viewer';
   }
 
@@ -169,6 +169,23 @@ const writeLoginAuditLog = async ({
   }
 };
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 const findAuthUserByEmail = async (email: string) => {
   const { data, error } = await supabaseAdmin.auth.admin.listUsers({
     page: 1,
@@ -203,7 +220,7 @@ const ensureDefaultRole = async (userId: string) => {
 
   const { error: insertError } = await supabaseAdmin
     .from('user_roles')
-    .insert({ role: 'Viewer', user_id: userId });
+    .insert({ role: DEFAULT_DB_ROLE, user_id: userId });
 
   if (insertError) {
     throw insertError;
@@ -240,6 +257,7 @@ const upsertAppUser = async ({
     .from('profiles')
     .upsert(
       {
+        email,
         id,
         ...loginMetadata,
         name,
@@ -349,6 +367,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .from('profiles')
             .upsert(
               {
+                email: authData.user.email,
                 id: authData.user.id,
                 ...loginMetadata,
                 name:
@@ -474,10 +493,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await writeLoginAuditLog({
           email: user.email,
           provider: account?.provider ?? 'unknown',
-          reason:
-            error instanceof Error
-              ? error.message
-              : 'user_profile_sync_failed',
+          reason: getErrorMessage(error, 'user_profile_sync_failed'),
           status: 'failure',
         });
         return false;
