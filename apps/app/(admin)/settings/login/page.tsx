@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 };
 
 type LoginSearchParams = Promise<{
+  error?: string | string[];
   mode?: string | string[];
 }>;
 
@@ -27,6 +28,14 @@ export default async function Login({
   const initialAccessMode: LoginAccessMode = getInitialAccessMode(
     params.mode,
   );
+  const error = Array.isArray(params.error)
+    ? params.error[0]
+    : params.error;
 
-  return <LoginPage initialAccessMode={initialAccessMode} />;
+  return (
+    <LoginPage
+      initialAccessMode={initialAccessMode}
+      ssoError={error ?? null}
+    />
+  );
 }

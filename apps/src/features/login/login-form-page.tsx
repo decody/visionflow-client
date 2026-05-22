@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
   ArrowRight,
@@ -20,8 +20,10 @@ export type LoginAccessMode = 'sso' | 'partner';
 
 export function LoginFormPage({
   initialAccessMode = 'sso',
+  ssoError = null,
 }: {
   initialAccessMode?: LoginAccessMode;
+  ssoError?: string | null;
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState<'KO' | 'EN'>('KO');
@@ -36,6 +38,7 @@ export function LoginFormPage({
     setAccessMode(mode);
 
     const params = new URLSearchParams(window.location.search);
+    params.delete('error');
     params.set('mode', mode);
 
     const nextUrl = `${window.location.pathname}?${params.toString()}`;
@@ -149,7 +152,7 @@ export function LoginFormPage({
         </div>
 
         {accessMode === 'sso' ? (
-          <SsoLoginPage />
+          <SsoLoginPage errorMessage={ssoError} />
         ) : (
           <PartnerLoginPage
             email={email}
@@ -193,7 +196,16 @@ function getSafeCallbackUrl(value: string | null) {
   }
 }
 
-function SsoLoginPage() {
+function SsoLoginPage({
+  errorMessage,
+}: {
+  errorMessage: string | null;
+}) {
+  const ssoErrorMessage =
+    errorMessage === 'AuthUserCreateFailed'
+      ? 'SSO 계정은 확인되었지만 DB 사용자 생성에 실패했습니다. Supabase Auth 트리거 마이그레이션을 적용한 뒤 다시 시도해주세요.'
+      : 'SSO authentication failed. Please try again or contact an administrator.';
+
   return (
     <>
       <section
@@ -208,8 +220,8 @@ function SsoLoginPage() {
           SSO 인증으로 로그인
         </h3>
         <p className={styles.panelDescription}>
-          사내 계정은 Google Workspace, 네이버 또는 카카오 계정으로
-          바로 인증합니다.
+          사내 계정은 Google Workspace 또는 네이버 계정으로 바로
+          인증합니다.
         </p>
         <button
           className={styles.ssoButton}
@@ -231,16 +243,11 @@ function SsoLoginPage() {
           <NaverIcon />
           <span>네이버로 계속하기</span>
         </button>
-        <button
-          className={styles.ssoButton}
-          type="button"
-          onClick={() =>
-            void signIn('kakao', { callbackUrl: '/settings' })
-          }
-        >
-          <KakaoIcon />
-          <span>카카오로 계속하기</span>
-        </button>
+        {errorMessage ? (
+          <p className={styles.formError} role="alert">
+            {ssoErrorMessage}
+          </p>
+        ) : null}
         <p className={styles.ssoHint}>
           회사 도메인 계정은 SSO 정책에 따라 접근 권한이 자동
           확인됩니다.
@@ -467,22 +474,3 @@ function NaverIcon() {
   );
 }
 
-function KakaoIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className={styles.googleIcon}
-      height={20}
-      viewBox="0 0 20 20"
-      width={20}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <rect fill="#FEE500" height={20} rx={4} width={20} />
-      <path
-        d="M10 5.2c-3.314 0-6 2.088-6 4.664 0 1.665 1.122 3.124 2.809 3.949l-.575 2.102a.215.215 0 0 0 .33.235l2.52-1.673c.3.034.606.052.916.052 3.314 0 6-2.088 6-4.665C16 7.288 13.314 5.2 10 5.2z"
-        fill="#000"
-        opacity="0.84"
-      />
-    </svg>
-  );
-}

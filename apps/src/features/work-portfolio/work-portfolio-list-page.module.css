@@ -2,7 +2,6 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 28px;
 }
 
 .title {
@@ -91,10 +90,6 @@
 }
 
 @media (max-width: 900px) {
-  .page {
-    padding: 20px;
-  }
-
   .summaryGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -30,36 +30,38 @@ export default function SetPasswordPage() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+    });
 
-    if (error) {
-      setError(error.message);
+    if (updateError) {
+      setError(updateError.message);
       setLoading(false);
       return;
     }
 
-    router.push('/admin');
+    router.push('/settings/login?mode=partner');
   };
 
   return (
-    <div>
+    <main>
       <h1>비밀번호 설정</h1>
       <input
-        type="password"
+        onChange={(event) => setPassword(event.target.value)}
         placeholder="새 비밀번호 (8자 이상)"
+        type="password"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
       />
       <input
-        type="password"
+        onChange={(event) => setConfirm(event.target.value)}
         placeholder="비밀번호 확인"
+        type="password"
         value={confirm}
-        onChange={(e) => setConfirm(e.target.value)}
       />
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <button onClick={handleSubmit} disabled={loading}>
+      {error ? <p style={{ color: 'red' }}>{error}</p> : null}
+      <button disabled={loading} onClick={handleSubmit} type="button">
         {loading ? '설정 중...' : '설정 완료'}
       </button>
-    </div>
+    </main>
   );
 }

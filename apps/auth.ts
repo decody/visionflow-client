@@ -47,9 +47,6 @@ const normalizeUserRole = (role: unknown): UserRole | null => {
   return null;
 };
 
-const isUserRole = (role: unknown): role is UserRole =>
-  normalizeUserRole(role) !== null;
-
 const getFirstHeaderValue = (
   requestHeaders: Headers,
   names: string[],
@@ -134,6 +131,23 @@ type CredentialUserRecord = {
   status: string | null;
 };
 
+type AppAuthUser = {
+  email: string;
+  id: string;
+  name?: string | null;
+  status?: string | null;
+};
+
+type SsoAppUserRecord = CredentialUserRecord & {
+  dbBacked: boolean;
+};
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: unknown): value is string =>
+  typeof value === 'string' && UUID_PATTERN.test(value);
+
 const canUseCredentialsLogin = (status: string | null) =>
   !status || status === 'active' || status === 'pending_invite';
 
@@ -201,6 +215,38 @@ const findAuthUserByEmail = async (email: string) => {
       (user) => user.email?.toLowerCase() === email.toLowerCase(),
     ) ?? null
   );
+};
+
+const findProfileByEmail = async (email: string) => {
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .select('email,id,name,status')
+    .eq('email', email.toLowerCase())
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as AppAuthUser | null;
+};
+
+const findAppUserByEmail = async (email: string) => {
+  const authUser = await findAuthUserByEmail(email);
+
+  if (authUser?.id && authUser.email) {
+    return {
+      email: authUser.email,
+      id: authUser.id,
+      name:
+        typeof authUser.user_metadata?.name === 'string'
+          ? authUser.user_metadata.name
+          : null,
+      status: null,
+    };
+  }
+
+  return findProfileByEmail(email);
 };
 
 const ensureDefaultRole = async (userId: string) => {
@@ -275,6 +321,51 @@ const upsertAppUser = async ({
   await ensureDefaultRole(id);
 
   return { ...data, email } as CredentialUserRecord;
+};
+
+const getOrCreateSsoAppUser = async ({
+  email,
+  name,
+}: {
+  email: string;
+  name?: string | null;
+}): Promise<SsoAppUserRecord> => {
+  const normalizedEmail = email.toLowerCase();
+  const existingAppUser = await findAppUserByEmail(normalizedEmail);
+
+  if (existingAppUser?.id) {
+    const appUser = await upsertAppUser({
+      email: normalizedEmail,
+      id: existingAppUser.id,
+      name: existingAppUser.name ?? name ?? normalizedEmail,
+    });
+
+    return { ...appUser, dbBacked: true };
+  }
+
+  const { data: createdUser, error: createUserError } =
+    await supabaseAdmin.auth.admin.createUser({
+      email: normalizedEmail,
+      email_confirm: true,
+      password: `${crypto.randomUUID()}Aa1!`,
+      user_metadata: { name },
+    });
+
+  if (createdUser.user?.id) {
+    const appUser = await upsertAppUser({
+      email: normalizedEmail,
+      id: createdUser.user.id,
+      name,
+    });
+
+    return { ...appUser, dbBacked: true };
+  }
+
+  if (createUserError) {
+    throw createUserError;
+  }
+
+  throw new Error('auth_user_sync_failed');
 };
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -429,6 +520,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   trustHost: true,
   pages: {
+    error: ROUTES.ADMIN.LOGIN,
     signIn: ROUTES.ADMIN.LOGIN,
   },
 
@@ -440,7 +532,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           reason: 'missing_email',
           status: 'failure',
         });
-        return false;
+
+        const loginUrl = new URL(
+          ROUTES.ADMIN.LOGIN,
+          process.env.AUTH_URL ?? 'http://localhost:3000',
+        );
+        loginUrl.searchParams.set('mode', 'sso');
+        loginUrl.searchParams.set('error', 'MissingEmail');
+
+        return `${loginUrl.pathname}${loginUrl.search}`;
       }
 
       try {
@@ -454,30 +554,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return true;
         }
 
-        let authUser = await findAuthUserByEmail(user.email);
-
-        if (!authUser) {
-          const { data: createdUser, error: createUserError } =
-            await supabaseAdmin.auth.admin.createUser({
-              email: user.email,
-              email_confirm: true,
-              user_metadata: { name: user.name },
-            });
-
-          if (createUserError) {
-            throw createUserError;
-          }
-
-          authUser = createdUser.user;
-        }
-
-        if (!authUser) {
-          throw new Error('auth_user_sync_failed');
-        }
-
-        const appUser = await upsertAppUser({
+        const appUser = await getOrCreateSsoAppUser({
           email: user.email,
-          id: authUser.id,
           name: user.name,
         });
 
@@ -488,27 +566,64 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           userId: appUser.id,
         });
 
+        user.id = appUser.id;
+
         return true;
       } catch (error) {
+        const reason = getErrorMessage(
+          error,
+          'user_profile_sync_failed',
+        );
         await writeLoginAuditLog({
           email: user.email,
           provider: account?.provider ?? 'unknown',
-          reason: getErrorMessage(error, 'user_profile_sync_failed'),
+          reason,
           status: 'failure',
         });
-        return false;
+
+        const loginUrl = new URL(
+          ROUTES.ADMIN.LOGIN,
+          process.env.AUTH_URL ?? 'http://localhost:3000',
+        );
+        loginUrl.searchParams.set('mode', 'sso');
+        loginUrl.searchParams.set(
+          'error',
+          reason
+            .toLowerCase()
+            .includes('database error creating new user')
+            ? 'AuthUserCreateFailed'
+            : 'SsoSyncFailed',
+        );
+
+        return `${loginUrl.pathname}${loginUrl.search}`;
       }
     },
 
     async jwt({ token, user }) {
       if (user) {
         token.email = user.email;
+        if (isUuid(user.id)) {
+          token.userId = user.id;
+        }
       }
 
-      if (token.email) {
-        const authUser = await findAuthUserByEmail(String(token.email));
+      if (token.email && !token.userId) {
+        const authUser = (await findAppUserByEmail(
+          String(token.email),
+        )) as AppAuthUser | null;
+        token.userId = authUser?.id;
+      }
+
+      if (isUuid(token.userId)) {
+        token.role = await getRoleByUserId(String(token.userId));
+      } else if (token.email) {
+        const authUser = (await findAppUserByEmail(
+          String(token.email),
+        )) as AppAuthUser | null;
         token.role = authUser
-          ? await getRoleByUserId(authUser.id)
+          ? isUuid(authUser.id)
+            ? await getRoleByUserId(authUser.id)
+            : 'Viewer'
           : 'Viewer';
       }
 
@@ -517,6 +632,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     async session({ session, token }) {
       if (session.user) {
+        if (token.userId) {
+          session.user.id = String(token.userId);
+        }
         session.user.role = normalizeUserRole(token.role) ?? 'Viewer';
       }
       return session;

@@ -9,13 +9,18 @@ import styles from './login-page.module.css';
 
 export function LoginPage({
   initialAccessMode,
+  ssoError,
 }: {
   initialAccessMode?: LoginAccessMode;
+  ssoError?: string | null;
 }) {
   return (
     <div className={styles.shell}>
       <LoginBrandPage />
-      <LoginFormPage initialAccessMode={initialAccessMode} />
+      <LoginFormPage
+        initialAccessMode={initialAccessMode}
+        ssoError={ssoError}
+      />
     </div>
   );
 }
