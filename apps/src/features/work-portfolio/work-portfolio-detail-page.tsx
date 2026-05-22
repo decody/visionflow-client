@@ -23,7 +23,8 @@ import Link from 'next/link';
 import Loading from '@/components/loading/page';
 import { useUpdateWorkMutation } from '@/hooks/works/useWorkMutation';
 import { useWorkViewQuery } from '@/hooks/works/useWorkQuery';
-import { useUserRoleStore } from '@/stores/user-role-store';
+import { useCurrentUserRole } from '@/hooks/use-current-user-role';
+import { canManageContent } from '@/lib/admin-permissions';
 import styles from './work-portfolio-detail-page.module.css';
 
 const { Text, Title } = Typography;
@@ -49,8 +50,8 @@ export function WorkPortfolioDetailPage({ id }: { id: string }) {
   const [messageApi, contextHolder] = message.useMessage();
   const { data, isLoading } = useWorkViewQuery(id);
   const updateWorkMutation = useUpdateWorkMutation();
-  const role = useUserRoleStore((state) => state.role);
-  const canManageWork = role === 'SuperAdmin' || role === 'admin';
+  const role = useCurrentUserRole();
+  const canManageWork = canManageContent(role);
   const work = data as WorkAdminRow | null | undefined;
 
   const handleFinish = async (values: WorkFormValues) => {

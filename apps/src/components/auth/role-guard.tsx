@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect } from 'react';
 
 import Loading from '@/components/loading/page';
+import { hasAllowedRole, normalizeUserRole } from '@/lib/admin-permissions';
 import { useUserRoleStore } from '@/stores/user-role-store';
 
 type RoleGuardProps = {
@@ -24,8 +25,8 @@ export function RoleGuard({
   const { data: session, status } = useSession();
   const setRole = useUserRoleStore((state) => state.setRole);
   const clearRole = useUserRoleStore((state) => state.clearRole);
-  const role = session?.user?.role ?? null;
-  const isAllowed = role ? allowedRoles.includes(role) : false;
+  const role = normalizeUserRole(session?.user?.role);
+  const isAllowed = hasAllowedRole(role, allowedRoles);
 
   useEffect(() => {
     if (role) {
@@ -49,7 +50,7 @@ export function RoleGuard({
     router.replace(fallbackPath);
   }, [fallbackPath, isAllowed, router, status]);
 
-  if (status === 'loading' || !isAllowed) {
+  if (status === 'loading' || status !== 'authenticated' || !isAllowed) {
     return <Loading />;
   }
 

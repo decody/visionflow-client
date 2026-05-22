@@ -45,6 +45,11 @@
 }
 
 /* === FAQ === */
+.faq {
+  padding-block: 96px;
+  background: var(--color-surface);
+}
+
 .faqGroups {
   display: flex;
   flex-direction: column;
@@ -174,6 +179,10 @@
 }
 
 @media (max-width: 767px) {
+  .faq {
+    padding-block: 48px;
+  }
+
   .faqA {
     padding: 0 24px 20px;
   }

@@ -160,6 +160,9 @@ const getWorkIndustry = (work: WorkRow) =>
 const getWorkRoles = (work: WorkRow) =>
   work.roles.length > 0 ? work.roles : [DEFAULT_ROLE];
 
+const isImportantWork = (work: WorkRow) =>
+  work.isImportant === true || work.is_important === true;
+
 const createWorkSummary = (work: WorkRow) =>
   [getWorkIndustry(work), ...getWorkRoles(work)].join(' · ');
 
@@ -330,7 +333,9 @@ function ProjectImageVisual({
       <span className={styles.dummyPanel} />
       <span className={styles.dummyPanelAlt} />
       <span className={styles.dummyAccent} />
-      <span className={styles.imagePlaceholder}>{category}</span>
+      <span className={styles.imagePlaceholder}>
+        {(category ?? '').split(',')[0]?.toUpperCase?.() || ''}
+      </span>
     </div>
   );
 }
@@ -356,8 +361,12 @@ function FeaturedCard({ data }: { data: FeaturedCase }) {
       </div>
       <div className={styles.featuredBody}>
         <div className={styles.featuredMeta}>
-          <span className={styles.categoryChip}>{data.category}</span>
-          <span className={styles.yearText}>{data.year}</span>
+          <span className={styles.categoryChip}>
+            {data.category.toUpperCase?.() ?? ''}
+          </span>
+          <span className={styles.yearText}>
+            {data.year.toUpperCase?.() ?? ''}
+          </span>
         </div>
         <h3
           className={`${styles.featuredTitle} ${isLarge ? styles.featuredTitleLarge : ''}`}
@@ -397,7 +406,7 @@ function CaseCard({ data }: { data: CaseItem }) {
       <div className={styles.caseBody}>
         <div className={styles.caseMeta}>
           <span className={styles.categoryChipSm}>
-            {data.category}
+            {data.category.toUpperCase?.() ?? ''}
           </span>
           <span className={styles.yearTextSm}>{data.industry}</span>
         </div>
@@ -457,6 +466,7 @@ export function WorkPage() {
   const featuredCases = useMemo(
     () =>
       worksData
+        .filter(isImportantWork)
         .slice(0, 3)
         .map((work, index) => mapWorkToFeaturedCase(work, index)),
     [worksData],
@@ -774,7 +784,10 @@ export function WorkPage() {
                 필요한 단계에 맞춰 화면을 설계하고 구현합니다.
               </p>
             </div>
-            <Link className={styles.ctaButton} href={ROUTES.CONTACT.ROOT}>
+            <Link
+              className={styles.ctaButton}
+              href={ROUTES.CONTACT.ROOT}
+            >
               프로젝트 문의하기
             </Link>
           </div>

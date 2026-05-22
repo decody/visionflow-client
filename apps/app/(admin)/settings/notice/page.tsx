@@ -29,7 +29,8 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import { useTopbar } from '@/components/layout/topbar-context';
-import { useUserRoleStore } from '@/stores/user-role-store';
+import { useCurrentUserRole } from '@/hooks/use-current-user-role';
+import { canManageContent } from '@/lib/admin-permissions';
 import styles from './page.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -106,8 +107,8 @@ export default function NoticePage() {
     useState<PublishFilter>('all');
   const [importantFilter, setImportantFilter] =
     useState<ImportantFilter>('all');
-  const role = useUserRoleStore((state) => state.role);
-  const canManageNotice = role === 'SuperAdmin' || role === 'admin';
+  const role = useCurrentUserRole();
+  const canManageNotice = canManageContent(role);
 
   const filteredNotices = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();

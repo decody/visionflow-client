@@ -38,6 +38,16 @@ function sortFaqs(faqs: IFaq[]) {
   );
 }
 
+function normalizeCategory(category?: string | null) {
+  return category?.trim().toLowerCase() ?? '';
+}
+
+function isFaqVisible(faq: IFaq) {
+  const value: unknown = faq.is_visible ?? faq.isVisible;
+
+  return value === true || value === 'true' || value === 1;
+}
+
 export function FaqPage({
   faqs,
   category = 'default',
@@ -53,12 +63,13 @@ export function FaqPage({
   helpSlot?: ReactNode;
   isOpen?: number;
 }) {
+  const selectedCategory = normalizeCategory(category);
   const filteredFaqs = sortFaqs(
-    faqs.filter((faq) => {
-      const isVisible = faq.is_visible ?? faq.isVisible;
-
-      return isVisible === true && faq.category?.trim() === category;
-    }),
+    faqs.filter(
+      (faq) =>
+        isFaqVisible(faq) &&
+        normalizeCategory(faq.category) === selectedCategory,
+    ),
   );
 
   const defaultHeader = (

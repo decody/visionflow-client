@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { RoleGuard } from '@/components/auth/role-guard';
 import { UsersDetailPage } from '@/features/users/users-detail-page';
+import { USER_MANAGER_ROLES } from '@/lib/admin-permissions';
 import { ROUTES } from '@visionflow/routes';
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export default async function UsersDetail({
   const { id } = await params;
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin']}
+      allowedRoles={USER_MANAGER_ROLES}
       fallbackPath={ROUTES.ADMIN.HOME}
     >
       <UsersDetailPage id={id} />

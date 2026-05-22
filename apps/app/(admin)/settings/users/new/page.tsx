@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { RoleGuard } from '@/components/auth/role-guard';
 import { UsersInvitePage } from '@/features/users/users-invite-page';
+import { USER_MANAGER_ROLES } from '@/lib/admin-permissions';
 import { ROUTES } from '@visionflow/routes';
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function UsersInvite() {
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin']}
+      allowedRoles={USER_MANAGER_ROLES}
       fallbackPath={ROUTES.ADMIN.HOME}
     >
       <UsersInvitePage />

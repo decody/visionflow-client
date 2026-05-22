@@ -22,6 +22,7 @@ import { RoleGuard } from '@/components/auth/role-guard';
 import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/admin/faq/useFaqQuery';
 import { useUpdateFaqMutation } from '@/hooks/admin/faq/useUpdateFaqMutation';
+import { CONTENT_MANAGER_ROLES } from '@/lib/admin-permissions';
 import styles from '../../page.module.css';
 
 const { Text, Title } = Typography;
@@ -88,7 +89,7 @@ export default function FaqEditPage() {
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'admin']}
+      allowedRoles={CONTENT_MANAGER_ROLES}
       fallbackPath={ROUTES.ADMIN.FAQ.DETAIL(id)}
     >
     <section className={styles.page}>

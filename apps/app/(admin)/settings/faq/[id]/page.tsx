@@ -16,7 +16,8 @@ import { useParams } from 'next/navigation';
 
 import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/admin/faq/useFaqQuery';
-import { useUserRoleStore } from '@/stores/user-role-store';
+import { useCurrentUserRole } from '@/hooks/use-current-user-role';
+import { canManageContent } from '@/lib/admin-permissions';
 import styles from '../page.module.css';
 
 const { Paragraph, Text, Title } = Typography;
@@ -26,8 +27,8 @@ export default function FaqViewPage() {
   const params = useParams<{ id: string }>();
   const id = String(params.id);
   const faq = faqs.find((faq) => String(faq.id) === id);
-  const role = useUserRoleStore((state) => state.role);
-  const canManageFaq = role === 'SuperAdmin' || role === 'admin';
+  const role = useCurrentUserRole();
+  const canManageFaq = canManageContent(role);
 
   if (isLoading) {
     return <Loading />;

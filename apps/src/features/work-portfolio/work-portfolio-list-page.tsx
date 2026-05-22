@@ -25,7 +25,8 @@ import { useCallback, useMemo, useState } from 'react';
 import Loading from '@/components/loading/page';
 import { useDeleteWorkMutation } from '@/hooks/works/useWorkMutation';
 import { useWorkListQuery } from '@/hooks/works/useWorkQuery';
-import { useUserRoleStore } from '@/stores/user-role-store';
+import { useCurrentUserRole } from '@/hooks/use-current-user-role';
+import { canManageContent } from '@/lib/admin-permissions';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './work-portfolio-list-page.module.css';
 
@@ -56,8 +57,8 @@ export function WorkPortfolioListPage() {
     isError: isWorksError,
     isLoading,
   } = useWorkListQuery();
-  const role = useUserRoleStore((state) => state.role);
-  const canManageWork = role === 'SuperAdmin' || role === 'admin';
+  const role = useCurrentUserRole();
+  const canManageWork = canManageContent(role);
 
   useTopbar(
     () => ({

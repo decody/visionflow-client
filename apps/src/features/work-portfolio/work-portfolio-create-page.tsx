@@ -22,6 +22,7 @@ import {
   useCreateWorkMutation,
   type WorkMutationValues,
 } from '@/hooks/works/useWorkMutation';
+import { CONTENT_MANAGER_ROLES } from '@/lib/admin-permissions';
 import styles from './work-portfolio-create-page.module.css';
 
 const { Text, Title } = Typography;
@@ -65,7 +66,7 @@ export function WorkPortfolioCreatePage() {
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'admin']}
+      allowedRoles={CONTENT_MANAGER_ROLES}
       fallbackPath={ROUTES.ADMIN.WORK_PORTFOLIO.ROOT}
     >
     <section className={styles.page}>

@@ -3,6 +3,7 @@
 import { RoleGuard } from '@/components/auth/role-guard';
 import Loading from '@/components/loading/page';
 import { useNoticeViewQuery } from '@/hooks/admin/notices/useNoticeQuery';
+import { CONTENT_MANAGER_ROLES } from '@/lib/admin-permissions';
 import { ROUTES } from '@visionflow/routes';
 import {
   Button,
@@ -64,8 +65,12 @@ export default function NoticeEditPage() {
       } else {
         router.push(ROUTES.ADMIN.NOTICE.ROOT);
       }
-    } catch {
-      message.error('공지사항 수정 중 오류가 발생했습니다.');
+    } catch (error) {
+      message.error(
+        error instanceof Error
+          ? error.message
+          : '공지사항 수정 중 오류가 발생했습니다.',
+      );
     }
   };
 
@@ -99,7 +104,7 @@ export default function NoticeEditPage() {
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'admin']}
+      allowedRoles={CONTENT_MANAGER_ROLES}
       fallbackPath={ROUTES.ADMIN.NOTICE.DETAIL(id)}
     >
     <section className={styles.page}>

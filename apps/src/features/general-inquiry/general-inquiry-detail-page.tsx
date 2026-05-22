@@ -19,11 +19,13 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import Loading from '@/components/loading/page';
 import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
 import { useSendQuickReplyMutation } from '@/hooks/admin/contact/quick/useSendQuickReplyMutation';
+import { useCurrentUserRole } from '@/hooks/use-current-user-role';
+import { canManageContent } from '@/lib/admin-permissions';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './general-inquiry-detail-page.module.css';
 
@@ -65,8 +67,23 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
     notice: ReplyNotice;
   } | null>(null);
   const sendReplyMutation = useSendQuickReplyMutation();
+  const role = useCurrentUserRole();
+  const canReplyToInquiry = canManageContent(role);
+  const visibleTabs = useMemo(
+    () =>
+      canReplyToInquiry
+        ? TABS
+        : TABS.filter((tab) => tab.key !== 'compose'),
+    [canReplyToInquiry],
+  );
 
   const { data: quicks, isLoading } = useQuickListQuery();
+
+  useEffect(() => {
+    if (!canReplyToInquiry && activeTab === 'compose') {
+      setActiveTab('body');
+    }
+  }, [activeTab, canReplyToInquiry]);
 
   const quickList = useMemo(
     () =>
@@ -171,7 +188,9 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
   const sla = getSlaText(inquiry);
   const replySubject = `Re: ${inquiry.subject?.trim() || '일반 문의'}`;
   const canSendReply =
-    Boolean(inquiry.email?.trim()) && Boolean(reply.trim());
+    canReplyToInquiry &&
+    Boolean(inquiry.email?.trim()) &&
+    Boolean(reply.trim());
   const activityLogs = getActivityLogs(inquiry);
 
   const handleOpenComposer = () => {
@@ -301,16 +320,18 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
           <p className={styles.slaTitle}>{sla.title}</p>
           <p className={styles.slaMeta}>{sla.meta}</p>
         </div>
-        <div className={styles.slaActions}>
-          <button
-            className={styles.slaButton}
-            onClick={handleOpenComposer}
-            type="button"
-          >
-            답변 발송
-            <Send aria-hidden="true" size={14} />
-          </button>
-        </div>
+        {canReplyToInquiry ? (
+          <div className={styles.slaActions}>
+            <button
+              className={styles.slaButton}
+              onClick={handleOpenComposer}
+              type="button"
+            >
+              답변 발송
+              <Send aria-hidden="true" size={14} />
+            </button>
+          </div>
+        ) : null}
       </aside>
 
       <nav
@@ -318,7 +339,7 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
         className={styles.tabsBar}
         role="tablist"
       >
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             aria-selected={activeTab === tab.key}
             className={`${styles.tab} ${

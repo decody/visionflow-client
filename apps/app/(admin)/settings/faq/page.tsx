@@ -25,7 +25,8 @@ import type { IFaq } from '@visionflow/shared';
 import { useTopbar } from '@/components/layout/topbar-context';
 import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/admin/faq/useFaqQuery';
-import { useUserRoleStore } from '@/stores/user-role-store';
+import { useCurrentUserRole } from '@/hooks/use-current-user-role';
+import { canManageContent } from '@/lib/admin-permissions';
 import styles from './page.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -79,7 +80,8 @@ export default function FaqPage() {
   const [visibilityFilter, setVisibilityFilter] =
     useState<VisibilityFilter>('all');
 
-  const { role } = useUserRoleStore();
+  const role = useCurrentUserRole();
+  const canManageFaq = canManageContent(role);
 
   const filteredFaqs = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -227,13 +229,15 @@ export default function FaqPage() {
               <Link href={ROUTES.ADMIN.FAQ.DETAIL(data.id)}>
                 상세
               </Link>
-              <Link href={ROUTES.ADMIN.FAQ.EDIT(data.id)}>수정</Link>
+              {canManageFaq ? (
+                <Link href={ROUTES.ADMIN.FAQ.EDIT(data.id)}>수정</Link>
+              ) : null}
             </Space>
           );
         },
       },
     ],
-    [],
+    [canManageFaq],
   );
 
   const defaultColDef = useMemo<ColDef<IFaq>>(
@@ -262,7 +266,7 @@ export default function FaqPage() {
           </Text>
         </div>
 
-        {role === 'SuperAdmin' || role === 'admin' ? (
+        {canManageFaq ? (
           <Link href={ROUTES.ADMIN.FAQ.WRITE()}>
             <Button type="primary">FAQ 등록</Button>
           </Link>

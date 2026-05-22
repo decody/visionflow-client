@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { RoleGuard } from '@/components/auth/role-guard';
 import { WorkPortfolioDetailPage } from '@/features/work-portfolio/work-portfolio-detail-page';
+import { CONTENT_MANAGER_ROLES } from '@/lib/admin-permissions';
 import { ROUTES } from '@visionflow/routes';
 
 export const metadata: Metadata = {
@@ -18,7 +19,7 @@ export default async function WorkPortfolioEdit({
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'admin']}
+      allowedRoles={CONTENT_MANAGER_ROLES}
       fallbackPath={ROUTES.ADMIN.WORK_PORTFOLIO.DETAIL(id)}
     >
       <WorkPortfolioDetailPage id={id} />

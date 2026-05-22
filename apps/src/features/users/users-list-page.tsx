@@ -35,7 +35,8 @@ import { useMemo, useState } from 'react';
 
 import Loading from '@/components/loading/page';
 import { useUsersListQuery } from '@/hooks/admin/users/usersQuery';
-import { useUserRoleStore } from '@/stores/user-role-store';
+import { useCurrentUserRole } from '@/hooks/use-current-user-role';
+import { canManageUsers } from '@/lib/admin-permissions';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './users-list-page.module.css';
 
@@ -87,8 +88,8 @@ export function UsersListPage() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [searchText, setSearchText] = useState('');
   const { data: users = [], isLoading } = useUsersListQuery();
-  const role = useUserRoleStore((state) => state.role);
-  const canInviteUser = role === 'SuperAdmin';
+  const role = useCurrentUserRole();
+  const canInviteUser = canManageUsers(role);
 
   useTopbar(
     () => ({
@@ -104,32 +105,34 @@ export function UsersListPage() {
   const filteredRows = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase();
 
-    return users.filter((row) => {
-      if (statusFilter !== 'all' && row.status !== statusFilter) {
-        return false;
-      }
+    return users
+      .filter((row) => {
+        if (statusFilter !== 'all' && row.status !== statusFilter) {
+          return false;
+        }
 
-      if (roleFilter !== 'all' && row.role !== roleFilter) {
-        return false;
-      }
+        if (roleFilter !== 'all' && row.role !== roleFilter) {
+          return false;
+        }
 
-      if (!normalizedSearch) {
-        return true;
-      }
+        if (!normalizedSearch) {
+          return true;
+        }
 
-      return [
-        row.name,
-        row.email,
-        row.role,
-        row.status,
-        row.last_login_ip,
-        row.last_login_location,
-      ]
-        .filter(Boolean)
-        .some((value) =>
-          String(value).toLowerCase().includes(normalizedSearch),
-        );
-    }).sort((a, b) => getTime(b.created_at) - getTime(a.created_at));
+        return [
+          row.name,
+          row.email,
+          row.role,
+          row.status,
+          row.last_login_ip,
+          row.last_login_location,
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLowerCase().includes(normalizedSearch),
+          );
+      })
+      .sort((a, b) => getTime(b.created_at) - getTime(a.created_at));
   }, [roleFilter, searchText, statusFilter, users]);
 
   const statusCounts = useMemo(
@@ -225,7 +228,9 @@ export function UsersListPage() {
         minWidth: 220,
       },
       {
-        cellRenderer: ({ value }: ICellRendererParams<UserRow, string>) => (
+        cellRenderer: ({
+          value,
+        }: ICellRendererParams<UserRow, string>) => (
           <div className={styles.dateCell}>
             <span>{formatDate(value)}</span>
           </div>
@@ -236,7 +241,9 @@ export function UsersListPage() {
         minWidth: 140,
       },
       {
-        cellRenderer: ({ value }: ICellRendererParams<UserRow, string>) => (
+        cellRenderer: ({
+          value,
+        }: ICellRendererParams<UserRow, string>) => (
           <div className={styles.dateCell}>
             <span>{formatDate(value)}</span>
           </div>

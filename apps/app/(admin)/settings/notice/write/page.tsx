@@ -2,6 +2,7 @@
 
 import { RoleGuard } from '@/components/auth/role-guard';
 import { useCreateNoticeMutation } from '@/hooks/admin/notices/useCreateNoticeMutation';
+import { CONTENT_MANAGER_ROLES } from '@/lib/admin-permissions';
 import { ROUTES } from '@visionflow/routes';
 import type { ICreateNoticeRequest } from '@visionflow/shared';
 import {
@@ -57,8 +58,12 @@ export default function NoticeWritePage() {
       } else {
         router.push(ROUTES.ADMIN.NOTICE.ROOT);
       }
-    } catch {
-      message.error('공지사항 등록 중 오류가 발생했습니다.');
+    } catch (error) {
+      message.error(
+        error instanceof Error
+          ? error.message
+          : '공지사항 등록 중 오류가 발생했습니다.',
+      );
     }
   };
 
@@ -68,7 +73,7 @@ export default function NoticeWritePage() {
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'admin']}
+      allowedRoles={CONTENT_MANAGER_ROLES}
       fallbackPath={ROUTES.ADMIN.NOTICE.ROOT}
     >
     <section className={styles.page}>

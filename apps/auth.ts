@@ -25,9 +25,30 @@ if (isVercelRuntime && authUrl) {
   }
 }
 
+const normalizeUserRole = (role: unknown): UserRole | null => {
+  if (typeof role !== 'string') {
+    return null;
+  }
+
+  const normalizedRole = role.trim().toLowerCase().replace(/[\s_-]/g, '');
+
+  if (normalizedRole === 'superadmin') {
+    return 'SuperAdmin';
+  }
+
+  if (normalizedRole === 'admin') {
+    return 'admin';
+  }
+
+  if (normalizedRole === 'viewer') {
+    return 'Viewer';
+  }
+
+  return null;
+};
+
 const isUserRole = (role: unknown): role is UserRole =>
-  typeof role === 'string' &&
-  USER_ROLES.includes(role as (typeof USER_ROLES)[number]);
+  normalizeUserRole(role) !== null;
 
 const getFirstHeaderValue = (
   requestHeaders: Headers,
@@ -200,7 +221,7 @@ const getRoleByUserId = async (userId: string) => {
     throw error;
   }
 
-  return isUserRole(data?.role) ? data.role : 'Viewer';
+  return normalizeUserRole(data?.role) ?? 'Viewer';
 };
 
 const upsertAppUser = async ({
@@ -480,7 +501,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     async session({ session, token }) {
       if (session.user) {
-        session.user.role = isUserRole(token.role) ? token.role : 'Viewer';
+        session.user.role = normalizeUserRole(token.role) ?? 'Viewer';
       }
       return session;
     },

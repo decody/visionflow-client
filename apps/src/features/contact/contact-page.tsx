@@ -277,6 +277,7 @@ export function ContactPage() {
       </section>
 
       <FaqPage
+        category="contact"
         faqs={faqs}
         description="자주 묻는 질문을 확인해보세요."
       />

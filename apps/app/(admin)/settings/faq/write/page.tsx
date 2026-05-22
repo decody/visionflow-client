@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 
 import { RoleGuard } from '@/components/auth/role-guard';
 import { useCreateFaqMutation } from '@/hooks/admin/faq/useCreateFaqMutation';
+import { CONTENT_MANAGER_ROLES } from '@/lib/admin-permissions';
 import styles from '../page.module.css';
 
 const { Text, Title } = Typography;
@@ -58,7 +59,7 @@ export default function FaqWritePage() {
 
   return (
     <RoleGuard
-      allowedRoles={['SuperAdmin', 'admin']}
+      allowedRoles={CONTENT_MANAGER_ROLES}
       fallbackPath={ROUTES.ADMIN.FAQ.ROOT}
     >
     <section className={styles.page}>
