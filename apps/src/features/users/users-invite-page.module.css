@@ -125,6 +125,31 @@
   background: var(--color-primary-dark);
 }
 
+.primaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.inviteStatus {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+}
+
+.inviteStatusSuccess {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #03995f;
+}
+
+.inviteStatusError {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: var(--color-danger);
+}
+
 /* ─────────── Layout */
 .layout {
   display: grid;

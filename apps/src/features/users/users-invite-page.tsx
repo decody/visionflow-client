@@ -19,6 +19,16 @@ import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './users-invite-page.module.css';
 
 type RoleKey = 'superadmin' | 'admin' | 'user';
+type InviteStatus =
+  | { message: string; tone: 'error' | 'success' }
+  | null;
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ROLE_TO_API_ROLE: Record<RoleKey, string> = {
+  admin: 'admin',
+  superadmin: 'SuperAdmin',
+  user: 'Viewer',
+};
 
 const ROLE_OPTIONS: ReadonlyArray<{
   bullets: ReadonlyArray<string>;
@@ -92,6 +102,8 @@ export function UsersInvitePage() {
     'lee.juhyun@visionflow.kr',
   ]);
   const [emailInput, setEmailInput] = useState('');
+  const [inviteStatus, setInviteStatus] = useState<InviteStatus>(null);
+  const [isSending, setIsSending] = useState(false);
   const [role, setRole] = useState<RoleKey>('admin');
   const [welcomeMessage, setWelcomeMessage] = useState(
     `홍길동님, VisionFlow 운영 팀에 오신 것을 환영합니다. 시즌 캠페인 운영 + Q&A 답변을 맡아주실 예정입니다. 첫 출근 전까지 가입 완료 부탁드려요. — 노대표`,
@@ -109,16 +121,97 @@ export function UsersInvitePage() {
     [],
   );
 
+  const getMergedEmails = () => {
+    const pendingEmails = emailInput
+      .split(/[,;\s]+/)
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+
+    return Array.from(new Set([...emails, ...pendingEmails]));
+  };
+
   const handleAddEmail = () => {
-    const trimmed = emailInput.trim().replace(/[,;\s]+$/, '');
-    if (trimmed && !emails.includes(trimmed)) {
-      setEmails([...emails, trimmed]);
+    const nextEmails = getMergedEmails();
+
+    if (nextEmails.length !== emails.length) {
+      setEmails(nextEmails);
     }
+
     setEmailInput('');
   };
 
   const handleRemoveEmail = (target: string) => {
     setEmails(emails.filter((email) => email !== target));
+  };
+
+  const handleSendInvite = async () => {
+    const nextEmails = getMergedEmails();
+    const invalidEmail = nextEmails.find(
+      (email) => !EMAIL_PATTERN.test(email),
+    );
+
+    setInviteStatus(null);
+
+    if (nextEmails.length === 0) {
+      setInviteStatus({
+        message: '초대할 이메일을 1개 이상 입력해주세요.',
+        tone: 'error',
+      });
+      return;
+    }
+
+    if (invalidEmail) {
+      setInviteStatus({
+        message: `이메일 형식을 확인해주세요: ${invalidEmail}`,
+        tone: 'error',
+      });
+      return;
+    }
+
+    setEmails(nextEmails);
+    setEmailInput('');
+    setIsSending(true);
+
+    try {
+      const response = await fetch('/api/admin/users/invite', {
+        body: JSON.stringify({
+          emails: nextEmails,
+          role: ROLE_TO_API_ROLE[role],
+          welcomeMessage,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      });
+      const result = (await response.json().catch(() => null)) as {
+        failed?: { email: string; error?: string }[];
+        message?: string;
+      } | null;
+
+      if (!response.ok) {
+        const failed = result?.failed?.map(({ email }) => email).join(', ');
+
+        throw new Error(
+          failed ||
+            result?.message ||
+            '초대 메일 발송에 실패했습니다.',
+        );
+      }
+
+      setInviteStatus({
+        message: `${nextEmails.length}명에게 초대 메일을 발송했습니다.`,
+        tone: 'success',
+      });
+    } catch (error) {
+      setInviteStatus({
+        message:
+          error instanceof Error
+            ? error.message
+            : '초대 메일 발송에 실패했습니다.',
+        tone: 'error',
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -134,7 +227,7 @@ export function UsersInvitePage() {
         <h1 className={styles.pageTitle}>새 사용자 초대</h1>
         <span className={styles.statusPill}>
           <span aria-hidden="true" className={styles.statusDot} />
-          미발송
+          {inviteStatus?.tone === 'success' ? '발송 완료' : '미발송'}
         </span>
         <div className={styles.topbarActions}>
           <button className={styles.ghostButton} type="button">
@@ -147,12 +240,30 @@ export function UsersInvitePage() {
           >
             취소
           </Link>
-          <button className={styles.primaryButton} type="button">
+          <button
+            className={styles.primaryButton}
+            disabled={isSending}
+            onClick={() => void handleSendInvite()}
+            type="button"
+          >
             <Send aria-hidden="true" size={13} />
-            초대 메일 발송
+            {isSending ? '발송 중...' : '초대 메일 발송'}
           </button>
         </div>
       </header>
+
+      {inviteStatus ? (
+        <p
+          className={`${styles.inviteStatus} ${
+            inviteStatus.tone === 'success'
+              ? styles.inviteStatusSuccess
+              : styles.inviteStatusError
+          }`}
+          role="status"
+        >
+          {inviteStatus.message}
+        </p>
+      ) : null}
 
       <div className={styles.layout}>
         <div className={styles.formColumn}>
