@@ -4,7 +4,6 @@ import { ROUTES } from '@visionflow/routes';
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   Bell,
   Check,
   Mail,
@@ -19,7 +18,7 @@ import { useState } from 'react';
 import { useTopbar } from '../../components/layout/topbar-context';
 import styles from './users-invite-page.module.css';
 
-type RoleKey = 'super_admin' | 'admin' | 'viewer';
+type RoleKey = 'superadmin' | 'admin' | 'user';
 
 const ROLE_OPTIONS: ReadonlyArray<{
   bullets: ReadonlyArray<string>;
@@ -38,7 +37,7 @@ const ROLE_OPTIONS: ReadonlyArray<{
     ],
     description: '전체 시스템 · 사용자 관리',
     emoji: '🛡',
-    key: 'super_admin',
+    key: 'superadmin',
     label: 'SuperAdmin',
     notice: '현재 1명',
     notice2: '⚠ 신중히',
@@ -63,8 +62,8 @@ const ROLE_OPTIONS: ReadonlyArray<{
     ],
     description: '읽기 전용 · 외부 협력자',
     emoji: '👁',
-    key: 'viewer',
-    label: 'Viewer',
+    key: 'user',
+    label: 'user',
   },
 ];
 
@@ -336,18 +335,6 @@ export function UsersInvitePage() {
               SYNC
             </span>
           </header>
-          <div className={styles.previewTabs}>
-            <button
-              className={`${styles.previewTab} ${styles.previewTabActive}`}
-              type="button"
-            >
-              <Mail aria-hidden="true" size={12} />
-              초대 메일
-            </button>
-            {/* <button className={styles.previewTab} type="button">
-              🌐 가입 페이지
-            </button> */}
-          </div>
 
           <article className={styles.emailPreview}>
             <header className={styles.emailPreviewHead}>
@@ -370,19 +357,29 @@ export function UsersInvitePage() {
                 <strong>ADMIN</strong>
               </div>
               <h3 className={styles.emailGreeting}>
-                {emails[0]?.split('@')[0]?.split('.').pop() ??
-                  '홍길동'}
+                {emails.length > 1
+                  ? emails
+                      .map((email) =>
+                        email
+                          ? email.split('@')[0]?.split('.').pop()
+                          : '홍길동',
+                      )
+                      .join(', ')
+                  : emails[0]
+                    ? emails[0].split('@')[0]?.split('.').pop()
+                    : '홍길동'}
                 님, 팀에 합류해주세요
               </h3>
               <p className={styles.emailIntro}>
-                VisionFlow Admin 콘솔에 초대되었습니다.
+                VisionFlow {role.toUpperCase().replace('_', '')}{' '}
+                콘솔에 초대되었습니다.
                 <br />
                 아래 정보를 확인하고 초대를 수락해주세요.
               </p>
               <dl className={styles.emailFacts}>
                 <div>
                   <dt>초대 발신자</dt>
-                  {/* <dd>{user?.name ?? '—'} (SuperAdmin)</dd> */}
+                  <dd>{'노대표'}</dd>
                 </div>
                 <div>
                   <dt>부여될 역할</dt>
@@ -393,20 +390,6 @@ export function UsersInvitePage() {
                   <dd>24시간 후 (5월 11일 11:42)</dd>
                 </div>
               </dl>
-              <button className={styles.emailCta} type="button">
-                초대 수락하고 가입하기
-                <ArrowRight aria-hidden="true" size={14} />
-              </button>
-              {welcomeMessage ? (
-                <div className={styles.emailNote}>
-                  <p className={styles.emailNoteTitle}>
-                    노대표님의 메시지
-                  </p>
-                  <p className={styles.emailNoteBody}>
-                    {welcomeMessage}
-                  </p>
-                </div>
-              ) : null}
             </div>
           </article>
 
