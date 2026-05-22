@@ -21,7 +21,7 @@ const fetchNotice = async (
 
 export const useNoticeListQuery = () => {
   return useQuery<INotice[]>({
-    queryKey: ['notices-list'],
+    queryKey: ['admin', 'notices-list'],
     queryFn: fetchNoticeList,
   });
 };

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   type ICreateNoticeRequest,
   type INotice,
+  type INoticeListResponse,
 } from '@visionflow/shared';
 import dayjs from 'dayjs';
 
@@ -10,6 +11,32 @@ const normalizeNotice = (notice: INotice): INotice => ({
   createdAt: notice.createdAt,
   updatedAt: notice.updatedAt,
 });
+
+const sortNotices = (notices: INotice[]) => {
+  return [...notices].sort((a, b) => {
+    if (a.isImportant !== b.isImportant) {
+      return Number(b.isImportant) - Number(a.isImportant);
+    }
+
+    return (b.date ?? '').localeCompare(a.date ?? '');
+  });
+};
+
+const upsertNotice = (notices: INotice[], nextNotice: INotice) => {
+  const exists = notices.some(
+    (notice) => String(notice.id) === String(nextNotice.id),
+  );
+
+  if (exists) {
+    return sortNotices(
+      notices.map((notice) =>
+        String(notice.id) === String(nextNotice.id) ? nextNotice : notice,
+      ),
+    );
+  }
+
+  return sortNotices([nextNotice, ...notices]);
+};
 
 export const useCreateNoticeMutation = () => {
   const queryClient = useQueryClient();
@@ -54,28 +81,38 @@ export const useCreateNoticeMutation = () => {
       const normalizedNotice = normalizeNotice(createdNotice);
 
       queryClient.setQueryData<INotice[]>(
-        ['notices-list'],
-        (oldNotices = []) => {
-          const exists = oldNotices.some(
-            (notice) =>
-              String(notice.id) === String(normalizedNotice.id),
-          );
-
-          if (exists) {
-            return oldNotices.map((notice) =>
-              String(notice.id) === String(normalizedNotice.id)
-                ? normalizedNotice
-                : notice,
-            );
-          }
-
-          return [normalizedNotice, ...oldNotices];
-        },
+        ['admin', 'notices-list'],
+        (oldNotices = []) => upsertNotice(oldNotices, normalizedNotice),
       );
 
+      if (normalizedNotice.isPublished) {
+        queryClient.setQueryData<INoticeListResponse>(
+          ['notices-list'],
+          (oldResponse) => {
+            if (!oldResponse) {
+              return oldResponse;
+            }
+
+            const nextNotices = upsertNotice(
+              oldResponse.data,
+              normalizedNotice,
+            );
+
+            return {
+              ...oldResponse,
+              total_count:
+                oldResponse.total_count +
+                (nextNotices.length > oldResponse.data.length ? 1 : 0),
+              data: nextNotices,
+            };
+          },
+        );
+      }
+
       await queryClient.invalidateQueries({
-        queryKey: ['notices-list'],
+        queryKey: ['admin', 'notices-list'],
       });
+      await queryClient.invalidateQueries({ queryKey: ['notices-list'] });
     },
   });
 };
