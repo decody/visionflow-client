@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { PartnershipDetailPage } from '@/features/partnership/partnership-detail-page';
+import { PartnershipDetailPage } from '@/features/admin/contact/partnership/partnership-detail-page';
 
 export const metadata: Metadata = {
   description: 'VisionFlow CMS 제휴 문의 상세 — 회신 작성',
