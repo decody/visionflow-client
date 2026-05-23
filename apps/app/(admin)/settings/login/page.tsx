@@ -1,7 +1,7 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { LoginPage } from '@/features/login/login-page';
-import type { LoginAccessMode } from '@/features/login/login-form-page';
+import { LoginPage } from '@/features/admin/auth/login-page';
+import type { LoginAccessMode } from '@/features/admin/auth/login-form-page';
 
 export const metadata: Metadata = {
   description: 'VisionFlow 운영자 전용 로그인',

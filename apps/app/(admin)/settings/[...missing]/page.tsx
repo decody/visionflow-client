@@ -1,5 +1,12 @@
-import { notFound } from 'next/navigation';
+﻿import type { Metadata } from 'next';
 
-export default function AdminMissingPage() {
-  notFound();
+import { WorkPortfolioListPage } from '@/features/admin/work-portfolio/work-portfolio-list-page';
+
+export const metadata: Metadata = {
+  description: 'VisionFlow CMS Work 포트폴리오 관리',
+  title: 'Work 포트폴리오 | VisionFlow Admin',
+};
+
+export default function WorkPortfolio() {
+  return <WorkPortfolioListPage />;
 }

@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { ContactPartnershipPage } from '@/features/contact/contact-partnership/contact-partnership-page';
+import { ContactPartnershipPage } from '@/features/web/contact/contact-partnership/contact-partnership-page';
 
 export const metadata: Metadata = {
   title: '제휴 문의 — VisionFlow',

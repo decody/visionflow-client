@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { WorkPortfolioListPage } from '@/features/work-portfolio/work-portfolio-list-page';
+import { WorkPortfolioListPage } from '@/features/admin/work-portfolio/work-portfolio-list-page';
 
 export const metadata: Metadata = {
   description: 'VisionFlow CMS Work 포트폴리오 관리',

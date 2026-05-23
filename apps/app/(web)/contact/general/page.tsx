@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { ContactGeneralPage } from '@/features/contact/contact-general/contact-general-page';
+import { ContactGeneralPage } from '@/features/web/contact/contact-general/contact-general-page';
 
 export const metadata: Metadata = {
   title: '일반 문의 / Q&A — VisionFlow',

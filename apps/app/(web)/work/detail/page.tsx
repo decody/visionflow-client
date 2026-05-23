@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { WorkDetailPage } from '@/features/work/work-detail/work-detail-page';
+import { WorkDetailPage } from '@/features/web/work/work-detail/work-detail-page';
 
 export const metadata: Metadata = {
   title: 'Nordic Furniture 3D Configurator — VisionFlow',

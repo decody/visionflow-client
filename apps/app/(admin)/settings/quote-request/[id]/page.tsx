@@ -1,17 +1,12 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { QuoteRequestDetailPage } from '@/features/quote-request/quote-request-detail-page';
+import { QnaListPage } from '@/features/admin/qna/qna-list-page';
 
 export const metadata: Metadata = {
-  description: 'VisionFlow CMS 견적 문의 상세 — 견적서 작성',
-  title: '견적 문의 상세 — VisionFlow Admin',
+  description: 'VisionFlow CMS Q&A 게시판 — 사용자 문의 관리',
+  title: 'Q&A 게시판 — VisionFlow Admin',
 };
 
-export default async function QuoteRequestDetail({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  return <QuoteRequestDetailPage id={id} />;
+export default function Qna() {
+  return <QnaListPage />;
 }

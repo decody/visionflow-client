@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { GeneralInquiryListPage } from '@/features/general-inquiry/general-inquiry-list-page';
+import { GeneralInquiryListPage } from '@/features/admin/contact/general-inquiry/general-inquiry-list-page';
 
 export const metadata: Metadata = {
   description: 'VisionFlow CMS 일반 문의 관리',

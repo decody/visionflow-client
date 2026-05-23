@@ -1,7 +1,7 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
 import { RoleGuard } from '@/components/auth/role-guard';
-import { UsersInvitePage } from '@/features/users/users-invite-page';
+import { UsersInvitePage } from '@/features/admin/users/users-invite-page';
 import { USER_MANAGER_ROLES } from '@/lib/admin-permissions';
 import { ROUTES } from '@visionflow/routes';
 

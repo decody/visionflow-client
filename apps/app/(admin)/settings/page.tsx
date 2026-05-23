@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { DashboardPage } from '@/features/dashboard/dashboard-page';
+import { DashboardPage } from '@/features/admin/dashboard/dashboard-page';
 
 export const metadata: Metadata = {
   description: 'VisionFlow CMS 운영자 대시보드',

@@ -1,17 +1,12 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { WorkPortfolioDetailPage } from '@/features/work-portfolio/work-portfolio-detail-page';
+import { WorkPortfolioCreatePage } from '@/features/admin/work-portfolio/work-portfolio-create-page';
 
 export const metadata: Metadata = {
-  description: 'VisionFlow CMS Work 포트폴리오 상세 및 수정',
-  title: 'Work 상세 | VisionFlow Admin',
+  description: 'VisionFlow CMS Work 포트폴리오 등록',
+  title: 'Work 작성 | VisionFlow Admin',
 };
 
-export default async function WorkPortfolioDetail({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  return <WorkPortfolioDetailPage id={id} />;
+export default function WorkPortfolioWrite() {
+  return <WorkPortfolioCreatePage />;
 }

@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { QnaListPage } from '@/features/qna/qna-list-page';
+import { QnaListPage } from '@/features/admin/qna/qna-list-page';
 
 export const metadata: Metadata = {
   description: 'VisionFlow CMS Q&A 게시판 — 사용자 문의 관리',

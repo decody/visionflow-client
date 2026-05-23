@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { WorkPortfolioCreatePage } from '@/features/work-portfolio/work-portfolio-create-page';
+import { WorkPortfolioCreatePage } from '@/features/admin/work-portfolio/work-portfolio-create-page';
 
 export const metadata: Metadata = {
   description: 'VisionFlow CMS Work 포트폴리오 등록',

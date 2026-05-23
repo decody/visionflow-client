@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { ContactGeneralWritePage } from '@/features/contact/contact-general/contact-general-write-page';
+import { ContactGeneralWritePage } from '@/features/web/contact/contact-general/contact-general-write-page';
 
 export const metadata: Metadata = {
   title: 'Q&A 등록 | VisionFlow',

@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { ContactGeneralDetailSecretPage } from '@/features/contact/contact-general-detail-secret/contact-general-detail-secret-page';
+import { ContactGeneralDetailSecretPage } from '@/features/web/contact/contact-general-detail-secret/contact-general-detail-secret-page';
 
 export const metadata: Metadata = {
   title: '비밀글 보호 — VisionFlow',

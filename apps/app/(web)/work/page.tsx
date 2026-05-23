@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 
-import { WorkPage } from '@/features/work/work-page';
+import { WorkPage } from '@/features/web/work/work-page';
 
 export const metadata: Metadata = {
   title: 'Work — VisionFlow',

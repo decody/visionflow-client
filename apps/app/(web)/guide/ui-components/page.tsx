@@ -1,22 +1,12 @@
-'use client';
+import type { Metadata } from 'next';
 
-import { FaqPage } from '@/components/common/faq/page';
-import { useFaqListQuery } from '@/hooks/faq/useFaqQuery';
+import { UiComponentsPage } from '@/features/web/guide/ui-components-page';
 
-function CustomHeader() {
-  return <div>asdf</div>;
-}
+export const metadata: Metadata = {
+  title: 'UI Components — VisionFlow',
+  description: 'VisionFlow UI 컴포넌트 레퍼런스',
+};
 
 export default function UIComponents() {
-  // 자주하는 질문
-  const { data: faqs = [] } = useFaqListQuery();
-
-  return (
-    <FaqPage
-      category="contact"
-      faqs={faqs}
-      isOpen={2}
-      headerSlot={<CustomHeader />}
-    />
-  );
+  return <UiComponentsPage />;
 }
