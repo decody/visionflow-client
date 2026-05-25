@@ -299,22 +299,9 @@ export function PartnershipDetailPage({ id }: { id: string }) {
         </div>
       </header>
 
-      {notice ? (
-        <p
-          className={`${styles.notice} ${
-            notice.tone === 'success'
-              ? styles.notice_success
-              : styles.notice_error
-          }`}
-        >
-          {notice.message}
-        </p>
-      ) : null}
-
       <article className={styles.companyCard}>
         <header className={styles.companyMeta}>
           <div className={styles.metaBadges}>
-            <span className={styles.idBadge}>#{inquiry.id}</span>
             <span
               className={`${styles.statusBadge} ${statusClassName}`}
             >
@@ -424,9 +411,21 @@ export function PartnershipDetailPage({ id }: { id: string }) {
           onClick={() => setActiveTab('reply')}
           type="button"
         >
-          회신 하러 하기
+          회신하러 가기
         </button>
       </aside>
+
+      {notice ? (
+        <p
+          className={`${styles.notice} ${
+            notice.tone === 'success'
+              ? styles.notice_success
+              : styles.notice_error
+          }`}
+        >
+          {notice.message}
+        </p>
+      ) : null}
 
       <nav
         aria-label="상세 섹션"
@@ -455,7 +454,7 @@ export function PartnershipDetailPage({ id }: { id: string }) {
       </nav>
 
       {activeTab === 'proposal' ? (
-        <ProposalPanel inquiry={inquiry} />
+        <ProposalPanel inquiry={inquiry} memo={memo} />
       ) : null}
       {activeTab === 'reply' ? (
         <ReplyPanel
@@ -492,9 +491,13 @@ export function PartnershipDetailPage({ id }: { id: string }) {
 
 function ProposalPanel({
   inquiry,
+  memo,
 }: {
   inquiry: IPartnershipInquiry;
+  memo: string;
 }) {
+  const trimmedMemo = memo.trim();
+
   return (
     <article className={styles.proposalCard}>
       <header className={styles.proposalHeader}>
@@ -542,6 +545,19 @@ function ProposalPanel({
               </p>
             ))}
         </div>
+      </section>
+
+      <section className={styles.proposalSection}>
+        <h2 className={styles.sectionTitle}>내부 메모</h2>
+        {trimmedMemo ? (
+          <div className={styles.internalMemo}>
+            {trimmedMemo.split(/\n{2,}/).map((paragraph, index) => (
+              <p key={`${inquiry.id}-memo-${index}`}>{paragraph}</p>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.emptyText}>작성된 내부 메모가 없습니다.</p>
+        )}
       </section>
 
       <section className={styles.proposalSection}>
