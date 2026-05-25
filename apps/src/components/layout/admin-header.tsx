@@ -20,11 +20,12 @@ import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 
 import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
+import { usePartnershipListQuery } from '@/hooks/admin/contact/partnership/usePartnershipQuery';
 import { LogoMark } from '../brand/logo-mark';
 import styles from './admin-shell.module.css';
 
 type NavItem = {
-  badgeKey?: 'generalInquiryPending';
+  badgeKey?: 'generalInquiryPending' | 'partnershipPending';
   badge?: number;
   href: string;
   icon: LucideIcon;
@@ -58,7 +59,7 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
         label: 'Q&A',
       },
       {
-        badge: 5,
+        badgeKey: 'partnershipPending',
         href: ROUTES.ADMIN.PARTNERSHIP.ROOT,
         icon: Handshake,
         label: 'Partnership',
@@ -108,6 +109,7 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
 export function AdminHeader() {
   const pathname = usePathname();
   const { data: quicks } = useQuickListQuery();
+  const { data: partnerships } = usePartnershipListQuery();
   const pendingGeneralInquiryCount = useMemo(
     () =>
       Array.isArray(quicks)
@@ -115,10 +117,23 @@ export function AdminHeader() {
         : 0,
     [quicks],
   );
+  const pendingPartnershipCount = useMemo(
+    () =>
+      Array.isArray(partnerships)
+        ? partnerships.filter(
+            (partnership) => partnership.status === 'pending',
+          ).length
+        : 0,
+    [partnerships],
+  );
 
   const getBadge = (item: NavItem) => {
     if (item.badgeKey === 'generalInquiryPending') {
       return pendingGeneralInquiryCount;
+    }
+
+    if (item.badgeKey === 'partnershipPending') {
+      return pendingPartnershipCount;
     }
 
     return item.badge ?? 0;

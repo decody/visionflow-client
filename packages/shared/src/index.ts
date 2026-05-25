@@ -7,6 +7,13 @@ export type {
   IQuickInquiryListResponse,
   QuickInquiryStatus,
 } from './types/contact/quick';
+export type {
+  IPartnershipInquiry,
+  IPartnershipInquiryListResponse,
+  PartnershipInquiryCompanySize,
+  PartnershipInquiryStatus,
+  PartnershipInquiryType,
+} from './types/contact/partnership';
 export type { AuthAuditLog, AuthAuditStatus } from './types/auth';
 export type { ICreateFaqRequest, IFaq } from './types/faq';
 export type {

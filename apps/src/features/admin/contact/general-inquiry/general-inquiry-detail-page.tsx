@@ -21,12 +21,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import { useTopbar } from '@/components/layout/topbar-context';
 import Loading from '@/components/loading/page';
 import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
 import { useSendQuickReplyMutation } from '@/hooks/admin/contact/quick/useSendQuickReplyMutation';
 import { useCurrentUserRole } from '@/hooks/use-current-user-role';
 import { canManageContent } from '@/lib/admin-permissions';
-import { useTopbar } from '@/components/layout/topbar-context';
 import styles from './general-inquiry-detail-page.module.css';
 
 type DetailTab = 'body' | 'compose' | 'log';
@@ -327,8 +327,7 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
               onClick={handleOpenComposer}
               type="button"
             >
-              답변 발송
-              <Send aria-hidden="true" size={14} />
+              답변 작성 하기
             </button>
           </div>
         ) : null}
