@@ -38,12 +38,12 @@ const STATUS_TABS: ReadonlyArray<{ key: StatusFilter; label: string }> = [
   { key: 'all', label: '전체' },
   { key: 'pending', label: '신규' },
   { key: 'reviewing', label: '검토/발송' },
-  { key: 'approved', label: '수주' },
+  { key: 'completed', label: '수주' },
   { key: 'rejected', label: '종료' },
 ];
 
 const STATUS_LABEL: Record<QuoteInquiryStatus, string> = {
-  approved: '수주',
+  completed: '수주',
   pending: '신규',
   rejected: '종료',
   reviewing: '검토/발송',
@@ -136,7 +136,7 @@ export function QuoteRequestListPage() {
             : requests.filter((row) => row.status === tab.key).length;
         return acc;
       },
-      { all: 0, approved: 0, pending: 0, rejected: 0, reviewing: 0 },
+      { all: 0, completed: 0, pending: 0, rejected: 0, reviewing: 0 },
     );
   }, [requests]);
 
@@ -388,7 +388,7 @@ export function QuoteRequestListPage() {
           icon={<Check aria-hidden="true" size={16} />}
           label="수주"
           tone="green"
-          value={statusCounts.approved.toLocaleString()}
+          value={statusCounts.completed.toLocaleString()}
         />
       </section>
 

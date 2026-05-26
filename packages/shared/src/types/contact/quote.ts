@@ -1,7 +1,7 @@
 export type QuoteInquiryStatus =
   | 'pending'
   | 'reviewing'
-  | 'approved'
+  | 'completed'
   | 'rejected';
 
 export interface IQuoteInquiry {

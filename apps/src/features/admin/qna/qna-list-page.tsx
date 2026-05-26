@@ -15,7 +15,6 @@ import {
   Download,
   Lock,
   MoreHorizontal,
-  Plus,
   Search,
   SlidersHorizontal,
   Timer,
@@ -431,10 +430,6 @@ export function QnaListPage() {
           <button className={styles.secondaryButton} type="button">
             <Download aria-hidden="true" size={14} strokeWidth={2} />
             CSV 내보내기
-          </button>
-          <button className={styles.topbarPrimary} type="button">
-            <Plus aria-hidden="true" size={14} strokeWidth={2.4} />
-            Q&amp;A 등록
           </button>
         </div>
       </header>

@@ -54,7 +54,7 @@ type ActivityLogEntry = {
 };
 
 const STATUS_LABEL: Record<QuoteInquiryStatus, string> = {
-  approved: '수주',
+  completed: '수주',
   pending: '신규',
   rejected: '종료',
   reviewing: '검토/발송',
@@ -63,7 +63,7 @@ const STATUS_LABEL: Record<QuoteInquiryStatus, string> = {
 const STATUS_OPTIONS: { label: string; value: QuoteInquiryStatus }[] = [
   { label: '신규', value: 'pending' },
   { label: '검토/발송', value: 'reviewing' },
-  { label: '수주', value: 'approved' },
+  { label: '수주', value: 'completed' },
   { label: '종료', value: 'rejected' },
 ];
 
@@ -976,7 +976,7 @@ function getActivityLogs(request: IQuoteInquiry): ActivityLogEntry[] {
     });
   }
 
-  if (request.status === 'approved') {
+  if (request.status === 'completed') {
     logs.push({
       icon: Check,
       label: '수주 처리',
@@ -988,7 +988,7 @@ function getActivityLogs(request: IQuoteInquiry): ActivityLogEntry[] {
 }
 
 function getSlaText(request: IQuoteInquiry) {
-  if (request.status === 'approved' || request.status === 'rejected') {
+  if (request.status === 'completed' || request.status === 'rejected') {
     return {
       meta: `마지막 변경 ${formatFullDate(request.updated_at)}`,
       title: '처리가 완료된 견적 문의입니다.',

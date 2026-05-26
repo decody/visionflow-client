@@ -15,10 +15,11 @@ export const dynamic = 'force-dynamic';
 const STATUS_VALUES: QuoteInquiryStatus[] = [
   'pending',
   'reviewing',
-  'approved',
+  'completed',
   'rejected',
 ];
 const MAX_MEMO_LENGTH = 5000;
+type QuoteInquiryStatusInput = QuoteInquiryStatus | 'approved';
 
 const jsonError = (
   message: string,
@@ -41,10 +42,13 @@ const parseId = (value?: string | number | null) => {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 };
 
+const normalizeStatus = (status: QuoteInquiryStatusInput) =>
+  status === 'approved' ? 'completed' : status;
+
 const getStatusTimestamps = (status: QuoteInquiryStatus) => {
   const now = new Date().toISOString();
 
-  if (status === 'approved' || status === 'rejected') {
+  if (status === 'completed' || status === 'rejected') {
     return {
       completed_at: now,
       contacted_at: now,
@@ -105,7 +109,7 @@ export async function PATCH(request: NextRequest) {
     const body = (await request.json()) as {
       admin_memo?: string | null;
       id?: number | string;
-      status?: QuoteInquiryStatus;
+      status?: QuoteInquiryStatusInput;
     };
     const id = parseId(body.id);
 
@@ -118,12 +122,14 @@ export async function PATCH(request: NextRequest) {
     };
 
     if (body.status !== undefined) {
-      if (!STATUS_VALUES.includes(body.status)) {
+      const status = normalizeStatus(body.status);
+
+      if (!STATUS_VALUES.includes(status)) {
         return jsonError('Invalid status.', 400);
       }
 
-      updates.status = body.status;
-      Object.assign(updates, getStatusTimestamps(body.status));
+      updates.status = status;
+      Object.assign(updates, getStatusTimestamps(status));
     }
 
     if (body.admin_memo !== undefined) {
