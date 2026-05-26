@@ -27,6 +27,7 @@ import Loading from '@/components/loading/page';
 import { useFaqListQuery } from '@/hooks/admin/faq/useFaqQuery';
 import { useCurrentUserRole } from '@/hooks/use-current-user-role';
 import { canManageContent } from '@/lib/admin-permissions';
+import { Plus } from 'lucide-react';
 import styles from './faq-admin.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -230,7 +231,9 @@ export function FaqListPage() {
                 상세
               </Link>
               {canManageFaq ? (
-                <Link href={ROUTES.ADMIN.FAQ.EDIT(data.id)}>수정</Link>
+                <Link href={ROUTES.ADMIN.FAQ.EDIT(data.id)}>
+                  수정
+                </Link>
               ) : null}
             </Space>
           );
@@ -268,7 +271,10 @@ export function FaqListPage() {
 
         {canManageFaq ? (
           <Link href={ROUTES.ADMIN.FAQ.WRITE()}>
-            <Button type="primary">FAQ 등록</Button>
+            <Button type="primary">
+              <Plus aria-hidden="true" size={14} strokeWidth={2.4} />
+              FAQ 등록
+            </Button>
           </Link>
         ) : null}
       </Flex>

@@ -30,7 +30,11 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 type StatusKey = 'pending' | 'done';
 type StatusFilter = 'all' | StatusKey | 'private';
-type CategoryKey = 'ad-visuals' | 'data-dashboard' | 'web-app' | 'web-3d';
+type CategoryKey =
+  | 'ad-visuals'
+  | 'data-dashboard'
+  | 'web-app'
+  | 'web-3d';
 type SlaKey = 'safe' | 'warn' | 'overdue' | 'done';
 
 const STATUS_TABS: ReadonlyArray<{
@@ -127,8 +131,7 @@ const INQUIRIES: ReadonlyArray<Inquiry> = [
     category: 'web-3d',
     createdAbsolute: '어제 10:22',
     createdRelative: '1일 전',
-    excerpt:
-      '아이폰 12 미니 기준 성능 보장이 가능한지 문의드립니다.',
+    excerpt: '아이폰 12 미니 기준 성능 보장이 가능한지 문의드립니다.',
     id: 'Q-2601',
     org: 'CO Furniture',
     sla: { kind: 'warn', label: '12h 03m' },
@@ -205,7 +208,8 @@ const INQUIRIES: ReadonlyArray<Inquiry> = [
 ];
 
 export function QnaListPage() {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] =
+    useState<StatusFilter>('all');
   const rowData = useMemo(() => [...INQUIRIES], []);
 
   useTopbar(
@@ -430,7 +434,7 @@ export function QnaListPage() {
           </button>
           <button className={styles.topbarPrimary} type="button">
             <Plus aria-hidden="true" size={14} strokeWidth={2.4} />
-            공지 등록
+            Q&amp;A 등록
           </button>
         </div>
       </header>

@@ -31,6 +31,7 @@ import { useMemo, useState } from 'react';
 import { useTopbar } from '@/components/layout/topbar-context';
 import { useCurrentUserRole } from '@/hooks/use-current-user-role';
 import { canManageContent } from '@/lib/admin-permissions';
+import { Plus } from 'lucide-react';
 import styles from './notice-admin.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -125,7 +126,8 @@ export function NoticeListPage() {
 
     return notices.filter((notice) => {
       const matchesCategory =
-        categoryFilter === 'all' || notice.category === categoryFilter;
+        categoryFilter === 'all' ||
+        notice.category === categoryFilter;
       const matchesPublish =
         publishFilter === 'all' ||
         notice.isPublished === (publishFilter === 'published');
@@ -140,7 +142,13 @@ export function NoticeListPage() {
         matchesImportant
       );
     });
-  }, [categoryFilter, importantFilter, notices, publishFilter, searchKeyword]);
+  }, [
+    categoryFilter,
+    importantFilter,
+    notices,
+    publishFilter,
+    searchKeyword,
+  ]);
 
   const noticeNumberById = useMemo(
     () => getNoticeDisplayNumberMap(notices),
@@ -291,7 +299,10 @@ export function NoticeListPage() {
         </div>
         {canManageNotice ? (
           <Link href={ROUTES.ADMIN.NOTICE.WRITE()}>
-            <Button type="primary">공지 등록</Button>
+            <Button type="primary">
+              <Plus aria-hidden="true" size={14} strokeWidth={2.4} />
+              공지 등록
+            </Button>
           </Link>
         ) : null}
       </Flex>
