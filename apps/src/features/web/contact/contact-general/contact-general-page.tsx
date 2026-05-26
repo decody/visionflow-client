@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 import { Container } from '@/components/common/container';
 
-import { ContactGeneralFormPage } from '@/features/web/contact/contact-general/contact-general-form-page';
+import { ContactGeneralFormPage } from '@/features/web/contact/contact-general/write/contact-general-form-page';
 import { QnaWebListPage } from '@/features/web/qna/qna-web-list-page';
 import styles from './contact-general-page.module.css';
 

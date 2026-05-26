@@ -3,7 +3,7 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 
 import { useCreateQuickMutation } from '@/hooks/admin/contact/quick/useCreateQuickMutation';
-import styles from './contact-general-page.module.css';
+import styles from '../contact-general-page.module.css';
 
 const initialForm = {
   name: '',

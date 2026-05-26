@@ -8,7 +8,7 @@ import { useState, type ChangeEvent, type FormEvent } from 'react';
 
 import { Container } from '@/components/common/container';
 import { useCreateQnaMutation } from '@/hooks/qna/useCreateQnaMutation';
-import styles from './contact-general-page.module.css';
+import styles from '../contact-general-page.module.css';
 
 const categories = ['전체', '공지', '서비스 일반'];
 

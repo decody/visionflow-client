@@ -57,19 +57,39 @@ export const ROUTES = {
       ROOT: '/settings/qna',
       DETAIL: (id: string | number) => `/settings/qna/${id}`,
     },
-    PARTNERSHIP: {
-      ROOT: '/settings/partnership',
-      DETAIL: (id: string | number) => `/settings/partnership/${id}`,
+    CONTACT: {
+      ROOT: '/settings/contact',
+      DETAIL: (id: string | number) => `/settings/contact/${id}`,
+      GENERAL_INQUIRY: {
+        ROOT: '/settings/contact/contact-inquiry',
+        DETAIL: (id: string | number) =>
+          `/settings/contact/contact-inquiry/${id}`,
+      },
+      QUOTE_REQUEST: {
+        ROOT: '/settings/contact/contact-quote',
+        DETAIL: (id: string | number) =>
+          `/settings/contact/contact-quote/${id}`,
+      },
+      PARTNERSHIP: {
+        ROOT: '/settings/contact/contact-partnership',
+        DETAIL: (id: string | number) =>
+          `/settings/contact/contact-partnership/${id}`,
+      },
     },
     GENERAL_INQUIRY: {
-      ROOT: '/settings/general-inquiry',
+      ROOT: '/settings/contact/contact-inquiry',
       DETAIL: (id: string | number) =>
-        `/settings/general-inquiry/${id}`,
+        `/settings/contact/contact-inquiry/${id}`,
     },
     QUOTE_REQUEST: {
-      ROOT: '/settings/quote-request',
+      ROOT: '/settings/contact/contact-quote',
       DETAIL: (id: string | number) =>
-        `/settings/quote-request/${id}`,
+        `/settings/contact/contact-quote/${id}`,
+    },
+    PARTNERSHIP: {
+      ROOT: '/settings/contact/contact-partnership',
+      DETAIL: (id: string | number) =>
+        `/settings/contact/contact-partnership/${id}`,
     },
     WORK_PORTFOLIO: {
       ROOT: '/settings/work-portfolio',
@@ -104,12 +124,6 @@ export const ROUTES = {
       DETAIL: (id: string | number) => `/settings/faq/${id}`,
       EDIT: (id: string | number) => `/settings/faq/${id}/edit`,
       WRITE: () => '/settings/faq/write',
-    },
-
-    // Contact (페이지 구현됨, DETAIL은 계획됨)
-    CONTACT: {
-      ROOT: '/settings/contact',
-      DETAIL: (id: string | number) => `/settings/contact/${id}`,
     },
 
     // Orders (계획됨 — 페이지 미구현)
