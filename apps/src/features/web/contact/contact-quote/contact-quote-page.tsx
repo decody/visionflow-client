@@ -198,6 +198,7 @@ export function ContactQuotePage() {
   const [isMarketingChecked, setIsMarketingChecked] = useState(false);
   const [submitState, setSubmitState] = useState<SubmitState>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmittedContactStep, setHasSubmittedContactStep] = useState(false);
 
   useEffect(() => {
     if (!submitState) {
@@ -288,6 +289,7 @@ export function ContactQuotePage() {
     }
 
     setStep((current) => Math.min(current + 1, 3) as StepKey);
+    setHasSubmittedContactStep(false);
     setSubmitState(null);
   };
 
@@ -297,6 +299,7 @@ export function ContactQuotePage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setHasSubmittedContactStep(true);
 
     if (!canMoveNext()) {
       setSubmitState({
@@ -311,21 +314,36 @@ export function ContactQuotePage() {
       setSubmitState(null);
 
       const body = new FormData();
+      body.set(
+        'service_categories',
+        JSON.stringify(form.services.map(toQuoteServiceCategory)),
+      );
+      body.set('project_scale', toQuoteProjectScale(form.priority));
+      body.set('preferred_start_date', form.timeline);
+      body.set('project_description', buildProposalContent(form, attachment));
+      body.set(
+        'reference_urls',
+        JSON.stringify(
+          form.references.map((item) => item.trim()).filter(Boolean),
+        ),
+      );
       body.set('company_name', form.companyName);
-      body.set('company_size', form.companySize);
-      body.set('company_url', firstReferenceUrl(form.references));
-      body.set('contact_email', form.contactEmail);
       body.set('contact_name', form.contactName);
-      body.set('contact_phone', form.contactPhone);
-      body.set('contact_position', form.contactPosition || '담당자');
-      body.set('partnership_type', 'etc');
-      body.set('proposal_content', buildProposalContent(form, attachment));
+      body.set('position', form.contactPosition || '담당자');
+      body.set('email', form.contactEmail);
+      body.set('phone', form.contactPhone);
+      body.set(
+        'preferred_contact_methods',
+        JSON.stringify([form.responseChannel]),
+      );
+      body.set('privacy_agreed', String(isPrivacyChecked));
+      body.set('marketing_agreed', String(isMarketingChecked));
 
       if (attachment) {
         body.set('attachment', attachment);
       }
 
-      const response = await fetch('/api/partnership-inquiries', {
+      const response = await fetch('/api/quote-inquiries', {
         body,
         method: 'POST',
       });
@@ -345,6 +363,7 @@ export function ContactQuotePage() {
       setAttachment(null);
       setIsPrivacyChecked(true);
       setIsMarketingChecked(false);
+      setHasSubmittedContactStep(false);
       setSubmitState({
         message:
           '견적 요청이 접수되었습니다. 담당자가 검토 후 1~3 영업일 내 연락드릴게요.',
@@ -394,7 +413,7 @@ export function ContactQuotePage() {
         </Container>
       </section>
 
-      <form className={styles.quoteFlow} onSubmit={handleSubmit}>
+      <form className={styles.quoteFlow} noValidate onSubmit={handleSubmit}>
         <Container>
           <StepIndicator currentStep={step} />
 
@@ -437,6 +456,7 @@ export function ContactQuotePage() {
                 onResponseChannelChange={(value) =>
                   updateForm('responseChannel', value)
                 }
+                showValidationErrors={hasSubmittedContactStep}
               />
             ) : null}
 
@@ -811,6 +831,7 @@ function StepContact({
   onMarketingChange,
   onPrivacyChange,
   onResponseChannelChange,
+  showValidationErrors,
 }: {
   form: typeof initialForm;
   isMarketingChecked: boolean;
@@ -824,7 +845,11 @@ function StepContact({
   onMarketingChange: (value: boolean) => void;
   onPrivacyChange: (value: boolean) => void;
   onResponseChannelChange: (value: ResponseChannelKey) => void;
+  showValidationErrors: boolean;
 }) {
+  const shouldShowCompanyNameError =
+    showValidationErrors && !form.companyName.trim();
+
   return (
     <div className={styles.stepPanel}>
       <span className={styles.stepLabel}>Step 3 of 3 · 연락처 입력</span>
@@ -834,8 +859,14 @@ function StepContact({
       </p>
 
       <label className={styles.field}>
-        <span>회사명 / 단체명</span>
+        <span>
+          회사명 / 단체명 <i>*</i>
+        </span>
         <input
+          aria-describedby={
+            shouldShowCompanyNameError ? 'quote-company-name-error' : undefined
+          }
+          aria-invalid={shouldShowCompanyNameError}
           maxLength={200}
           onChange={(event) => onFieldChange('companyName', event.target.value)}
           placeholder="예: Nordic Furniture Co."
@@ -843,6 +874,11 @@ function StepContact({
           type="text"
           value={form.companyName}
         />
+        {shouldShowCompanyNameError ? (
+          <small className={styles.fieldError} id="quote-company-name-error">
+            회사명/단체명을 입력해 주세요.
+          </small>
+        ) : null}
       </label>
 
       <div className={styles.twoCol}>
@@ -1034,8 +1070,26 @@ function buildProposalContent(form: typeof initialForm, attachment: File | null)
   ].join('\n');
 }
 
-function firstReferenceUrl(references: string[]) {
-  return references.find((item) => item.trim())?.trim() ?? '';
+function toQuoteServiceCategory(value: ServiceKey) {
+  const serviceCategory: Record<ServiceKey, string> = {
+    adImage: 'ad_image',
+    dashboard: 'dashboard',
+    web3d: '3d',
+    webApp: 'web_app',
+  };
+
+  return serviceCategory[value];
+}
+
+function toQuoteProjectScale(value: PriorityKey) {
+  const projectScale: Record<PriorityKey, string> = {
+    balanced: 'medium',
+    budget: 'small',
+    quality: 'large',
+    speed: 'small',
+  };
+
+  return projectScale[value];
 }
 
 function labelOf<T extends string>(

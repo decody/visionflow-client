@@ -431,6 +431,11 @@
   font-size: var(--fs-tiny);
 }
 
+.field .fieldError {
+  color: var(--color-danger);
+  font-weight: var(--fw-semibold);
+}
+
 .referenceInputs {
   display: flex;
   flex-direction: column;
