@@ -48,6 +48,10 @@ export const useAdminAlarmsQuery = () => {
     queryFn: fetchAdminAlarms,
     queryKey: ['admin-alarms'],
     placeholderData: EMPTY_ALARMS,
-    refetchInterval: 60_000,
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: true,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 };

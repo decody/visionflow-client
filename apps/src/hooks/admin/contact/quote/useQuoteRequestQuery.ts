@@ -103,6 +103,9 @@ export const useUpdateQuoteRequestMutation = () => {
       await queryClient.invalidateQueries({
         queryKey: ['quote-request-list'],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ['admin-alarms'],
+      });
     },
   });
 };

@@ -11,7 +11,7 @@ const serviceLinks = [
 ];
 
 const companyLinks = [
-  { href: ROUTES.ABOUT, label: 'About' },
+  { href: ROUTES.NOTICES.ROOT, label: 'Notice' },
   { href: ROUTES.WORK, label: 'Work' },
   { href: ROUTES.CONTACT.ROOT, label: '문의하기' },
   { href: ROUTES.KAKAO, label: '카카오톡 채널' },

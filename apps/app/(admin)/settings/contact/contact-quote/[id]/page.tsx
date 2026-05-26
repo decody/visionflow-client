@@ -1,6 +1,6 @@
 ﻿import type { Metadata } from 'next';
 
-import { QuoteRequestDetailPage } from '@/features/admin/quote-request/quote-request-detail-page';
+import { QuoteRequestDetailPage } from '@/features/admin/contact/contact-quote/quote-request-detail-page';
 
 export const metadata: Metadata = {
   description: 'VisionFlow CMS 견적 문의 상세',

@@ -9,7 +9,7 @@ const navItems = [
   { href: ROUTES.WEB_APP, label: 'Web & App' },
   { href: ROUTES.DASHBOARD, label: 'Dashboard' },
   { href: ROUTES.WORK, label: 'Work' },
-  { href: ROUTES.ABOUT, label: 'About' },
+  { href: ROUTES.NOTICES.ROOT, label: 'Notice' },
 ];
 
 export function WebHeader() {
@@ -40,7 +40,7 @@ export function WebHeader() {
           ))}
         </nav>
 
-        <Link className={styles.cta} href={ROUTES.CONTACT.QUOTE}>
+        <Link className={styles.cta} href={ROUTES.CONTACT.ROOT}>
           무료 견적받기
         </Link>
       </div>

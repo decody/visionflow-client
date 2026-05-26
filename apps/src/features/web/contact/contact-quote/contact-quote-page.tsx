@@ -27,10 +27,18 @@ import { Container } from '@/components/common/container';
 import styles from './contact-quote-page.module.css';
 
 type StepKey = 1 | 2 | 3;
-type SubmitState = { message: string; tone: 'error' | 'success' } | null;
+type SubmitState = {
+  message: string;
+  tone: 'error' | 'success';
+} | null;
 type ServiceKey = 'web3d' | 'adImage' | 'dashboard' | 'webApp';
 type PriorityKey = 'budget' | 'balanced' | 'speed' | 'quality';
-type BudgetKey = 'under5m' | '5m10m' | '10m30m' | 'over30m' | 'undecided';
+type BudgetKey =
+  | 'under5m'
+  | '5m10m'
+  | '10m30m'
+  | 'over30m'
+  | 'undecided';
 type TimelineKey = 'asap' | '1month' | '3months' | 'open';
 type ResponseChannelKey = 'email' | 'phone' | 'kakao' | 'meeting';
 
@@ -76,7 +84,11 @@ const serviceOptions: ServiceOption[] = [
   },
 ];
 
-const priorityOptions: { hint: string; label: string; value: PriorityKey }[] = [
+const priorityOptions: {
+  hint: string;
+  label: string;
+  value: PriorityKey;
+}[] = [
   { hint: '비용 중심', label: '소형', value: 'budget' },
   { hint: '기능 균형', label: '중형', value: 'balanced' },
   { hint: '빠른 런칭', label: '단기', value: 'speed' },
@@ -98,7 +110,10 @@ const budgetOptions: { label: string; value: BudgetKey }[] = [
   { label: '미정', value: 'undecided' },
 ];
 
-const responseChannelOptions: { label: string; value: ResponseChannelKey }[] = [
+const responseChannelOptions: {
+  label: string;
+  value: ResponseChannelKey;
+}[] = [
   { label: '이메일', value: 'email' },
   { label: '전화', value: 'phone' },
   { label: '카카오톡', value: 'kakao' },
@@ -198,14 +213,18 @@ export function ContactQuotePage() {
   const [isMarketingChecked, setIsMarketingChecked] = useState(false);
   const [submitState, setSubmitState] = useState<SubmitState>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasSubmittedContactStep, setHasSubmittedContactStep] = useState(false);
+  const [hasSubmittedContactStep, setHasSubmittedContactStep] =
+    useState(false);
 
   useEffect(() => {
     if (!submitState) {
       return;
     }
 
-    const timerId = window.setTimeout(() => setSubmitState(null), 5000);
+    const timerId = window.setTimeout(
+      () => setSubmitState(null),
+      5000,
+    );
 
     return () => window.clearTimeout(timerId);
   }, [submitState]);
@@ -255,7 +274,9 @@ export function ContactQuotePage() {
       references:
         current.references.length === 1
           ? ['']
-          : current.references.filter((_, itemIndex) => itemIndex !== index),
+          : current.references.filter(
+              (_, itemIndex) => itemIndex !== index,
+            ),
     }));
   };
 
@@ -320,7 +341,10 @@ export function ContactQuotePage() {
       );
       body.set('project_scale', toQuoteProjectScale(form.priority));
       body.set('preferred_start_date', form.timeline);
-      body.set('project_description', buildProposalContent(form, attachment));
+      body.set(
+        'project_description',
+        buildProposalContent(form, attachment),
+      );
       body.set(
         'reference_urls',
         JSON.stringify(
@@ -349,9 +373,9 @@ export function ContactQuotePage() {
       });
 
       if (!response.ok) {
-        const errorBody = (await response.json().catch(() => null)) as
-          | { message?: string }
-          | null;
+        const errorBody = (await response
+          .json()
+          .catch(() => null)) as { message?: string } | null;
 
         throw new Error(
           errorBody?.message ?? '견적 요청 접수에 실패했습니다.',
@@ -388,14 +412,19 @@ export function ContactQuotePage() {
         <Container>
           <div className={styles.heroInner}>
             <span className={styles.eyebrow}>Quote Request</span>
-            <h1 className={styles.heroTitle}>3분 안에 견적 요청 보내기</h1>
+            <h1 className={styles.heroTitle}>
+              3분 안에 견적 요청 보내기
+            </h1>
             <p className={styles.heroSub}>
-              프로젝트 정보를 알려주시면 담당자가 기준 견적과 실행 범위를
-              정리해 보내드립니다.
+              프로젝트 정보를 알려주시면 담당자가 기준 견적과 실행
+              범위를 정리해 보내드립니다.
               <br />
               작성 중인 내용은 제출 전까지 자유롭게 수정할 수 있어요.
             </p>
-            <div className={styles.heroBadges} aria-label="견적 문의 안내">
+            <div
+              className={styles.heroBadges}
+              aria-label="견적 문의 안내"
+            >
               <span>
                 <Clock3 aria-hidden="true" size={14} />
                 24시간 내 1차 답변
@@ -413,7 +442,11 @@ export function ContactQuotePage() {
         </Container>
       </section>
 
-      <form className={styles.quoteFlow} noValidate onSubmit={handleSubmit}>
+      <form
+        className={styles.quoteFlow}
+        noValidate
+        onSubmit={handleSubmit}
+      >
         <Container>
           <StepIndicator currentStep={step} />
 
@@ -421,8 +454,12 @@ export function ContactQuotePage() {
             {step === 1 ? (
               <StepProject
                 form={form}
-                onPriorityChange={(value) => updateForm('priority', value)}
-                onTimelineChange={(value) => updateForm('timeline', value)}
+                onPriorityChange={(value) =>
+                  updateForm('priority', value)
+                }
+                onTimelineChange={(value) =>
+                  updateForm('timeline', value)
+                }
                 onToggleService={toggleService}
               />
             ) : null}
@@ -432,9 +469,13 @@ export function ContactQuotePage() {
                 attachment={attachment}
                 form={form}
                 onAddReference={addReference}
-                onDetailChange={(value) => updateForm('detail', value)}
+                onDetailChange={(value) =>
+                  updateForm('detail', value)
+                }
                 onFileChange={handleFileChange}
-                onNdaChange={(value) => updateForm('isNdaRequested', value)}
+                onNdaChange={(value) =>
+                  updateForm('isNdaRequested', value)
+                }
                 onReferenceChange={updateReference}
                 onRemoveAttachment={() => setAttachment(null)}
                 onRemoveReference={removeReference}
@@ -446,7 +487,9 @@ export function ContactQuotePage() {
                 form={form}
                 isMarketingChecked={isMarketingChecked}
                 isPrivacyChecked={isPrivacyChecked}
-                onBudgetChange={(value) => updateForm('budget', value)}
+                onBudgetChange={(value) =>
+                  updateForm('budget', value)
+                }
                 onCompanySizeChange={(value) =>
                   updateForm('companySize', value)
                 }
@@ -483,7 +526,10 @@ export function ContactQuotePage() {
                     className={styles.secondaryButton}
                     disabled={isSubmitting}
                     onClick={() =>
-                      setStep((current) => Math.max(current - 1, 1) as StepKey)
+                      setStep(
+                        (current) =>
+                          Math.max(current - 1, 1) as StepKey,
+                      )
                     }
                     type="button"
                   >
@@ -528,7 +574,10 @@ export function ContactQuotePage() {
               const Icon = item.icon;
 
               return (
-                <article className={styles.priceCard} key={item.label}>
+                <article
+                  className={styles.priceCard}
+                  key={item.label}
+                >
                   <span className={styles.priceTag}>
                     <Icon aria-hidden="true" size={14} />
                     {item.tag}
@@ -548,8 +597,8 @@ export function ContactQuotePage() {
             })}
           </div>
           <p className={styles.referenceNote}>
-            위 가격은 일반적인 범위이며, 실제 견적은 요구사항 범위와 일정에
-            따라 달라질 수 있습니다.
+            위 가격은 일반적인 범위이며, 실제 견적은 요구사항 범위와
+            일정에 따라 달라질 수 있습니다.
           </p>
         </Container>
       </section>
@@ -567,7 +616,9 @@ export function ContactQuotePage() {
                 <span className={styles.processNo}>{item.no}</span>
                 <h3>{item.title}</h3>
                 <p>{item.desc}</p>
-                <span className={styles.processTime}>{item.time}</span>
+                <span className={styles.processTime}>
+                  {item.time}
+                </span>
               </li>
             ))}
           </ol>
@@ -598,7 +649,11 @@ function StepIndicator({ currentStep }: { currentStep: StepKey }) {
             key={item.key}
           >
             <span className={styles.stepCircle}>
-              {isDone ? <Check aria-hidden="true" size={14} /> : item.key}
+              {isDone ? (
+                <Check aria-hidden="true" size={14} />
+              ) : (
+                item.key
+              )}
             </span>
             <span>{item.label}</span>
             {index < steps.length - 1 ? (
@@ -674,7 +729,9 @@ function StepProject({
             <button
               aria-pressed={form.priority === option.value}
               className={`${styles.segment} ${
-                form.priority === option.value ? styles.segmentActive : ''
+                form.priority === option.value
+                  ? styles.segmentActive
+                  : ''
               }`}
               key={option.value}
               onClick={() => onPriorityChange(option.value)}
@@ -694,7 +751,9 @@ function StepProject({
             <button
               aria-pressed={form.timeline === option.value}
               className={`${styles.chip} ${
-                form.timeline === option.value ? styles.chipActive : ''
+                form.timeline === option.value
+                  ? styles.chipActive
+                  : ''
               }`}
               key={option.value}
               onClick={() => onTimelineChange(option.value)}
@@ -749,7 +808,9 @@ function StepDetail({
           required
           value={form.detail}
         />
-        <small>{form.detail.length.toLocaleString()} / 5,000자 권장</small>
+        <small>
+          {form.detail.length.toLocaleString()} / 5,000자 권장
+        </small>
       </label>
 
       <div className={styles.field}>
@@ -776,7 +837,11 @@ function StepDetail({
             </label>
           ))}
         </div>
-        <button className={styles.inlineButton} onClick={onAddReference} type="button">
+        <button
+          className={styles.inlineButton}
+          onClick={onAddReference}
+          type="button"
+        >
           + URL 추가
         </button>
       </div>
@@ -803,7 +868,11 @@ function StepDetail({
           <Upload aria-hidden="true" size={22} />
           <strong>파일을 드래그하거나 클릭해서 추가</strong>
           <small>PDF, ZIP, 이미지 파일 · 최대 20MB</small>
-          <input accept=".pdf,.zip,image/*" onChange={onFileChange} type="file" />
+          <input
+            accept=".pdf,.zip,image/*"
+            onChange={onFileChange}
+            type="file"
+          />
         </label>
       </div>
 
@@ -815,7 +884,9 @@ function StepDetail({
         />
         <span aria-hidden="true" />
         <strong>비공개 / NDA 사전 검토</strong>
-        <small>기업 내부 자료 포함 시 담당자 확인 후 별도 안내합니다.</small>
+        <small>
+          기업 내부 자료 포함 시 담당자 확인 후 별도 안내합니다.
+        </small>
       </label>
     </div>
   );
@@ -852,7 +923,9 @@ function StepContact({
 
   return (
     <div className={styles.stepPanel}>
-      <span className={styles.stepLabel}>Step 3 of 3 · 연락처 입력</span>
+      <span className={styles.stepLabel}>
+        Step 3 of 3 · 연락처 입력
+      </span>
       <h2>어디로 답변을 보내드릴까요?</h2>
       <p className={styles.stepDesc}>
         정식 견적서가 가능한 연락처를 알려주세요.
@@ -864,18 +937,25 @@ function StepContact({
         </span>
         <input
           aria-describedby={
-            shouldShowCompanyNameError ? 'quote-company-name-error' : undefined
+            shouldShowCompanyNameError
+              ? 'quote-company-name-error'
+              : undefined
           }
           aria-invalid={shouldShowCompanyNameError}
           maxLength={200}
-          onChange={(event) => onFieldChange('companyName', event.target.value)}
+          onChange={(event) =>
+            onFieldChange('companyName', event.target.value)
+          }
           placeholder="예: Nordic Furniture Co."
           required
           type="text"
           value={form.companyName}
         />
         {shouldShowCompanyNameError ? (
-          <small className={styles.fieldError} id="quote-company-name-error">
+          <small
+            className={styles.fieldError}
+            id="quote-company-name-error"
+          >
             회사명/단체명을 입력해 주세요.
           </small>
         ) : null}
@@ -968,7 +1048,9 @@ function StepContact({
             <button
               aria-pressed={form.companySize === option.value}
               className={`${styles.chip} ${
-                form.companySize === option.value ? styles.chipActive : ''
+                form.companySize === option.value
+                  ? styles.chipActive
+                  : ''
               }`}
               key={option.value}
               onClick={() => onCompanySizeChange(option.value)}
@@ -1013,11 +1095,15 @@ function StepContact({
       <label className={styles.checkboxRow}>
         <input
           checked={isMarketingChecked}
-          onChange={(event) => onMarketingChange(event.target.checked)}
+          onChange={(event) =>
+            onMarketingChange(event.target.checked)
+          }
           type="checkbox"
         />
         <span aria-hidden="true" />
-        <strong>VisionFlow 서비스 소식과 뉴스레터 수신에 동의합니다.</strong>
+        <strong>
+          VisionFlow 서비스 소식과 뉴스레터 수신에 동의합니다.
+        </strong>
         <small>선택</small>
       </label>
     </div>
@@ -1042,7 +1128,10 @@ function SectionHead({
   );
 }
 
-function buildProposalContent(form: typeof initialForm, attachment: File | null) {
+function buildProposalContent(
+  form: typeof initialForm,
+  attachment: File | null,
+) {
   const serviceLabels = serviceOptions
     .filter((service) => form.services.includes(service.value))
     .map((service) => service.label)
@@ -1096,7 +1185,9 @@ function labelOf<T extends string>(
   options: ReadonlyArray<{ label: string; value: T }>,
   value: T,
 ) {
-  return options.find((option) => option.value === value)?.label ?? value;
+  return (
+    options.find((option) => option.value === value)?.label ?? value
+  );
 }
 
 function formatFileSize(bytes: number) {

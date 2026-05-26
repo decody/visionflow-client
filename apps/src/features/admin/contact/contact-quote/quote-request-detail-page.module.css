@@ -132,7 +132,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xs);
   color: var(--color-text);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
   font-size: var(--fs-caption);
   font-weight: var(--fw-bold);
 }
@@ -239,6 +239,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  word-break: break-all;
 }
 
 .metaSep {
@@ -571,6 +572,7 @@
   color: var(--color-text);
   font-size: var(--fs-small);
   line-height: var(--lh-relaxed);
+  word-break: break-all;
 }
 
 .attachmentRow {
@@ -884,7 +886,7 @@
   margin: 0;
   color: var(--color-text);
   font-weight: var(--fw-semibold);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
 }
 
 .discount {
@@ -946,7 +948,9 @@
   background: #ffffff;
   border: 1.5px solid var(--color-border-strong);
   border-radius: var(--radius-xs);
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .checkbox input:checked + .checkboxBox {

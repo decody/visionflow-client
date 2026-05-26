@@ -82,6 +82,9 @@ export const useSendQuoteMutation = () => {
       await queryClient.invalidateQueries({
         queryKey: ['quote-request-list'],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ['admin-alarms'],
+      });
     },
   });
 };

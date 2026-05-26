@@ -12,6 +12,7 @@ import {
   ChevronUp,
   Clock3,
   Copy,
+  Download,
   ExternalLink,
   FileText,
   Globe,
@@ -471,12 +472,28 @@ function RequestPanel({
       <section className={styles.requestSection}>
         <h2 className={styles.sectionTitle}>첨부</h2>
         {request.attached_files.length > 0 ? (
-          request.attached_files.map((file, index) => (
-            <span className={styles.attachmentChip} key={`${request.id}-${index}`}>
-              <Paperclip aria-hidden="true" size={12} />
-              {String(file)}
-            </span>
-          ))
+          <div className={styles.attachmentRow}>
+            {request.attached_files.map((file, index) => {
+              const attachment = parseQuoteAttachment(file);
+
+              return attachment ? (
+                <a
+                  className={styles.attachmentChip}
+                  download={attachment.name}
+                  href={getAttachmentDownloadUrl(request, index)}
+                  key={`${request.id}-${index}`}
+                >
+                  <Download aria-hidden="true" size={12} />
+                  {attachment.name}
+                </a>
+              ) : (
+                <span className={styles.attachmentChip} key={`${request.id}-${index}`}>
+                  <Paperclip aria-hidden="true" size={12} />
+                  {String(file)}
+                </span>
+              );
+            })}
+          </div>
         ) : (
           <p className={styles.sectionBody}>첨부 파일이 없습니다.</p>
         )}
@@ -1044,5 +1061,22 @@ function formatCurrency(value: number) {
 
 function normalizeUrl(value: string) {
   return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+function parseQuoteAttachment(value: string) {
+  const match = value.match(/^(?<name>.+) \((?<path>quote-inquiries\/.+)\)$/);
+
+  if (!match?.groups?.path) {
+    return null;
+  }
+
+  return {
+    name: match.groups.name?.trim() || '첨부 파일',
+    path: match.groups.path,
+  };
+}
+
+function getAttachmentDownloadUrl(request: IQuoteInquiry, index: number) {
+  return `/api/quote-inquiries/${encodeURIComponent(String(request.id))}/attachment?index=${index}`;
 }
 
