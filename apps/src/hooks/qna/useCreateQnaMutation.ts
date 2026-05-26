@@ -77,7 +77,11 @@ export const useCreateQnaMutation = () => {
         },
       );
 
-      await queryClient.invalidateQueries({ queryKey: ['qna-list'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-alarms'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'qna-list'] }),
+        queryClient.invalidateQueries({ queryKey: ['qna-list'] }),
+      ]);
     },
   });
 };

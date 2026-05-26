@@ -251,7 +251,6 @@ export function ContactGeneralDetailClientPage({ id }: Props) {
                   <span className={styles.categoryBadge}>
                     {qna.category || '서비스 일반'}
                   </span>
-                  <span className={styles.postNo}># {qna.id}</span>
                 </div>
                 <h1 className={styles.postTitle}>{title}</h1>
                 <div className={styles.postMeta}>
@@ -356,41 +355,75 @@ export function ContactGeneralDetailClientPage({ id }: Props) {
 
 function QnaDetailSkeleton() {
   return (
-    <div className={styles.skeletonWrap} aria-busy="true" aria-live="polite">
+    <div
+      className={styles.skeletonWrap}
+      aria-busy="true"
+      aria-live="polite"
+    >
       <article className={styles.postCard}>
         <header className={styles.postHeader}>
           <div className={styles.skeletonBadges}>
-            <span className={`${styles.skeletonBlock} ${styles.skeletonBadge}`} />
-            <span className={`${styles.skeletonBlock} ${styles.skeletonBadge}`} />
-            <span className={`${styles.skeletonBlock} ${styles.skeletonNo}`} />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonBadge}`}
+            />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonBadge}`}
+            />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonNo}`}
+            />
           </div>
-          <span className={`${styles.skeletonBlock} ${styles.skeletonTitle}`} />
+          <span
+            className={`${styles.skeletonBlock} ${styles.skeletonTitle}`}
+          />
           <div className={styles.skeletonMeta}>
-            <span className={`${styles.skeletonBlock} ${styles.skeletonAvatar}`} />
-            <span className={`${styles.skeletonBlock} ${styles.skeletonAuthor}`} />
-            <span className={`${styles.skeletonBlock} ${styles.skeletonStat}`} />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonAvatar}`}
+            />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonAuthor}`}
+            />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonStat}`}
+            />
           </div>
         </header>
 
         <hr className={styles.divider} />
 
         <div className={styles.postBody}>
-          <span className={`${styles.skeletonBlock} ${styles.skeletonLine}`} />
-          <span className={`${styles.skeletonBlock} ${styles.skeletonLine}`} />
-          <span className={`${styles.skeletonBlock} ${styles.skeletonShortLine}`} />
+          <span
+            className={`${styles.skeletonBlock} ${styles.skeletonLine}`}
+          />
+          <span
+            className={`${styles.skeletonBlock} ${styles.skeletonLine}`}
+          />
+          <span
+            className={`${styles.skeletonBlock} ${styles.skeletonShortLine}`}
+          />
         </div>
       </article>
 
       <section className={styles.answerSection}>
-        <span className={`${styles.skeletonBlock} ${styles.skeletonAnswerLabel}`} />
+        <span
+          className={`${styles.skeletonBlock} ${styles.skeletonAnswerLabel}`}
+        />
         <article className={styles.answerCard}>
           <header className={styles.answerHeader}>
-            <span className={`${styles.skeletonBlock} ${styles.skeletonAvatar}`} />
-            <span className={`${styles.skeletonBlock} ${styles.skeletonAuthor}`} />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonAvatar}`}
+            />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonAuthor}`}
+            />
           </header>
           <div className={styles.answerBody}>
-            <span className={`${styles.skeletonBlock} ${styles.skeletonLine}`} />
-            <span className={`${styles.skeletonBlock} ${styles.skeletonShortLine}`} />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonLine}`}
+            />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonShortLine}`}
+            />
           </div>
         </article>
       </section>

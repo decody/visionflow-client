@@ -8,13 +8,15 @@ export type AdminAlarmItem = {
   message: string;
   severity: 'info' | 'warning' | 'danger';
   title: string;
-  type: 'general' | 'partnership' | 'quote';
+  type: 'general' | 'partnership' | 'qna' | 'quote';
 };
 
 export type AdminAlarmsResponse = {
   counts: {
     generalPending: number;
     partnershipPending: number;
+    qnaPending: number;
+    quoteOpen: number;
     quoteOverdue: number;
     quotePending: number;
     total: number;
@@ -26,6 +28,8 @@ const EMPTY_ALARMS: AdminAlarmsResponse = {
   counts: {
     generalPending: 0,
     partnershipPending: 0,
+    qnaPending: 0,
+    quoteOpen: 0,
     quoteOverdue: 0,
     quotePending: 0,
     total: 0,

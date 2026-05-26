@@ -160,15 +160,15 @@ export async function POST(request: NextRequest) {
       payload.authorName ??
       ''
     ).trim();
-    const category = payload.category?.trim() || '서비스 일반';
+    const category = payload.category?.trim();
     const content = payload.content?.trim();
     const isSecret = payload.isSecret === true;
     const password = payload.password?.trim();
     const title = payload.title?.trim();
 
-    if (!author || !title || !content) {
+    if (!author || !category || !title || !content) {
       return jsonError(
-        'author, title, and content are required.',
+        'author, category, title, and content are required.',
         400,
       );
     }

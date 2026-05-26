@@ -16,7 +16,18 @@ type AlarmItem = {
   message: string;
   severity: 'info' | 'warning' | 'danger';
   title: string;
-  type: 'general' | 'partnership' | 'quote';
+  type: 'general' | 'partnership' | 'qna' | 'quote';
+};
+
+type QnaAlarmRow = {
+  answer?: string | null;
+  author_name?: string | null;
+  created_at?: string | null;
+  id: string | number;
+  is_notice?: boolean | null;
+  question?: string | null;
+  status?: string | null;
+  title?: string | null;
 };
 
 const jsonError = (
@@ -37,6 +48,14 @@ const isOverdue = (createdAt: string | null | undefined, hours: number) => {
   return time > 0 && Date.now() - time >= hours * 60 * 60 * 1000;
 };
 
+const isPendingQna = (row: QnaAlarmRow) => {
+  if (row.is_notice === true || row.answer?.trim()) {
+    return false;
+  }
+
+  return row.status !== 'done' && row.status !== 'resolved';
+};
+
 export async function GET(_request: NextRequest) {
   const session = await auth();
 
@@ -49,29 +68,41 @@ export async function GET(_request: NextRequest) {
   }
 
   try {
-    const [quickResult, partnershipResult, quoteResult] = await Promise.all([
-      supabaseAdmin
-        .from('quick_inquiries')
-        .select('id,name,email,subject,status,created_at')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(20),
-      supabaseAdmin
-        .from('partnership_inquiries')
-        .select('id,company_name,contact_name,status,created_at')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(20),
-      supabaseAdmin
-        .from('quote_inquiries')
-        .select('id,company_name,contact_name,status,created_at')
-        .in('status', ['pending', 'reviewing'])
-        .order('created_at', { ascending: false })
-        .limit(30),
-    ]);
+    const [quickResult, partnershipResult, quoteResult, qnaResult] =
+      await Promise.all([
+        supabaseAdmin
+          .from('quick_inquiries')
+          .select('id,name,email,subject,status,created_at')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(20),
+        supabaseAdmin
+          .from('partnership_inquiries')
+          .select('id,company_name,contact_name,status,created_at')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(20),
+        supabaseAdmin
+          .from('quote_inquiries')
+          .select('id,company_name,contact_name,status,created_at')
+          .in('status', ['pending', 'reviewing'])
+          .order('created_at', { ascending: false })
+          .limit(30),
+        supabaseAdmin
+          .from('qna')
+          .select(
+            'id,title,question,author_name,status,answer,is_notice,created_at',
+          )
+          .or('is_notice.is.false,is_notice.is.null')
+          .order('created_at', { ascending: false })
+          .limit(500),
+      ]);
 
     const firstError =
-      quickResult.error ?? partnershipResult.error ?? quoteResult.error;
+      quickResult.error ??
+      partnershipResult.error ??
+      quoteResult.error ??
+      qnaResult.error;
 
     if (firstError) {
       return jsonError('Failed to load admin alarms.', 502, firstError);
@@ -80,6 +111,16 @@ export async function GET(_request: NextRequest) {
     const quickRows = quickResult.data ?? [];
     const partnershipRows = partnershipResult.data ?? [];
     const quoteRows = quoteResult.data ?? [];
+    const pendingQnaRows = ((qnaResult.data ?? []) as QnaAlarmRow[]).filter(
+      isPendingQna,
+    );
+    const qnaAlarmRows = pendingQnaRows.slice(0, 30);
+
+    const totalCount =
+      quickRows.length +
+      partnershipRows.length +
+      pendingQnaRows.length +
+      quoteRows.length;
 
     const items: AlarmItem[] = [
       ...quickRows.map((row) => ({
@@ -128,8 +169,28 @@ export async function GET(_request: NextRequest) {
             : '새 견적 문의',
         type: 'quote' as const,
       })),
+      ...qnaAlarmRows.map((row) => {
+        const rowTitle =
+          row.title?.trim() || row.question?.trim() || '제목 없음';
+        const author = row.author_name?.trim() || '익명';
+        const overdue = isOverdue(row.created_at, 48);
+
+        return {
+          created_at: row.created_at ?? '',
+          entity_id: String(row.id),
+          href: ROUTES.ADMIN.QNA.DETAIL(row.id),
+          id: `qna-${row.id}`,
+          message: `${author} · ${rowTitle}`,
+          severity: (overdue ? 'danger' : 'info') as AlarmItem['severity'],
+          title: overdue ? 'Q&A 답변 SLA 초과' : '새 Q&A 답변 대기',
+          type: 'qna' as const,
+        };
+      }),
     ]
-      .sort((a, b) => getCreatedAtTime(b.created_at) - getCreatedAtTime(a.created_at))
+      .sort(
+        (a, b) =>
+          getCreatedAtTime(b.created_at) - getCreatedAtTime(a.created_at),
+      )
       .slice(0, 20);
 
     const quotePendingCount = quoteRows.filter(
@@ -143,9 +204,11 @@ export async function GET(_request: NextRequest) {
       counts: {
         generalPending: quickRows.length,
         partnershipPending: partnershipRows.length,
+        qnaPending: pendingQnaRows.length,
+        quoteOpen: quoteRows.length,
         quoteOverdue: quoteOverdueCount,
         quotePending: quotePendingCount,
-        total: items.length,
+        total: totalCount,
       },
       items,
     });

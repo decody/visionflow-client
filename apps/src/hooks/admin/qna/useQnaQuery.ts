@@ -101,6 +101,7 @@ export const useDeleteQnaMutation = () => {
     mutationFn: deleteQna,
     onSuccess: async (_data, id) => {
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-alarms'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'qna-list'] }),
         queryClient.removeQueries({ queryKey: ['admin', 'qna-detail', id] }),
       ]);

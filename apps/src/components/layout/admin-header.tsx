@@ -20,13 +20,19 @@ import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 
 import { useAdminAlarmsQuery } from '@/hooks/admin/alarms/useAdminAlarmsQuery';
-import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
 import { usePartnershipListQuery } from '@/hooks/admin/contact/partnership/usePartnershipQuery';
+import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
+import { useQuoteRequestListQuery } from '@/hooks/admin/contact/quote/useQuoteRequestQuery';
+import { useAdminQnaListQuery } from '@/hooks/admin/qna/useQnaQuery';
 import { LogoMark } from '../brand/logo-mark';
 import styles from './admin-shell.module.css';
 
 type NavItem = {
-  badgeKey?: 'generalInquiryPending' | 'partnershipPending' | 'quotePending';
+  badgeKey?:
+    | 'generalInquiryPending'
+    | 'partnershipPending'
+    | 'qnaPending'
+    | 'quoteOpen';
   badge?: number;
   href: string;
   icon: LucideIcon;
@@ -54,7 +60,7 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
     title: 'CONTENTS',
     items: [
       {
-        badge: 12,
+        badgeKey: 'qnaPending',
         href: ROUTES.ADMIN.QNA.ROOT,
         icon: MessageCircleQuestionMarkIcon,
         label: 'Q&A',
@@ -72,7 +78,7 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
         label: 'General Inquiry',
       },
       {
-        badgeKey: 'quotePending',
+        badgeKey: 'quoteOpen',
         href: ROUTES.ADMIN.QUOTE_REQUEST.ROOT,
         icon: FileText,
         label: 'Quote Request',
@@ -111,6 +117,12 @@ export function AdminHeader() {
   const pathname = usePathname();
   const { data: quicks } = useQuickListQuery();
   const { data: partnerships } = usePartnershipListQuery();
+  const { data: qnas } = useAdminQnaListQuery({
+    limit: 500,
+    offset: 0,
+    status: 'all',
+  });
+  const { data: quoteRequests } = useQuoteRequestListQuery();
   const { data: alarms } = useAdminAlarmsQuery();
   const pendingGeneralInquiryCount = useMemo(
     () =>
@@ -128,6 +140,28 @@ export function AdminHeader() {
         : 0,
     [partnerships],
   );
+  const pendingQnaCount = useMemo(() => {
+    const rows = qnas?.data;
+
+    if (!Array.isArray(rows)) {
+      return alarms?.counts.qnaPending ?? 0;
+    }
+
+    return rows.filter(
+      (qna) =>
+        !qna.answer?.trim() &&
+        qna.status !== 'done' &&
+        qna.status !== 'resolved',
+    ).length;
+  }, [alarms?.counts.qnaPending, qnas?.data]);
+  const openQuoteRequestCount = useMemo(() => {
+    if (!Array.isArray(quoteRequests)) {
+      return alarms?.counts.quotePending ?? 0;
+    }
+
+    return quoteRequests.filter((quote) => quote.status === 'pending')
+      .length;
+  }, [alarms?.counts.quoteOpen, quoteRequests]);
 
   const getBadge = (item: NavItem) => {
     if (item.badgeKey === 'generalInquiryPending') {
@@ -138,8 +172,12 @@ export function AdminHeader() {
       return pendingPartnershipCount;
     }
 
-    if (item.badgeKey === 'quotePending') {
-      return alarms?.counts.quotePending ?? 0;
+    if (item.badgeKey === 'quoteOpen') {
+      return openQuoteRequestCount;
+    }
+
+    if (item.badgeKey === 'qnaPending') {
+      return pendingQnaCount;
     }
 
     return item.badge ?? 0;

@@ -10,11 +10,11 @@ import { Container } from '@/components/common/container';
 import { useCreateQnaMutation } from '@/hooks/qna/useCreateQnaMutation';
 import styles from '../contact-general-page.module.css';
 
-const categories = ['전체', '공지', '서비스 일반'];
+const categoryOptions = ['공지', '서비스 일반'];
 
 const initialForm = {
   author: '',
-  category: '전체',
+  category: '',
   content: '',
   isSecret: false,
   password: '',
@@ -48,12 +48,13 @@ export function ContactGeneralWritePage() {
     event.preventDefault();
 
     const author = form.author.trim();
+    const category = form.category.trim();
     const title = form.title.trim();
     const content = form.content.trim();
     const password = form.password.trim();
 
-    if (!author || !title || !content) {
-      setMessage('작성자, 제목, 내용을 입력해 주세요.');
+    if (!author || !category || !title || !content) {
+      setMessage('작성자, 카테고리, 제목, 내용을 입력해 주세요.');
       return;
     }
 
@@ -65,7 +66,7 @@ export function ContactGeneralWritePage() {
     try {
       await createQnaMutation.mutateAsync({
         author,
-        category: form.category,
+        category,
         content,
         isSecret: form.isSecret,
         password: form.isSecret ? password : undefined,
@@ -141,16 +142,20 @@ export function ContactGeneralWritePage() {
                   className={styles.formLabel}
                   htmlFor="qna-category"
                 >
-                  카테고리
+                  카테고리 <span className={styles.formRequired}>*</span>
                 </label>
                 <select
                   className={styles.formSelect}
                   id="qna-category"
                   name="category"
                   onChange={handleChange}
+                  required
                   value={form.category}
                 >
-                  {categories.map((category) => (
+                  <option disabled value="">
+                    카테고리를 선택해 주세요
+                  </option>
+                  {categoryOptions.map((category) => (
                     <option key={category} value={category}>
                       {category}
                     </option>
