@@ -1010,6 +1010,129 @@
   box-shadow: var(--shadow-cta);
 }
 
+.submitButton:disabled,
+.slaButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+.detailTabs {
+  margin-bottom: -8px;
+}
+
+.rawContent,
+.previewBox {
+  overflow: auto;
+  margin: 0;
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--fs-small);
+  line-height: var(--lh-relaxed);
+  white-space: pre-wrap;
+}
+
+.previewBox {
+  max-height: 720px;
+}
+
+.quoteForm {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.formField {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+}
+
+.formField > span {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-wider);
+  text-transform: uppercase;
+}
+
+.lineEdit {
+  display: grid;
+  gap: 6px;
+}
+
+.policyText {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-caption);
+}
+
+.memoEditor {
+  width: 100%;
+  min-height: 220px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--fs-small);
+  line-height: var(--lh-relaxed);
+  resize: vertical;
+}
+
+.memoEditor:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.logList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.logList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+.logIcon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.logList strong {
+  display: block;
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+}
+
+.logList span {
+  color: var(--color-text-secondary);
+  font-size: var(--fs-caption);
+}
+
 @media (max-width: 1280px) {
   .contentGrid {
     grid-template-columns: minmax(0, 1fr);

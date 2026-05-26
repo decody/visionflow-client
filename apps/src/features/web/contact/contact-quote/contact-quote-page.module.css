@@ -1,0 +1,852 @@
+.hero,
+.quoteFlow,
+.processSection {
+  background: var(--color-surface);
+}
+
+.referenceSection {
+  background: var(--color-bg);
+}
+
+.hero {
+  padding: 96px 0 72px;
+}
+
+.quoteFlow {
+  padding: 64px 0 80px;
+}
+
+.referenceSection,
+.processSection {
+  padding: 96px 0;
+}
+
+.heroInner,
+.sectionHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.heroInner {
+  gap: 18px;
+}
+
+.sectionHead {
+  gap: 12px;
+  margin-bottom: 48px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 4px 10px;
+  background: var(--color-primary-softer);
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+}
+
+.heroTitle,
+.sectionHead h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 32px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0;
+  line-height: 1.32;
+}
+
+.heroSub,
+.sectionHead p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-body);
+  line-height: 1.7;
+}
+
+.heroBadges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.heroBadges span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 6px 12px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: #667085;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(700px, 100%);
+  margin: 0 auto 34px;
+  padding: 0;
+  list-style: none;
+}
+
+.stepperItem {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-disabled-text);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+}
+
+.stepCircle {
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-disabled-text);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+}
+
+.stepLine {
+  position: absolute;
+  top: 16px;
+  left: calc(50% + 24px);
+  width: calc(100% - 48px);
+  height: 2px;
+  background: var(--color-border);
+}
+
+.stepperItemCurrent,
+.stepperItemDone {
+  color: var(--color-text);
+}
+
+.stepperItemCurrent .stepCircle {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+  box-shadow: 0 8px 18px rgba(0, 79, 255, 0.24);
+}
+
+.stepperItemDone .stepCircle {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--color-bg);
+}
+
+.stepperItemDone .stepLine {
+  background: var(--color-success);
+}
+
+.formCard {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 40px 44px 34px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.stepPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.stepLabel {
+  color: var(--color-primary);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+}
+
+.stepPanel h2 {
+  margin: -14px 0 0;
+  color: var(--color-text);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+.stepDesc {
+  margin: -16px 0 2px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-small);
+  line-height: 1.55;
+}
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.fieldset legend,
+.field > span {
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-bold);
+}
+
+.fieldset legend span,
+.field i {
+  color: var(--color-danger);
+  font-style: normal;
+}
+
+.serviceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.serviceOption {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px 1fr 22px;
+  gap: 12px;
+  align-items: center;
+  min-height: 74px;
+  padding: 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    background var(--transition-base);
+}
+
+.serviceOption:hover {
+  background: var(--color-surface);
+}
+
+.serviceOptionActive {
+  background: var(--color-primary-softer);
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.serviceIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.serviceOption strong {
+  display: block;
+  color: var(--color-text);
+  font-size: var(--fs-small);
+}
+
+.serviceOption small {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-micro);
+  line-height: 1.35;
+}
+
+.optionCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: transparent;
+}
+
+.serviceOptionActive .optionCheck {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.segmentGroup {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.segment,
+.chip {
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
+}
+
+.segment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 54px;
+  padding: 9px 8px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.segment strong {
+  color: var(--color-text);
+  font-size: var(--fs-small);
+}
+
+.segment small {
+  margin-top: 3px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-tiny);
+}
+
+.segmentActive,
+.chipActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.segmentActive strong,
+.segmentActive small {
+  color: var(--color-on-primary);
+}
+
+.chipGroup,
+.channelGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip,
+.channelGroup button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 8px 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  transition:
+    background var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
+}
+
+.chipActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.field input,
+.field textarea,
+.urlInput input {
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--fs-small);
+  outline: none;
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base);
+}
+
+.field input,
+.urlInput input {
+  height: 42px;
+  padding: 0 12px;
+}
+
+.field textarea {
+  min-height: 170px;
+  padding: 14px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.field input:focus,
+.field textarea:focus,
+.urlInput:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.field small {
+  color: var(--color-text-secondary);
+  font-size: var(--fs-tiny);
+}
+
+.referenceInputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.urlInput {
+  display: grid;
+  grid-template-columns: 20px 1fr 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.urlInput input {
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.urlInput button,
+.filePill button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.inlineButton {
+  align-self: center;
+  padding: 5px 12px;
+  background: transparent;
+  border: 0;
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+}
+
+.dropZone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 16px;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: center;
+}
+
+.dropZone strong {
+  color: var(--color-text);
+  font-size: var(--fs-small);
+}
+
+.dropZone input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.filePill {
+  display: grid;
+  grid-template-columns: 24px 1fr 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.filePill strong,
+.filePill small {
+  display: block;
+}
+
+.filePill strong {
+  color: var(--color-text);
+  font-size: var(--fs-small);
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.channelActive {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-on-primary) !important;
+}
+
+.checkboxRow {
+  display: grid;
+  grid-template-columns: 20px auto 1fr;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkboxRow input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkboxRow > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+}
+
+.checkboxRow input:checked + span {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.checkboxRow input:checked + span::after {
+  width: 8px;
+  height: 4px;
+  border-bottom: 2px solid #fff;
+  border-left: 2px solid #fff;
+  content: '';
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+.checkboxRow strong {
+  color: var(--color-text);
+  font-size: var(--fs-small);
+}
+
+.checkboxRow small {
+  color: var(--color-text-secondary);
+  font-size: var(--fs-tiny);
+}
+
+.formFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.requiredHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-micro);
+}
+
+.requiredHint span {
+  width: 7px;
+  height: 7px;
+  background: var(--color-success);
+  border-radius: 50%;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-bold);
+}
+
+.primaryButton {
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.secondaryButton {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.formNotice {
+  margin: 22px 0 0;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-bold);
+  line-height: 1.5;
+}
+
+.formNoticeSuccess {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #047857;
+}
+
+.formNoticeError {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: var(--color-danger);
+}
+
+.referenceGrid,
+.processGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.priceCard,
+.processCard {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.priceCard {
+  min-height: 250px;
+  padding: 24px;
+}
+
+.priceTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: var(--color-primary-softer);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  font-size: var(--fs-tiny);
+  font-weight: var(--fw-bold);
+}
+
+.priceCard h3 {
+  margin: 18px 0 8px;
+  color: var(--color-text);
+  font-size: var(--fs-body);
+}
+
+.priceCard strong {
+  display: block;
+  color: var(--color-primary);
+  font-size: var(--fs-h3);
+  line-height: 1.3;
+}
+
+.priceCard ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.priceCard li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-small);
+}
+
+.referenceNote {
+  margin: 28px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-micro);
+  text-align: center;
+}
+
+.processGrid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.processCard {
+  min-height: 190px;
+  padding: 24px;
+}
+
+.processNo {
+  display: inline-flex;
+  padding: 4px 8px;
+  background: var(--color-primary-softer);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+}
+
+.processCard h3 {
+  margin: 18px 0 10px;
+  color: var(--color-text);
+  font-size: var(--fs-body);
+}
+
+.processCard p {
+  min-height: 48px;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+
+.processTime {
+  display: inline-flex;
+  margin-top: 18px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-micro);
+}
+
+@media (max-width: 1279px) {
+  .referenceGrid,
+  .processGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .hero {
+    padding: 64px 0 48px;
+  }
+
+  .quoteFlow,
+  .referenceSection,
+  .processSection {
+    padding: 56px 0;
+  }
+
+  .heroTitle,
+  .sectionHead h2 {
+    font-size: 26px;
+  }
+
+  .formCard {
+    padding: 28px 20px 24px;
+  }
+
+  .stepper {
+    margin-bottom: 24px;
+  }
+
+  .stepperItem {
+    font-size: var(--fs-tiny);
+  }
+
+  .stepCircle {
+    width: 28px;
+    height: 28px;
+  }
+
+  .stepLine {
+    top: 14px;
+  }
+
+  .serviceGrid,
+  .segmentGroup,
+  .twoCol,
+  .referenceGrid,
+  .processGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .formActions {
+    flex-direction: column-reverse;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+  }
+}

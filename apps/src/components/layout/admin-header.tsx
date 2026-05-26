@@ -19,13 +19,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 
+import { useAdminAlarmsQuery } from '@/hooks/admin/alarms/useAdminAlarmsQuery';
 import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
 import { usePartnershipListQuery } from '@/hooks/admin/contact/partnership/usePartnershipQuery';
 import { LogoMark } from '../brand/logo-mark';
 import styles from './admin-shell.module.css';
 
 type NavItem = {
-  badgeKey?: 'generalInquiryPending' | 'partnershipPending';
+  badgeKey?: 'generalInquiryPending' | 'partnershipPending' | 'quotePending';
   badge?: number;
   href: string;
   icon: LucideIcon;
@@ -71,7 +72,7 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
         label: 'General Inquiry',
       },
       {
-        badge: 3,
+        badgeKey: 'quotePending',
         href: ROUTES.ADMIN.QUOTE_REQUEST.ROOT,
         icon: FileText,
         label: 'Quote Request',
@@ -110,6 +111,7 @@ export function AdminHeader() {
   const pathname = usePathname();
   const { data: quicks } = useQuickListQuery();
   const { data: partnerships } = usePartnershipListQuery();
+  const { data: alarms } = useAdminAlarmsQuery();
   const pendingGeneralInquiryCount = useMemo(
     () =>
       Array.isArray(quicks)
@@ -134,6 +136,10 @@ export function AdminHeader() {
 
     if (item.badgeKey === 'partnershipPending') {
       return pendingPartnershipCount;
+    }
+
+    if (item.badgeKey === 'quotePending') {
+      return alarms?.counts.quotePending ?? 0;
     }
 
     return item.badge ?? 0;

@@ -14,6 +14,11 @@ export type {
   PartnershipInquiryStatus,
   PartnershipInquiryType,
 } from './types/contact/partnership';
+export type {
+  IQuoteInquiry,
+  IQuoteInquiryListResponse,
+  QuoteInquiryStatus,
+} from './types/contact/quote';
 export type { AuthAuditLog, AuthAuditStatus } from './types/auth';
 export type { ICreateFaqRequest, IFaq } from './types/faq';
 export type {
