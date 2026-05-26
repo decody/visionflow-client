@@ -282,6 +282,190 @@
   background: var(--color-primary-dark);
 }
 
+.passwordOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.passwordDialog {
+  display: grid;
+  gap: 14px;
+  width: min(440px, 100%);
+  padding: 28px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+}
+
+.passwordDialogIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  background: rgba(70, 74, 77, 0.08);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: #464a4d;
+}
+
+.passwordDialogText {
+  display: grid;
+  gap: 6px;
+}
+
+.passwordDialogKicker,
+.passwordDialogText h2,
+.passwordDialogText p,
+.passwordDialogMessage {
+  margin: 0;
+}
+
+.passwordDialogKicker {
+  color: var(--color-primary);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+}
+
+.passwordDialogText h2 {
+  color: var(--color-text);
+  font-size: 22px;
+  font-weight: var(--fw-bold);
+  line-height: 1.35;
+}
+
+.passwordDialogText p {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.passwordDialogLabel {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+}
+
+.passwordDialogInput {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font: inherit;
+  outline: none;
+}
+
+.passwordDialogInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.passwordDialogMessage {
+  color: var(--color-danger);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+}
+
+.passwordDialogActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.passwordDialogCancel,
+.passwordDialogSubmit {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+}
+
+.passwordDialogCancel {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.passwordDialogSubmit {
+  background: var(--color-primary);
+  border: 0;
+  color: var(--color-on-primary);
+}
+
+.passwordDialogSubmit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.skeletonRow {
+  pointer-events: none;
+}
+
+.skeletonBlock {
+  display: inline-block;
+  height: 14px;
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.72) 0%,
+    rgba(248, 250, 252, 0.95) 48%,
+    rgba(226, 232, 240, 0.72) 100%
+  );
+  background-size: 220% 100%;
+  border-radius: var(--radius-pill);
+  animation: qnaSkeleton 1.25s ease-in-out infinite;
+}
+
+.skeletonNo {
+  width: 28px;
+}
+
+.skeletonStatus {
+  width: 72px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+}
+
+.skeletonTitle {
+  width: min(46vw, 360px);
+}
+
+.skeletonAuthor {
+  width: 64px;
+}
+
+.skeletonDate {
+  width: 82px;
+}
+
+.skeletonMetric {
+  width: 38px;
+}
+
+@keyframes qnaSkeleton {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
 /* === Table === */
 .table {
   background: var(--color-bg);
@@ -362,6 +546,20 @@
 }
 
 .titleTextNotice {
+  font-weight: var(--fw-bold);
+}
+
+.secretBadge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 3px 7px;
+  background: rgba(70, 74, 77, 0.08);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  color: #464a4d;
+  font-size: 11px;
   font-weight: var(--fw-bold);
 }
 
@@ -551,7 +749,8 @@
 .formSelect {
   height: 44px;
   appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--color-muted) 50%),
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-muted) 50%),
     linear-gradient(135deg, var(--color-muted) 50%, transparent 50%);
   background-position:
     calc(100% - 18px) 18px,

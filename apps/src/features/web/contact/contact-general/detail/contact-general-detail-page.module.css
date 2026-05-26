@@ -120,9 +120,28 @@
   color: var(--color-success);
 }
 
+.status_pending,
+.status_progress {
+  background: rgba(0, 79, 255, 0.1);
+  color: var(--color-primary);
+}
+
 .categoryBadge {
   background: rgba(0, 79, 255, 0.08);
   color: var(--color-primary);
+}
+
+.secretBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(70, 74, 77, 0.08);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  color: #464a4d;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
 }
 
 .postNo {
@@ -248,6 +267,220 @@
   font-size: 15px;
   line-height: 1.75;
   white-space: pre-line;
+}
+
+.stateCard,
+.passwordCard {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  color: #464a4d;
+  margin-bottom: var(--space-8);
+}
+
+.stateCard {
+  padding: 40px 48px;
+  text-align: center;
+}
+
+.skeletonWrap {
+  display: block;
+}
+
+.skeletonBlock {
+  display: block;
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    #eef2f6 0%,
+    #f8fafc 50%,
+    #eef2f6 100%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius-sm);
+  animation: qnaDetailSkeleton 1.25s ease-in-out infinite;
+}
+
+.skeletonBadges,
+.skeletonMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.skeletonBadges {
+  flex-wrap: wrap;
+}
+
+.skeletonBadge {
+  width: 76px;
+  height: 24px;
+}
+
+.skeletonNo {
+  width: 64px;
+  height: 18px;
+  margin-left: auto;
+}
+
+.skeletonTitle {
+  width: min(720px, 86%);
+  height: 36px;
+}
+
+.skeletonAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+}
+
+.skeletonAuthor {
+  width: 180px;
+  height: 32px;
+}
+
+.skeletonStat {
+  width: 128px;
+  height: 24px;
+  margin-left: auto;
+}
+
+.skeletonLine {
+  width: min(840px, 100%);
+  height: 18px;
+}
+
+.skeletonShortLine {
+  width: min(560px, 72%);
+  height: 18px;
+}
+
+.skeletonAnswerLabel {
+  align-self: center;
+  width: 112px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+}
+
+@keyframes qnaDetailSkeleton {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.passwordCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(280px, 360px);
+  gap: var(--space-6);
+  align-items: center;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1000;
+  width: min(920px, calc(100vw - 32px));
+  padding: 40px 48px;
+  box-shadow:
+    0 24px 70px rgba(15, 23, 42, 0.22),
+    0 0 0 100vmax rgba(15, 23, 42, 0.48);
+  transform: translate(-50%, -50%);
+}
+
+.passwordIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: rgba(70, 74, 77, 0.08);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: #464a4d;
+}
+
+.passwordText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.passwordKicker {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+}
+
+.passwordText h1,
+.passwordText p {
+  margin: 0;
+}
+
+.passwordText h1 {
+  color: var(--color-text);
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.passwordText p {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.passwordForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.passwordLabel {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+}
+
+.passwordInput {
+  width: 100%;
+  height: 42px;
+  padding: 0 var(--space-3);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font: inherit;
+  outline: none;
+}
+
+.passwordInput:focus {
+  border-color: var(--color-primary);
+}
+
+.passwordMessage {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+}
+
+.passwordSubmit {
+  height: 42px;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+}
+
+.passwordSubmit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .attachLabel {
@@ -1051,6 +1284,12 @@
   }
   .commentFormRow {
     grid-template-columns: 1fr;
+  }
+  .passwordCard {
+    grid-template-columns: 1fr;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    padding: 28px 24px;
   }
   .commentFormFooter {
     flex-direction: column;

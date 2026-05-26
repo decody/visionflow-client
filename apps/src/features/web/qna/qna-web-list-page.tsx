@@ -4,7 +4,14 @@ import { ROUTES } from '@visionflow/routes';
 import type { IQna } from '@visionflow/shared';
 import { Eye, Lock, MessageCircle, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type MouseEvent,
+} from 'react';
 
 import { Container } from '@/components/common/container';
 import {
@@ -42,8 +49,7 @@ const NOTICE_CATEGORY = '공지';
 const DEFAULT_CATEGORY = '서비스 일반';
 const DEFAULT_AUTHOR = '익명';
 const PAGE_SIZE = 10;
-const PUBLIC_DETAIL_PATH = `${ROUTES.CONTACT.ROOT}/general/detail`;
-const SECRET_DETAIL_PATH = `${ROUTES.CONTACT.ROOT}/general/detail/secret`;
+const DETAIL_PATH = `${ROUTES.CONTACT.ROOT}/general/detail`;
 const KNOWN_CATEGORIES = [DEFAULT_CATEGORY] as const;
 const EMPTY_QNAS: IQna[] = [];
 
@@ -60,9 +66,19 @@ const statusClass: Record<PostStatus, string> = {
 };
 
 export function QnaWebListPage() {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState(ALL_CATEGORY);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [password, setPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(
+    null,
+  );
+  const [verifyingPost, setVerifyingPost] = useState<BoardPost | null>(
+    null,
+  );
+  const [isVerifying, setIsVerifying] = useState(false);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   const { data: qnaNoticeResponse, isLoading: isQnaNoticeLoading } =
     useQnaNoticeListQuery();
   const qnaNotices = qnaNoticeResponse ?? EMPTY_QNAS;
@@ -72,7 +88,11 @@ export function QnaWebListPage() {
       qnaNotices
         .filter((qna) => isVisibleQna(qna))
         .filter((qna) =>
-          matchesNoticeFilter(qna, activeCategory, normalizedSearchTerm),
+          matchesNoticeFilter(
+            qna,
+            activeCategory,
+            normalizedSearchTerm,
+          ),
         ),
     [activeCategory, normalizedSearchTerm, qnaNotices],
   );
@@ -172,6 +192,77 @@ export function QnaWebListPage() {
   const totalPages = Math.max(1, Math.ceil(pageCountBasis));
   const isLoading = isQnaLoading || isQnaNoticeLoading;
 
+  const closePasswordDialog = () => {
+    setVerifyingPost(null);
+    setPassword('');
+    setPasswordMessage(null);
+  };
+
+  const openPasswordDialog = (post: BoardPost) => {
+    setVerifyingPost(post);
+    setPassword('');
+    setPasswordMessage(null);
+    window.setTimeout(() => passwordInputRef.current?.focus(), 0);
+  };
+
+  const handleProtectedPostClick = (
+    event: MouseEvent<HTMLAnchorElement>,
+    post: BoardPost,
+  ) => {
+    if (!post.locked) {
+      return;
+    }
+
+    event.preventDefault();
+    openPasswordDialog(post);
+  };
+
+  const handlePasswordSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    if (!verifyingPost) {
+      return;
+    }
+
+    if (!password.trim()) {
+      setPasswordMessage('비밀번호를 입력해 주세요.');
+      return;
+    }
+
+    setIsVerifying(true);
+    setPasswordMessage(null);
+
+    try {
+      const response = await fetch(`/api/qna/${verifyingPost.id}/verify`, {
+        body: JSON.stringify({ password }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('비밀번호가 일치하지 않습니다.');
+      }
+
+      const data = (await response.json()) as { qna: IQna };
+      window.sessionStorage.setItem(
+        `qna-verified:${verifyingPost.id}`,
+        JSON.stringify(data.qna),
+      );
+      router.push(verifyingPost.detailHref);
+      closePasswordDialog();
+    } catch (error) {
+      setPasswordMessage(
+        error instanceof Error
+          ? error.message
+          : '비밀번호 확인 중 문제가 발생했습니다.',
+      );
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   return (
     <section className={styles.board} id="board">
       <Container>
@@ -234,7 +325,7 @@ export function QnaWebListPage() {
             <span className={styles.thCenter}>댓글</span>
           </div>
           {isLoading ? (
-            <BoardStateRow message="Q&A를 불러오는 중입니다." />
+            <BoardSkeletonRows />
           ) : null}
           {!isLoading && posts.length === 0 ? (
             <BoardStateRow message="등록된 Q&A가 없습니다." />
@@ -264,15 +355,21 @@ export function QnaWebListPage() {
                     <Link
                       className={`${styles.titleText} ${post.isNotice ? styles.titleTextNotice : ''}`}
                       href={post.detailHref}
+                      onClick={(event) =>
+                        handleProtectedPostClick(event, post)
+                      }
                     >
                       {post.title}
                     </Link>
                     {post.locked ? (
-                      <Lock
-                        aria-hidden="true"
-                        size={13}
-                        strokeWidth={2.2}
-                      />
+                      <span className={styles.secretBadge}>
+                        <Lock
+                          aria-hidden="true"
+                          size={12}
+                          strokeWidth={2.2}
+                        />
+                        비밀글
+                      </span>
                     ) : null}
                     {post.isNew ? (
                       <span className={styles.newBadge}>NEW</span>
@@ -354,6 +451,68 @@ export function QnaWebListPage() {
           </nav>
         ) : null}
       </Container>
+      {verifyingPost ? (
+        <div
+          aria-labelledby="qna-password-dialog-title"
+          aria-modal="true"
+          className={styles.passwordOverlay}
+          role="dialog"
+        >
+          <form
+            className={styles.passwordDialog}
+            onSubmit={handlePasswordSubmit}
+          >
+            <div className={styles.passwordDialogIcon}>
+              <Lock aria-hidden="true" size={24} />
+            </div>
+            <div className={styles.passwordDialogText}>
+              <p className={styles.passwordDialogKicker}>비밀글</p>
+              <h2 id="qna-password-dialog-title">
+                비밀번호를 입력해 주세요.
+              </h2>
+              <p>{verifyingPost.title}</p>
+            </div>
+            <label
+              className={styles.passwordDialogLabel}
+              htmlFor="qna-list-password"
+            >
+              비밀번호
+            </label>
+            <input
+              autoComplete="current-password"
+              className={styles.passwordDialogInput}
+              id="qna-list-password"
+              maxLength={24}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="작성 시 입력한 비밀번호"
+              ref={passwordInputRef}
+              type="password"
+              value={password}
+            />
+            {passwordMessage ? (
+              <p className={styles.passwordDialogMessage}>
+                {passwordMessage}
+              </p>
+            ) : null}
+            <div className={styles.passwordDialogActions}>
+              <button
+                className={styles.passwordDialogCancel}
+                onClick={closePasswordDialog}
+                type="button"
+              >
+                취소
+              </button>
+              <button
+                className={styles.passwordDialogSubmit}
+                disabled={isVerifying}
+                type="submit"
+              >
+                {isVerifying ? '확인 중' : '확인'}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -370,6 +529,51 @@ function BoardStateRow({ message }: { message: string }) {
       <span className={styles.cellViews}>-</span>
       <span className={styles.cellReplies}>-</span>
     </div>
+  );
+}
+
+function BoardSkeletonRows() {
+  return (
+    <>
+      {Array.from({ length: 5 }, (_, index) => (
+        <div
+          aria-hidden="true"
+          className={`${styles.row} ${styles.skeletonRow}`}
+          key={`qna-skeleton-${index}`}
+          role="row"
+        >
+          <span className={styles.cellNo}>
+            <span className={`${styles.skeletonBlock} ${styles.skeletonNo}`} />
+          </span>
+          <span className={styles.cellTitle}>
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonStatus}`}
+            />
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonTitle}`}
+            />
+          </span>
+          <span className={styles.cellAuthor}>
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonAuthor}`}
+            />
+          </span>
+          <span className={styles.cellDate}>
+            <span className={`${styles.skeletonBlock} ${styles.skeletonDate}`} />
+          </span>
+          <span className={styles.cellViews}>
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonMetric}`}
+            />
+          </span>
+          <span className={styles.cellReplies}>
+            <span
+              className={`${styles.skeletonBlock} ${styles.skeletonMetric}`}
+            />
+          </span>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -397,7 +601,7 @@ function toQnaPost(qna: IQna, no: number): BoardPost {
     author: getAuthor(qna),
     category: isNotice ? NOTICE_CATEGORY : getCategory(qna),
     date: formatDate(qna.created_at ?? qna.createdAt),
-    detailHref: locked ? SECRET_DETAIL_PATH : PUBLIC_DETAIL_PATH,
+    detailHref: `${DETAIL_PATH}/${qna.id}`,
     id: qna.id,
     isNew: isNewPost(qna.created_at ?? qna.createdAt),
     isNotice,

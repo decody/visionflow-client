@@ -1,11 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  apiClient,
-  type IQna,
-  type IQnaListResponse,
-} from '@visionflow/shared';
+import type { IQna, IQnaListResponse } from '@visionflow/shared';
 
 type QnaListQueryParams = {
   limit: number;
@@ -27,33 +23,38 @@ const fetchQnaList = async ({
   limit,
   offset,
 }: QnaListQueryParams): Promise<IQnaListResponse> => {
-  const { count, data } = await apiClient.get<IQna[] | null>(
-    'qna',
-    {
-      limit,
-      or: '(is_notice.is.false,is_notice.is.null)',
-      offset,
-      order: 'created_at.desc',
-    },
-    { count: 'exact' },
-  );
-  const qnas = (data ?? []).map(normalizeQna);
+  const searchParams = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const response = await fetch(`/api/qna?${searchParams.toString()}`);
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch Q&A list.');
+  }
+
+  const data = (await response.json()) as IQnaListResponse;
 
   return {
-    data: qnas,
-    limit,
-    offset,
-    total_count: count ?? offset + qnas.length,
+    ...data,
+    data: data.data.map(normalizeQna),
   };
 };
 
 const fetchQnaNoticeList = async (): Promise<IQna[]> => {
-  const { data } = await apiClient.get<IQna[] | null>('qna', {
-    isNotice: 'eq.true',
-    order: 'created_at.desc',
+  const searchParams = new URLSearchParams({
+    limit: '20',
+    notice: 'true',
   });
+  const response = await fetch(`/api/qna?${searchParams.toString()}`);
 
-  return (data ?? []).map(normalizeQna);
+  if (!response.ok) {
+    throw new Error('Failed to fetch Q&A notices.');
+  }
+
+  const data = (await response.json()) as IQnaListResponse;
+
+  return data.data.map(normalizeQna);
 };
 
 export const useQnaListQuery = (params: QnaListQueryParams) => {

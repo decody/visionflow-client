@@ -74,9 +74,11 @@ export function ContactGeneralWritePage() {
 
       router.push(`${ROUTES.CONTACT.ROOT}/general#board`);
       router.refresh();
-    } catch {
+    } catch (error) {
       setMessage(
-        'Q&A 등록 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+        error instanceof Error
+          ? error.message
+          : 'Q&A 등록 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.',
       );
     }
   };

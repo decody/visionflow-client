@@ -1,271 +1,280 @@
 'use client';
 
 import { ROUTES } from '@visionflow/routes';
+import type { IQna } from '@visionflow/shared';
 import {
   ArrowLeft,
-  ArrowRight,
-  Bold,
-  ChevronDown,
-  ChevronUp,
-  Code2,
+  CalendarDays,
+  Check,
   Eye,
-  FileText,
-  Heading1,
-  Heading2,
-  Heading3,
-  Image as ImageIcon,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  MoreHorizontal,
-  Paperclip,
-  Quote,
-  Strikethrough,
-  Timer,
-  Underline,
+  Lock,
+  MessageSquareText,
+  Trash2,
+  UserRound,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
+import { Modal, message } from 'antd';
 
+import { useTopbar } from '@/components/layout/topbar-context';
+import {
+  useAdminQnaDetailQuery,
+  useDeleteQnaMutation,
+} from '@/hooks/admin/qna/useQnaQuery';
+import { useCurrentUserRole } from '@/hooks/use-current-user-role';
+import { canManageContent } from '@/lib/admin-permissions';
 import styles from './qna-detail-page.module.css';
 
-const ATTACHMENTS = [
-  { label: 'brand-guide-v2.pdf', size: '2.4MB' },
-  { label: 'reference-mood.zip', size: '18MB' },
-];
+const getTitle = (qna: IQna) =>
+  qna.title?.trim() || qna.question?.trim() || '제목 없음';
 
-const TABS = [
-  { count: null, key: 'body' as const, label: '본문' },
-  { count: null, key: 'compose' as const, label: '답변 작성' },
-  { count: 12, key: 'log' as const, label: '작업 로그' },
-];
+const getAuthor = (qna: IQna) =>
+  qna.author_name?.trim() || qna.authorName?.trim() || '익명';
 
-const TOOLBAR_GROUPS = [
-  [
-    { icon: Bold, label: 'Bold' },
-    { icon: Italic, label: 'Italic' },
-    { icon: Underline, label: 'Underline' },
-    { icon: Strikethrough, label: 'Strike' },
-  ],
-  [
-    { icon: Heading1, label: 'H1' },
-    { icon: Heading2, label: 'H2' },
-    { icon: Heading3, label: 'H3' },
-  ],
-  [
-    { icon: List, label: '글머리 기호' },
-    { icon: ListOrdered, label: '번호 매기기' },
-  ],
-  [
-    { icon: Link2, label: '링크' },
-    { icon: ImageIcon, label: '이미지' },
-    { icon: Paperclip, label: '첨부' },
-    { icon: Code2, label: '코드' },
-    { icon: Quote, label: '인용' },
-  ],
-];
+const isSecret = (qna: IQna) => qna.is_secret === true || qna.isSecret === true;
 
-const SAMPLE_REPLY = `윤서연 님, 안녕하세요. VisionFlow Brand Lead 김민지입니다.
+const isDone = (qna: IQna) =>
+  qna.answer?.trim() ||
+  qna.status === 'done' ||
+  qna.status === 'resolved';
 
-제품 광고 30컷 + Brand LoRA 학습 + 4채널 동시 운영 시나리오로 견적을 정리해 드리겠습니다. 6월 첫째 주 런칭이라면 기획·학습·양산을 역산해 5월 둘째 주에 학습 데이터 NDA 서명이 필요합니다.
+const formatDate = (value?: string) => {
+  if (!value) {
+    return '-';
+  }
 
-## 견적 개요
+  const date = new Date(value);
 
-- 컷 30컷 (4K 고해상도) · LoRA 학습 1회 · 4채널 변환 (네이버/카카오/인스타/구글)
-- 납기: 학습 1주 + 양산 2주 = 총 **3주**
-- 예상 비용: LoRA 학습 ₩300만 + 양산 ₩400만 = **합계 ₩700만 (VAT 별도)**
-- 다음 단계: 1시간 디스커버리 미팅 제안드립니다. 5/12 (월) 또는 5/14 (수) 가능하신지요?`;
+  if (Number.isNaN(date.getTime())) {
+    return '-';
+  }
+
+  return date.toLocaleString('ko-KR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+};
 
 export function QnaDetailPage({ id }: { id: string }) {
-  const [activeTab, setActiveTab] = useState<'body' | 'compose' | 'log'>('compose');
-  const [reply, setReply] = useState(SAMPLE_REPLY);
+  const router = useRouter();
+  const [messageApi, contextHolder] = message.useMessage();
+  const { data: qna, isLoading, isError } = useAdminQnaDetailQuery(id);
+  const deleteMutation = useDeleteQnaMutation();
+  const role = useCurrentUserRole();
+  const canDeleteQna = canManageContent(role);
+
+  useTopbar(
+    () => ({
+      breadcrumb: [
+        { href: ROUTES.ADMIN.HOME, label: '대시보드' },
+        { label: '고객센터' },
+        { href: ROUTES.ADMIN.QNA.ROOT, label: 'Q&A 게시판' },
+        { label: `#${id}` },
+      ],
+    }),
+    [id],
+  );
+
+  const metaItems = useMemo(() => {
+    if (!qna) {
+      return [];
+    }
+
+    return [
+      {
+        icon: UserRound,
+        label: '작성자',
+        value: getAuthor(qna),
+      },
+      {
+        icon: CalendarDays,
+        label: '작성일',
+        value: formatDate(qna.created_at ?? qna.createdAt),
+      },
+      {
+        icon: Eye,
+        label: '조회수',
+        value: String(qna.view_count ?? qna.viewCount ?? 0),
+      },
+    ];
+  }, [qna]);
+
+  const handleDelete = () => {
+    if (!qna) {
+      return;
+    }
+
+    Modal.confirm({
+      title: 'Q&A를 삭제할까요?',
+      content: `"${getTitle(qna)}" 항목이 영구 삭제됩니다.`,
+      okText: '삭제',
+      okButtonProps: { danger: true },
+      cancelText: '취소',
+      onOk: async () => {
+        try {
+          await deleteMutation.mutateAsync(qna.id);
+          void messageApi.success('Q&A가 삭제되었습니다.');
+          router.push(ROUTES.ADMIN.QNA.ROOT);
+          router.refresh();
+        } catch (error) {
+          void messageApi.error(
+            error instanceof Error
+              ? error.message
+              : 'Q&A 삭제에 실패했습니다.',
+          );
+        }
+      },
+    });
+  };
+
+  if (isLoading) {
+    return <QnaDetailSkeleton />;
+  }
+
+  if (isError || !qna) {
+    return (
+      <div className={styles.page}>
+        <Link className={styles.backLink} href={ROUTES.ADMIN.QNA.ROOT}>
+          <ArrowLeft aria-hidden="true" size={14} />
+          목록으로
+        </Link>
+        <article className={styles.questionCard}>
+          <h1 className={styles.questionTitle}>Q&amp;A를 찾을 수 없습니다.</h1>
+        </article>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
+      {contextHolder}
       <header className={styles.pageHeader}>
-        <p className={styles.breadcrumb}>
-          <span>대시보드</span>
-          <span aria-hidden="true">/</span>
-          <span>인박스</span>
-          <span aria-hidden="true">/</span>
-          <Link href={ROUTES.ADMIN.QNA.ROOT}>Q&amp;A 게시판</Link>
-          <span aria-hidden="true">/</span>
-          <span className={styles.breadcrumbCurrent}>#{id}</span>
-        </p>
-
         <div className={styles.pageNav}>
           <Link className={styles.backLink} href={ROUTES.ADMIN.QNA.ROOT}>
             <ArrowLeft aria-hidden="true" size={14} />
             목록으로
           </Link>
-          <div className={styles.navActions}>
-            <button className={styles.navButton} type="button">
-              <ChevronUp aria-hidden="true" size={14} />
-              이전
+          {canDeleteQna ? (
+            <button
+              className={styles.dangerButton}
+              disabled={deleteMutation.isPending}
+              onClick={handleDelete}
+              type="button"
+            >
+              <Trash2 aria-hidden="true" size={14} />
+              삭제
             </button>
-            <button className={styles.navButton} type="button">
-              다음
-              <ChevronDown aria-hidden="true" size={14} />
-            </button>
-            <button aria-label="더보기" className={styles.iconButton} type="button">
-              <MoreHorizontal aria-hidden="true" size={16} />
-            </button>
-          </div>
+          ) : null}
         </div>
       </header>
 
       <article className={styles.questionCard}>
         <header className={styles.questionMeta}>
           <div className={styles.metaBadges}>
-            <span className={styles.idBadge}>#{id}</span>
-            <span className={styles.status_pending}>답변 대기</span>
-            <span className={styles.categoryPill}>광고 이미지</span>
+            <span className={styles.idBadge}>#{qna.id}</span>
+            <span
+              className={
+                isDone(qna) ? styles.status_done : styles.status_pending
+              }
+            >
+              {isDone(qna) ? (
+                <Check aria-hidden="true" size={12} />
+              ) : (
+                <MessageSquareText aria-hidden="true" size={12} />
+              )}
+              {isDone(qna) ? '답변 완료' : '답변 대기'}
+            </span>
+            {isSecret(qna) ? (
+              <span className={styles.secretPill}>
+                <Lock aria-hidden="true" size={12} />
+                비밀글
+              </span>
+            ) : null}
+            <span className={styles.categoryPill}>
+              {qna.category?.trim() || '서비스 일반'}
+            </span>
           </div>
-          <button className={styles.statusChange} type="button">
-            상태 변경
-            <ChevronDown aria-hidden="true" size={14} />
-          </button>
         </header>
 
-        <h1 className={styles.questionTitle}>제품 광고 이미지 30컷 견적 문의드립니다</h1>
+        <h1 className={styles.questionTitle}>{getTitle(qna)}</h1>
 
-        <div className={styles.authorRow}>
-          <span aria-hidden="true" className={styles.avatar}>
-            윤
-          </span>
-          <div className={styles.authorInfo}>
-            <strong>윤서연 · Brand K</strong>
-            <span>오늘 14:32 작성 · IP 211.234.xxx.xxx · 🔒 비밀글 아님</span>
-          </div>
+        <div className={styles.metaGrid}>
+          {metaItems.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <div className={styles.metaItem} key={item.label}>
+                <Icon aria-hidden="true" size={15} />
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </div>
+            );
+          })}
         </div>
 
         <div className={styles.questionBody}>
-          <p>
-            시즌 캠페인용으로 제품 광고 이미지 30컷이 필요한데, Brand LoRA 학습이 가능한지
-            궁금합니다. 톤 일관성이 가장 중요한 부분이고, 채널은 네이버 · 카카오 · 인스타 · 구글
-            4채널 동시 운영입니다. 일정은 6월 첫째 주 런칭이며, 학습 데이터는 NDA 체결 후 사내
-            자료 100여 점 제공 가능합니다.
-          </p>
+          <p>{qna.content?.trim() || qna.question?.trim() || '본문 없음'}</p>
         </div>
-
-        <footer className={styles.attachmentsRow}>
-          <span className={styles.attachmentsLabel}>첨부:</span>
-          {ATTACHMENTS.map((file) => (
-            <a className={styles.attachmentChip} href="#" key={file.label}>
-              <Paperclip aria-hidden="true" size={12} />
-              {file.label}
-              <span className={styles.attachmentSize}>· {file.size}</span>
-            </a>
-          ))}
-        </footer>
       </article>
 
-      <aside className={styles.slaCard}>
-        <span aria-hidden="true" className={styles.slaIcon}>
-          <Timer size={18} />
-        </span>
-        <div className={styles.slaBody}>
-          <p className={styles.slaTitle}>SLA 응답 마감까지 20시간 28분</p>
-          <p className={styles.slaMeta}>
-            24시간 SLA · 미할당 상태 · 자동 에스컬레이션 4시간 후
-          </p>
-        </div>
-        <button className={styles.slaButton} type="button">
-          내가 답변
-          <ArrowRight aria-hidden="true" size={14} />
-        </button>
-      </aside>
-
-      <nav aria-label="섹션" className={styles.tabsBar} role="tablist">
-        {TABS.map((tab) => (
-          <button
-            aria-selected={activeTab === tab.key}
-            className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            role="tab"
-            type="button"
-          >
-            {tab.label}
-            {tab.count != null ? <span className={styles.tabCount}>{tab.count}</span> : null}
-          </button>
-        ))}
-      </nav>
-
-      <article className={styles.composer}>
-        <header className={styles.composerHeader}>
+      <article className={styles.answerCard}>
+        <header className={styles.answerHeader}>
           <span aria-hidden="true" className={styles.composerAvatar}>
             A
           </span>
-          <div className={styles.composerHeading}>
-            <strong>답변 작성</strong>
-            <span> · Markdown 지원</span>
+          <div>
+            <strong>관리자 답변</strong>
+            <span>{formatDate(qna.updated_at ?? qna.updatedAt)}</span>
           </div>
-          <button className={styles.templateButton} type="button">
-            <FileText aria-hidden="true" size={13} />
-            템플릿: 견적 안내
-            <ChevronDown aria-hidden="true" size={13} />
-          </button>
         </header>
+        {qna.answer?.trim() ? (
+          <p className={styles.answerBody}>{qna.answer}</p>
+        ) : (
+          <p className={styles.emptyAnswer}>등록된 답변이 없습니다.</p>
+        )}
+      </article>
+    </div>
+  );
+}
 
-        <div className={styles.toolbar}>
-          {TOOLBAR_GROUPS.map((group, gi) => (
-            <div className={styles.toolbarGroup} key={`group-${gi}`}>
-              {group.map((tool) => {
-                const Icon = tool.icon;
-                return (
-                  <button
-                    aria-label={tool.label}
-                    className={styles.toolButton}
-                    key={tool.label}
-                    type="button"
-                  >
-                    <Icon aria-hidden="true" size={14} />
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-          <div className={styles.toolbarSpacer} />
-          <button className={styles.previewButton} type="button">
-            <Eye aria-hidden="true" size={13} />
-            미리보기
-          </button>
-          <span className={styles.charCount}>{reply.length}자</span>
+function QnaDetailSkeleton() {
+  return (
+    <div className={styles.page} aria-busy="true" aria-live="polite">
+      <header className={styles.pageHeader}>
+        <div className={styles.pageNav}>
+          <span className={`${styles.skeletonBlock} ${styles.skeletonBack}`} />
         </div>
+      </header>
 
-        <textarea
-          className={styles.editor}
-          onChange={(event) => setReply(event.target.value)}
-          rows={14}
-          value={reply}
-        />
+      <article className={styles.questionCard}>
+        <div className={styles.skeletonBadges}>
+          <span className={`${styles.skeletonBlock} ${styles.skeletonBadge}`} />
+          <span className={`${styles.skeletonBlock} ${styles.skeletonBadge}`} />
+          <span className={`${styles.skeletonBlock} ${styles.skeletonBadge}`} />
+        </div>
+        <span className={`${styles.skeletonBlock} ${styles.skeletonTitle}`} />
+        <div className={styles.skeletonMetaGrid}>
+          <span className={styles.skeletonBlock} />
+          <span className={styles.skeletonBlock} />
+          <span className={styles.skeletonBlock} />
+        </div>
+        <div className={styles.skeletonBody}>
+          <span className={styles.skeletonBlock} />
+          <span className={styles.skeletonBlock} />
+          <span className={styles.skeletonBlock} />
+        </div>
+      </article>
 
-        <footer className={styles.composerFooter}>
-          <div className={styles.composerOptions}>
-            <label className={styles.checkbox}>
-              <input defaultChecked type="checkbox" />
-              <span aria-hidden="true" className={styles.checkboxBox} />
-              작성자에게 이메일 알림
-            </label>
-            <p className={styles.policyText}>
-              ℹ 답변 등록 시 감사 로그가 90일 보관됩니다
-            </p>
-          </div>
-          <div className={styles.composerActions}>
-            <button className={styles.cancelButton} type="button">
-              취소
-            </button>
-            <button className={styles.saveButton} type="button">
-              임시 저장
-            </button>
-            <button className={styles.submitButton} type="button">
-              답변 등록
-              <ArrowRight aria-hidden="true" size={14} />
-            </button>
-          </div>
-        </footer>
+      <article className={styles.answerCard}>
+        <div className={styles.skeletonAnswerHeader}>
+          <span className={`${styles.skeletonBlock} ${styles.skeletonAvatar}`} />
+          <span className={`${styles.skeletonBlock} ${styles.skeletonAnswerMeta}`} />
+        </div>
+        <div className={styles.skeletonBody}>
+          <span className={styles.skeletonBlock} />
+          <span className={styles.skeletonBlock} />
+        </div>
       </article>
     </div>
   );

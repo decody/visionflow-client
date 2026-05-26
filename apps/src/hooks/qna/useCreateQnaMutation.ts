@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type ApiPayload, type IQna } from '@visionflow/shared';
+import type { IQna } from '@visionflow/shared';
 
 export type CreateQnaValues = {
   author: string;
@@ -23,57 +23,32 @@ const normalizeQna = (qna: IQna): IQna => ({
   view_count: qna.view_count ?? qna.viewCount,
 });
 
-const shouldRetryWithMinimalPayload = (error: unknown) => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-
-  return (
-    message.includes('schema cache') ||
-    message.includes('column') ||
-    message.includes('could not find')
-  );
-};
-
 export const useCreateQnaMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (values: CreateQnaValues) => {
-      const now = new Date().toISOString();
-      const minimalPayload: ApiPayload = {
-        authorName: values.author,
-        content: values.content,
-        createdAt: now,
-        isNotice: false,
-        isSecret: values.isSecret,
-        status: 'pending',
-        title: values.title,
-        updatedAt: now,
-        viewCount: 0,
-      };
-      const fullPayload: ApiPayload = {
-        ...minimalPayload,
-        category: values.category,
-        password: values.password || null,
-      };
+      const response = await fetch('/api/qna', {
+        body: JSON.stringify({
+          author: values.author,
+          content: values.content,
+          isSecret: values.isSecret,
+          password: values.isSecret ? values.password : undefined,
+          title: values.title,
+          category: values.category,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      });
 
-      try {
-        const { data } = await apiClient.post<IQna>('qna', fullPayload);
-        return data;
-      } catch (error) {
-        if (!shouldRetryWithMinimalPayload(error)) {
-          throw error;
-        }
-
-        const { data } = await apiClient.post<IQna>(
-          'qna',
-          minimalPayload,
-        );
-        return data;
+      if (!response.ok) {
+        const error = (await response.json().catch(() => null)) as {
+          message?: string;
+        } | null;
+        throw new Error(error?.message ?? 'Failed to create Q&A.');
       }
+
+      return (await response.json()) as IQna;
     },
     onSuccess: async (createdQna) => {
       const normalizedQna = normalizeQna(createdQna);
