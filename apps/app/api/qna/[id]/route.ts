@@ -2,6 +2,7 @@ import type { IQna } from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
+import { incrementQnaViewCount } from '@/lib/qna-view-count';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 type QnaRow = {
@@ -93,10 +94,17 @@ export async function GET(
     });
   }
 
-  await supabaseAdmin
-    .from('qna')
-    .update({ view_count: (qna.view_count ?? 0) + 1 })
-    .eq('id', id);
+  const viewCount = await incrementQnaViewCount(
+    id,
+    qna.view_count ?? qna.viewCount ?? 0,
+  );
 
-  return NextResponse.json({ qna, requiresPassword: false });
+  return NextResponse.json({
+    qna: {
+      ...qna,
+      view_count: viewCount,
+      viewCount,
+    },
+    requiresPassword: false,
+  });
 }

@@ -23,7 +23,7 @@ import {
   useDeleteQnaMutation,
 } from '@/hooks/admin/qna/useQnaQuery';
 import { useCurrentUserRole } from '@/hooks/use-current-user-role';
-import { canManageContent } from '@/lib/admin-permissions';
+import { canDeleteQna } from '@/lib/admin-permissions';
 import styles from './qna-list-page.module.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -117,7 +117,7 @@ export function QnaListPage() {
   );
 
   const role = useCurrentUserRole();
-  const canDeleteQna = canManageContent(role);
+  const canDeleteQnaItem = canDeleteQna(role);
   const { data, isLoading } = useAdminQnaListQuery({
     keyword,
     limit: 500,
@@ -305,7 +305,7 @@ export function QnaListPage() {
       },
       {
         cellRenderer: ({ data }: ICellRendererParams<IQna>) => {
-          if (!data || !canDeleteQna) {
+          if (!data || !canDeleteQnaItem) {
             return null;
           }
 
@@ -328,7 +328,7 @@ export function QnaListPage() {
         sortable: false,
       },
     ],
-    [canDeleteQna, deleteMutation.isPending, handleDelete],
+    [canDeleteQnaItem, deleteMutation.isPending, handleDelete],
   );
 
   const defaultColDef = useMemo<ColDef<IQna>>(

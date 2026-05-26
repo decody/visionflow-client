@@ -19,6 +19,28 @@ type Props = {
   id: string;
 };
 
+const qnaDetailRequests = new Map<string, Promise<DetailResponse>>();
+
+const fetchQnaDetailOnce = (id: string) => {
+  const existingRequest = qnaDetailRequests.get(id);
+
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const request = fetch(`/api/qna/${id}`).then(async (response) => {
+    if (!response.ok) {
+      throw new Error('Q&A를 찾을 수 없습니다.');
+    }
+
+    return response.json() as Promise<DetailResponse>;
+  });
+
+  qnaDetailRequests.set(id, request);
+
+  return request;
+};
+
 export function ContactGeneralDetailClientPage({ id }: Props) {
   const [qna, setQna] = useState<IQna | null>(null);
   const [requiresPassword, setRequiresPassword] = useState(false);
@@ -52,19 +74,15 @@ export function ContactGeneralDetailClientPage({ id }: Props) {
           return;
         }
 
-        const response = await fetch(`/api/qna/${id}`);
-
-        if (!response.ok) {
-          throw new Error('Q&A를 찾을 수 없습니다.');
-        }
-
-        const data = (await response.json()) as DetailResponse;
+        const data = await fetchQnaDetailOnce(id);
 
         if (mounted) {
           setQna(data.qna);
           setRequiresPassword(data.requiresPassword);
         }
       } catch (error) {
+        qnaDetailRequests.delete(id);
+
         if (mounted) {
           setMessage(
             error instanceof Error

@@ -23,7 +23,7 @@ import {
   useDeleteQnaMutation,
 } from '@/hooks/admin/qna/useQnaQuery';
 import { useCurrentUserRole } from '@/hooks/use-current-user-role';
-import { canManageContent } from '@/lib/admin-permissions';
+import { canDeleteQna } from '@/lib/admin-permissions';
 import styles from './qna-detail-page.module.css';
 
 const getTitle = (qna: IQna) =>
@@ -67,7 +67,7 @@ export function QnaDetailPage({ id }: { id: string }) {
   } = useAdminQnaDetailQuery(id);
   const deleteMutation = useDeleteQnaMutation();
   const role = useCurrentUserRole();
-  const canDeleteQna = canManageContent(role);
+  const canDeleteQnaItem = canDeleteQna(role);
 
   useTopbar(
     () => ({
@@ -168,7 +168,7 @@ export function QnaDetailPage({ id }: { id: string }) {
             <ArrowLeft aria-hidden="true" size={14} />
             목록으로
           </Link>
-          {canDeleteQna ? (
+          {canDeleteQnaItem ? (
             <button
               className={styles.dangerButton}
               disabled={deleteMutation.isPending}

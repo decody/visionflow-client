@@ -13,6 +13,8 @@ export const CONTENT_MANAGER_ROLES = [
 
 export const USER_MANAGER_ROLES = ['SuperAdmin'] satisfies UserRole[];
 
+export const QNA_DELETE_ROLES = ['SuperAdmin'] satisfies UserRole[];
+
 export function normalizeUserRole(role: unknown): UserRole | null {
   if (typeof role !== 'string') {
     return null;
@@ -50,4 +52,8 @@ export function canManageContent(role: unknown) {
 
 export function canManageUsers(role: unknown) {
   return hasAllowedRole(role, USER_MANAGER_ROLES);
+}
+
+export function canDeleteQna(role: unknown) {
+  return hasAllowedRole(role, QNA_DELETE_ROLES);
 }

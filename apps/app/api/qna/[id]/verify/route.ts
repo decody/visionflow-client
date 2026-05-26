@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
+import { incrementQnaViewCount } from '@/lib/qna-view-count';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 type QnaRow = {
@@ -94,7 +95,18 @@ export async function POST(
   const qna = toQna(row);
 
   if (!isProtectedQna(row)) {
-    return NextResponse.json({ qna });
+    const viewCount = await incrementQnaViewCount(
+      id,
+      qna.view_count ?? qna.viewCount ?? 0,
+    );
+
+    return NextResponse.json({
+      qna: {
+        ...qna,
+        view_count: viewCount,
+        viewCount,
+      },
+    });
   }
 
   const matched = await isPasswordMatch(password, row);
@@ -103,16 +115,16 @@ export async function POST(
     return jsonError('Password does not match.', 403);
   }
 
-  await supabaseAdmin
-    .from('qna')
-    .update({ view_count: (qna.view_count ?? 0) + 1 })
-    .eq('id', id);
+  const viewCount = await incrementQnaViewCount(
+    id,
+    qna.view_count ?? qna.viewCount ?? 0,
+  );
 
   return NextResponse.json({
     qna: {
       ...qna,
-      view_count: (qna.view_count ?? 0) + 1,
-      viewCount: (qna.view_count ?? 0) + 1,
+      view_count: viewCount,
+      viewCount,
     },
   });
 }

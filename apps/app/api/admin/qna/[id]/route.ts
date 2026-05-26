@@ -3,7 +3,8 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { auth } from '../../../../../auth';
-import { canManageContent } from '@/lib/admin-permissions';
+import { canDeleteQna, canManageContent } from '@/lib/admin-permissions';
+import { incrementQnaViewCount } from '@/lib/qna-view-count';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 type QnaRow = {
@@ -71,6 +72,20 @@ const requireContentManager = async () => {
   return null;
 };
 
+const requireQnaDeleteManager = async () => {
+  const session = await auth();
+
+  if (!session) {
+    return jsonError('Unauthorized', 401);
+  }
+
+  if (!canDeleteQna(session.user?.role)) {
+    return jsonError('Forbidden', 403);
+  }
+
+  return null;
+};
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -97,14 +112,26 @@ export async function GET(
     return jsonError('Q&A not found.', 404, error?.message);
   }
 
-  return NextResponse.json({ qna: toQna(data as QnaRow) });
+  const qna = toQna(data as QnaRow);
+  const viewCount = await incrementQnaViewCount(
+    id,
+    qna.view_count ?? qna.viewCount ?? 0,
+  );
+
+  return NextResponse.json({
+    qna: {
+      ...qna,
+      view_count: viewCount,
+      viewCount,
+    },
+  });
 }
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const authError = await requireContentManager();
+  const authError = await requireQnaDeleteManager();
 
   if (authError) {
     return authError;

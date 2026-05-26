@@ -91,6 +91,7 @@ export const useAdminQnaDetailQuery = (id: string) => {
     enabled: Boolean(id),
     queryKey: ['admin', 'qna-detail', id],
     queryFn: () => fetchQnaDetail(id),
+    refetchOnWindowFocus: false,
   });
 };
 
