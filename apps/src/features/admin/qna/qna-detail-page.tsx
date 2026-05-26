@@ -2,6 +2,7 @@
 
 import { ROUTES } from '@visionflow/routes';
 import type { IQna } from '@visionflow/shared';
+import { Modal, message } from 'antd';
 import {
   ArrowLeft,
   CalendarDays,
@@ -15,7 +16,6 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
-import { Modal, message } from 'antd';
 
 import { useTopbar } from '@/components/layout/topbar-context';
 import {
@@ -32,7 +32,8 @@ const getTitle = (qna: IQna) =>
 const getAuthor = (qna: IQna) =>
   qna.author_name?.trim() || qna.authorName?.trim() || '익명';
 
-const isSecret = (qna: IQna) => qna.is_secret === true || qna.isSecret === true;
+const isSecret = (qna: IQna) =>
+  qna.is_secret === true || qna.isSecret === true;
 
 const isDone = (qna: IQna) =>
   qna.answer?.trim() ||
@@ -59,7 +60,11 @@ const formatDate = (value?: string) => {
 export function QnaDetailPage({ id }: { id: string }) {
   const router = useRouter();
   const [messageApi, contextHolder] = message.useMessage();
-  const { data: qna, isLoading, isError } = useAdminQnaDetailQuery(id);
+  const {
+    data: qna,
+    isLoading,
+    isError,
+  } = useAdminQnaDetailQuery(id);
   const deleteMutation = useDeleteQnaMutation();
   const role = useCurrentUserRole();
   const canDeleteQna = canManageContent(role);
@@ -135,12 +140,17 @@ export function QnaDetailPage({ id }: { id: string }) {
   if (isError || !qna) {
     return (
       <div className={styles.page}>
-        <Link className={styles.backLink} href={ROUTES.ADMIN.QNA.ROOT}>
+        <Link
+          className={styles.backLink}
+          href={ROUTES.ADMIN.QNA.ROOT}
+        >
           <ArrowLeft aria-hidden="true" size={14} />
           목록으로
         </Link>
         <article className={styles.questionCard}>
-          <h1 className={styles.questionTitle}>Q&amp;A를 찾을 수 없습니다.</h1>
+          <h1 className={styles.questionTitle}>
+            Q&amp;A를 찾을 수 없습니다.
+          </h1>
         </article>
       </div>
     );
@@ -151,7 +161,10 @@ export function QnaDetailPage({ id }: { id: string }) {
       {contextHolder}
       <header className={styles.pageHeader}>
         <div className={styles.pageNav}>
-          <Link className={styles.backLink} href={ROUTES.ADMIN.QNA.ROOT}>
+          <Link
+            className={styles.backLink}
+            href={ROUTES.ADMIN.QNA.ROOT}
+          >
             <ArrowLeft aria-hidden="true" size={14} />
             목록으로
           </Link>
@@ -172,10 +185,11 @@ export function QnaDetailPage({ id }: { id: string }) {
       <article className={styles.questionCard}>
         <header className={styles.questionMeta}>
           <div className={styles.metaBadges}>
-            <span className={styles.idBadge}>#{qna.id}</span>
             <span
               className={
-                isDone(qna) ? styles.status_done : styles.status_pending
+                isDone(qna)
+                  ? styles.status_done
+                  : styles.status_pending
               }
             >
               {isDone(qna) ? (
@@ -214,7 +228,11 @@ export function QnaDetailPage({ id }: { id: string }) {
         </div>
 
         <div className={styles.questionBody}>
-          <p>{qna.content?.trim() || qna.question?.trim() || '본문 없음'}</p>
+          <p>
+            {qna.content?.trim() ||
+              qna.question?.trim() ||
+              '본문 없음'}
+          </p>
         </div>
       </article>
 
@@ -231,7 +249,9 @@ export function QnaDetailPage({ id }: { id: string }) {
         {qna.answer?.trim() ? (
           <p className={styles.answerBody}>{qna.answer}</p>
         ) : (
-          <p className={styles.emptyAnswer}>등록된 답변이 없습니다.</p>
+          <p className={styles.emptyAnswer}>
+            등록된 답변이 없습니다.
+          </p>
         )}
       </article>
     </div>
@@ -243,17 +263,27 @@ function QnaDetailSkeleton() {
     <div className={styles.page} aria-busy="true" aria-live="polite">
       <header className={styles.pageHeader}>
         <div className={styles.pageNav}>
-          <span className={`${styles.skeletonBlock} ${styles.skeletonBack}`} />
+          <span
+            className={`${styles.skeletonBlock} ${styles.skeletonBack}`}
+          />
         </div>
       </header>
 
       <article className={styles.questionCard}>
         <div className={styles.skeletonBadges}>
-          <span className={`${styles.skeletonBlock} ${styles.skeletonBadge}`} />
-          <span className={`${styles.skeletonBlock} ${styles.skeletonBadge}`} />
-          <span className={`${styles.skeletonBlock} ${styles.skeletonBadge}`} />
+          <span
+            className={`${styles.skeletonBlock} ${styles.skeletonBadge}`}
+          />
+          <span
+            className={`${styles.skeletonBlock} ${styles.skeletonBadge}`}
+          />
+          <span
+            className={`${styles.skeletonBlock} ${styles.skeletonBadge}`}
+          />
         </div>
-        <span className={`${styles.skeletonBlock} ${styles.skeletonTitle}`} />
+        <span
+          className={`${styles.skeletonBlock} ${styles.skeletonTitle}`}
+        />
         <div className={styles.skeletonMetaGrid}>
           <span className={styles.skeletonBlock} />
           <span className={styles.skeletonBlock} />
@@ -268,8 +298,12 @@ function QnaDetailSkeleton() {
 
       <article className={styles.answerCard}>
         <div className={styles.skeletonAnswerHeader}>
-          <span className={`${styles.skeletonBlock} ${styles.skeletonAvatar}`} />
-          <span className={`${styles.skeletonBlock} ${styles.skeletonAnswerMeta}`} />
+          <span
+            className={`${styles.skeletonBlock} ${styles.skeletonAvatar}`}
+          />
+          <span
+            className={`${styles.skeletonBlock} ${styles.skeletonAnswerMeta}`}
+          />
         </div>
         <div className={styles.skeletonBody}>
           <span className={styles.skeletonBlock} />
