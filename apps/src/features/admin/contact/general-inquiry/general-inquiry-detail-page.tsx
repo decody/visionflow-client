@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useTopbar } from '@/components/layout/topbar-context';
 import Loading from '@/components/loading/page';
@@ -79,12 +79,6 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
 
   const { data: quicks, isLoading } = useQuickListQuery();
 
-  useEffect(() => {
-    if (!canReplyToInquiry && activeTab === 'compose') {
-      setActiveTab('body');
-    }
-  }, [activeTab, canReplyToInquiry]);
-
   const quickList = useMemo(
     () =>
       (Array.isArray(quicks) ? quicks : []).sort(
@@ -131,6 +125,11 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
     replyNoticeState?.inquiryId === id
       ? replyNoticeState.notice
       : null;
+  const effectiveActiveTab = visibleTabs.some(
+    (tab) => tab.key === activeTab,
+  )
+    ? activeTab
+    : 'body';
   const setCurrentReply = (value: string) => {
     setReplyDraft({ inquiryId: id, value });
   };
@@ -340,9 +339,9 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
       >
         {visibleTabs.map((tab) => (
           <button
-            aria-selected={activeTab === tab.key}
+            aria-selected={effectiveActiveTab === tab.key}
             className={`${styles.tab} ${
-              activeTab === tab.key ? styles.tabActive : ''
+              effectiveActiveTab === tab.key ? styles.tabActive : ''
             }`}
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
@@ -359,10 +358,10 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
         ))}
       </nav>
 
-      {activeTab === 'body' ? (
+      {effectiveActiveTab === 'body' ? (
         <InquiryBody inquiry={inquiry} />
       ) : null}
-      {activeTab === 'compose' ? (
+      {effectiveActiveTab === 'compose' ? (
         <ReplyComposer
           canSendReply={canSendReply}
           isSending={sendReplyMutation.isPending}
@@ -375,7 +374,7 @@ export function GeneralInquiryDetailPage({ id }: { id: string }) {
           setReply={setCurrentReply}
         />
       ) : null}
-      {activeTab === 'log' ? (
+      {effectiveActiveTab === 'log' ? (
         <ActivityLog logs={activityLogs} />
       ) : null}
     </div>

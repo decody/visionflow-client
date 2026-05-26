@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { PartnershipDetailPage } from '@/features/admin/contact/partnership/partnership-detail-page';
 
 export const metadata: Metadata = {
-  description: 'VisionFlow CMS 제휴 문의 상세 및 회신 작성',
-  title: '제휴 문의 상세 · VisionFlow Admin',
+  description: 'VisionFlow CMS 제휴 문의 상세 및 답신 작성',
+  title: '제휴 문의 상세 — VisionFlow Admin',
 };
 
 export default async function PartnershipDetail({

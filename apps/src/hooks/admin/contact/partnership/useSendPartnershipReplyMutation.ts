@@ -58,7 +58,7 @@ const getInquiryFromResponse = (
   response: SendPartnershipReplyResponse,
 ): PartnershipInquiryApiRow => {
   if (!isRecord(response)) {
-    throw new Error('답변 처리 결과를 확인할 수 없습니다.');
+    throw new Error('답신 처리 결과를 확인할 수 없습니다.');
   }
 
   if (isRecord(response.inquiry)) {

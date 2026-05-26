@@ -447,6 +447,10 @@
 }
 
 .formButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   padding: var(--space-4) var(--space-6);
   border: none;
   border-radius: var(--radius-md);
@@ -455,6 +459,11 @@
   font-weight: var(--fw-bold);
   cursor: pointer;
   transition: background var(--transition-base);
+}
+
+.formButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .formButtonGhost {
@@ -480,6 +489,37 @@
   margin: 0;
   background: var(--color-border);
   border: none;
+}
+
+.formNotice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-bold);
+  line-height: 1.5;
+}
+
+.formNoticeSuccess {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #047857;
+}
+
+.formNoticeError {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: var(--color-danger);
+}
+
+.fileSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-small);
 }
 
 /* === Process === */

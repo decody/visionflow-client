@@ -681,7 +681,9 @@ a.metaItem:hover {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   color: var(--color-text);
+  cursor: pointer;
   font-size: var(--fs-caption);
+  font-family: inherit;
   font-weight: var(--fw-medium);
   text-decoration: none;
 }

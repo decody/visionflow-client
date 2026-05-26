@@ -14,7 +14,6 @@ import {
   Check,
   Download,
   Handshake,
-  Paperclip,
   Search,
   Timer,
   TrendingUp,
@@ -22,8 +21,8 @@ import {
 import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
 
-import Loading from '@/components/loading/page';
 import { useTopbar } from '@/components/layout/topbar-context';
+import Loading from '@/components/loading/page';
 import {
   usePartnershipListQuery,
   useUpdatePartnershipMutation,
@@ -59,11 +58,14 @@ const PARTNERSHIP_TYPE_LABEL: Record<PartnershipInquiryType, string> = {
   tech_partner: '기술 파트너',
 };
 
-const COMPANY_SIZE_LABEL: Record<IPartnershipInquiry['company_size'], string> = {
-  '1': '1인',
-  '2-10': '2-10인',
-  '11-50': '11-50인',
-  '50+': '50인 이상',
+const COMPANY_SIZE_LABEL: Record<
+  IPartnershipInquiry['company_size'],
+  string
+> = {
+  '1': '1명',
+  '2-10': '2-10명',
+  '11-50': '11-50명',
+  '50+': '50명 이상',
 };
 
 const DATE_OPTIONS: { label: string; value: DateFilter }[] = [
@@ -98,7 +100,7 @@ export function PartnershipListPage() {
     () => ({
       breadcrumb: [
         { href: ROUTES.ADMIN.HOME, label: '대시보드' },
-        { label: '인박스' },
+        { label: '고객 문의' },
         { label: '제휴 문의' },
       ],
     }),
@@ -165,8 +167,7 @@ export function PartnershipListPage() {
       })
       .sort(
         (a, b) =>
-          getCreatedAtTime(b.created_at) -
-          getCreatedAtTime(a.created_at),
+          getCreatedAtTime(b.created_at) - getCreatedAtTime(a.created_at),
       );
   }, [dateFilter, inquiries, searchText, statusFilter, typeFilter]);
 
@@ -272,13 +273,13 @@ export function PartnershipListPage() {
             <Select<PartnershipInquiryStatus>
               className={styles.statusSelect}
               disabled={updateMutation.isPending}
+              onChange={(nextStatus) =>
+                void handleStatusChange(data.id, nextStatus)
+              }
               options={STATUS_OPTIONS}
               popupMatchSelectWidth={false}
               size="small"
               value={value}
-              onChange={(nextStatus) =>
-                void handleStatusChange(data.id, nextStatus)
-              }
             />
           );
         },
@@ -349,7 +350,7 @@ export function PartnershipListPage() {
               </span>
               <div>
                 <strong>{data.contact_name}</strong>
-                <span>{data.contact_position}</span>
+                <span>{data.contact_position || '-'}</span>
               </div>
             </div>
           );
@@ -391,12 +392,12 @@ export function PartnershipListPage() {
               {data.attachment_url ? (
                 <a
                   className={styles.attachmentLink}
-                  href={data.attachment_url}
+                  download={data.attachment_name || true}
+                  href={getAttachmentDownloadUrl(data)}
                   rel="noreferrer"
-                  target="_blank"
                 >
-                  <Paperclip aria-hidden="true" size={12} />
-                  {data.attachment_name || '첨부파일'}
+                  <Download aria-hidden="true" size={12} />
+                  {data.attachment_name || '첨부 파일'}
                 </a>
               ) : null}
             </div>
@@ -460,14 +461,14 @@ export function PartnershipListPage() {
             </span>
           </h1>
           <p className={styles.pageDescription}>
-            접수된 제휴 제안의 유형, 회사 정보, 검토 상태를 한곳에서
+            접수된 제휴 제안을 유형, 회사 정보, 검토 상태 기준으로
             관리합니다.
           </p>
         </div>
         <button
           className={styles.secondaryButton}
-          type="button"
           onClick={handleExportCsv}
+          type="button"
         >
           <Download aria-hidden="true" size={14} />
           CSV 내보내기
@@ -521,7 +522,7 @@ export function PartnershipListPage() {
           <strong className={styles.kpiValue}>
             {statusCounts.approved.toLocaleString()}
           </strong>
-          <p className={styles.kpiCaption}>진행 가능 제안</p>
+          <p className={styles.kpiCaption}>진행 가능한 제안</p>
         </article>
       </section>
 
@@ -569,9 +570,7 @@ export function PartnershipListPage() {
         <div className={styles.tableHeader}>
           <div>
             <strong>제휴 문의 목록</strong>
-            <span>
-              {filteredRows.length.toLocaleString()}건 표시 중
-            </span>
+            <span>{filteredRows.length.toLocaleString()}건 표시 중</span>
           </div>
         </div>
         <div className={styles.tableWrap}>
@@ -598,6 +597,12 @@ export function PartnershipListPage() {
       </article>
     </div>
   );
+}
+
+function getAttachmentDownloadUrl(inquiry: IPartnershipInquiry) {
+  return `/api/partnership-inquiries/${encodeURIComponent(
+    inquiry.id,
+  )}/attachment`;
 }
 
 function getInitial(value?: string) {

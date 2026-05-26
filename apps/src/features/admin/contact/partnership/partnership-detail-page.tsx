@@ -13,6 +13,7 @@ import {
   ChevronUp,
   Clock3,
   Copy,
+  Download,
   ExternalLink,
   FileText,
   Globe,
@@ -57,14 +58,13 @@ const STATUS_LABEL: Record<PartnershipInquiryStatus, string> = {
   reviewing: '검토 중',
 };
 
-const PARTNERSHIP_TYPE_LABEL: Record<PartnershipInquiryType, string> =
-  {
-    content_partner: '콘텐츠 파트너',
-    etc: '기타',
-    outsourcing: '외주 협력',
-    reseller: '리셀러',
-    tech_partner: '기술 파트너',
-  };
+const PARTNERSHIP_TYPE_LABEL: Record<PartnershipInquiryType, string> = {
+  content_partner: '콘텐츠 파트너',
+  etc: '기타',
+  outsourcing: '외주 협력',
+  reseller: '리셀러',
+  tech_partner: '기술 파트너',
+};
 
 const COMPANY_SIZE_LABEL: Record<
   IPartnershipInquiry['company_size'],
@@ -81,7 +81,7 @@ const TABS: ReadonlyArray<{
   label: string;
 }> = [
   { key: 'proposal', label: '제안 본문' },
-  { key: 'reply', label: '회신' },
+  { key: 'reply', label: '답신' },
   { key: 'history', label: '히스토리' },
   { key: 'memo', label: '내부 메모' },
 ];
@@ -103,6 +103,13 @@ export function PartnershipDetailPage({ id }: { id: string }) {
 
   const role = useCurrentUserRole();
   const canUpdateInquiry = canManageContent(role);
+  const visibleTabs = useMemo(
+    () =>
+      canUpdateInquiry
+        ? TABS
+        : TABS.filter((tab) => tab.key !== 'reply' && tab.key !== 'memo'),
+    [canUpdateInquiry],
+  );
   const { data, isLoading } = usePartnershipListQuery();
   const updateMutation = useUpdatePartnershipMutation();
   const sendReplyMutation = useSendPartnershipReplyMutation();
@@ -111,8 +118,7 @@ export function PartnershipDetailPage({ id }: { id: string }) {
     () =>
       (Array.isArray(data) ? data : []).sort(
         (a, b) =>
-          getCreatedAtTime(b.created_at) -
-          getCreatedAtTime(a.created_at),
+          getCreatedAtTime(b.created_at) - getCreatedAtTime(a.created_at),
       ),
     [data],
   );
@@ -120,19 +126,19 @@ export function PartnershipDetailPage({ id }: { id: string }) {
     (row) => String(row.id) === id,
   );
   const inquiry =
-    inquiryIndex >= 0 ? inquiryList[inquiryIndex] : null;
+    inquiryIndex >= 0 ? inquiryList[inquiryIndex] ?? null : null;
   const prevInquiry =
-    inquiryIndex > 0 ? (inquiryList[inquiryIndex - 1] ?? null) : null;
+    inquiryIndex > 0 ? inquiryList[inquiryIndex - 1] ?? null : null;
   const nextInquiry =
     inquiryIndex >= 0 && inquiryIndex < inquiryList.length - 1
-      ? (inquiryList[inquiryIndex + 1] ?? null)
+      ? inquiryList[inquiryIndex + 1] ?? null
       : null;
 
   useTopbar(
     () => ({
       breadcrumb: [
         { href: ROUTES.ADMIN.HOME, label: '대시보드' },
-        { label: '인바운드' },
+        { label: '고객 문의' },
         {
           href: ROUTES.ADMIN.PARTNERSHIP.ROOT,
           label: '제휴 문의',
@@ -152,9 +158,14 @@ export function PartnershipDetailPage({ id }: { id: string }) {
   const memo =
     memoDraft?.inquiryId === id
       ? memoDraft.value
-      : (inquiry?.admin_memo ?? '');
+      : inquiry?.admin_memo ?? '';
   const notice =
     noticeState?.inquiryId === id ? noticeState.notice : null;
+  const effectiveActiveTab = visibleTabs.some(
+    (tab) => tab.key === activeTab,
+  )
+    ? activeTab
+    : 'proposal';
 
   if (isLoading) {
     return <Loading />;
@@ -220,7 +231,7 @@ export function PartnershipDetailPage({ id }: { id: string }) {
     try {
       await navigator.clipboard.writeText(reply);
       setCurrentNotice({
-        message: '회신 초안을 클립보드에 복사했습니다.',
+        message: '답신 초안을 클립보드에 복사했습니다.',
         tone: 'success',
       });
     } catch {
@@ -246,7 +257,7 @@ export function PartnershipDetailPage({ id }: { id: string }) {
     if (!replyContent) {
       setActiveTab('reply');
       setCurrentNotice({
-        message: '답변 내용을 입력한 뒤 발송해 주세요.',
+        message: '답신 내용을 입력한 뒤 발송해 주세요.',
         tone: 'error',
       });
       return;
@@ -259,7 +270,7 @@ export function PartnershipDetailPage({ id }: { id: string }) {
         replyContent,
       });
       setCurrentNotice({
-        message: '제휴 문의 답변 메일을 발송했습니다.',
+        message: '제휴 문의 답신 메일을 발송했습니다.',
         tone: 'success',
       });
     } catch (error) {
@@ -406,13 +417,15 @@ export function PartnershipDetailPage({ id }: { id: string }) {
           <p className={styles.slaTitle}>{sla.title}</p>
           <p className={styles.slaMeta}>{sla.meta}</p>
         </div>
-        <button
-          className={styles.slaButton}
-          onClick={() => setActiveTab('reply')}
-          type="button"
-        >
-          회신하러 가기
-        </button>
+        {canUpdateInquiry ? (
+          <button
+            className={styles.slaButton}
+            onClick={() => setActiveTab('reply')}
+            type="button"
+          >
+            답신하러 가기
+          </button>
+        ) : null}
       </aside>
 
       {notice ? (
@@ -432,11 +445,11 @@ export function PartnershipDetailPage({ id }: { id: string }) {
         className={styles.tabsBar}
         role="tablist"
       >
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
-            aria-selected={activeTab === tab.key}
+            aria-selected={effectiveActiveTab === tab.key}
             className={`${styles.tab} ${
-              activeTab === tab.key ? styles.tabActive : ''
+              effectiveActiveTab === tab.key ? styles.tabActive : ''
             }`}
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
@@ -453,10 +466,10 @@ export function PartnershipDetailPage({ id }: { id: string }) {
         ))}
       </nav>
 
-      {activeTab === 'proposal' ? (
+      {effectiveActiveTab === 'proposal' ? (
         <ProposalPanel inquiry={inquiry} memo={memo} />
       ) : null}
-      {activeTab === 'reply' ? (
+      {effectiveActiveTab === 'reply' ? (
         <ReplyPanel
           canSendReply={
             canUpdateInquiry &&
@@ -473,10 +486,10 @@ export function PartnershipDetailPage({ id }: { id: string }) {
           }
         />
       ) : null}
-      {activeTab === 'history' ? (
+      {effectiveActiveTab === 'history' ? (
         <HistoryPanel logs={activityLogs} />
       ) : null}
-      {activeTab === 'memo' ? (
+      {effectiveActiveTab === 'memo' ? (
         <MemoPanel
           canSave={canUpdateInquiry}
           isSaving={updateMutation.isPending}
@@ -536,14 +549,13 @@ function ProposalPanel({
       <section className={styles.proposalSection}>
         <h2 className={styles.sectionTitle}>제안 본문</h2>
         <div className={styles.sectionBody}>
-          {inquiry.proposal_content
-            .split(/\n{2,}/)
-            .filter(Boolean)
-            .map((paragraph, index) => (
+          {splitParagraphs(inquiry.proposal_content).map(
+            (paragraph, index) => (
               <p key={`${inquiry.id}-proposal-${index}`}>
                 {paragraph}
               </p>
-            ))}
+            ),
+          )}
         </div>
       </section>
 
@@ -551,7 +563,7 @@ function ProposalPanel({
         <h2 className={styles.sectionTitle}>내부 메모</h2>
         {trimmedMemo ? (
           <div className={styles.internalMemo}>
-            {trimmedMemo.split(/\n{2,}/).map((paragraph, index) => (
+            {splitParagraphs(trimmedMemo).map((paragraph, index) => (
               <p key={`${inquiry.id}-memo-${index}`}>{paragraph}</p>
             ))}
           </div>
@@ -600,14 +612,19 @@ function ProposalPanel({
         {inquiry.attachment_url ? (
           <a
             className={styles.attachmentChip}
-            href={inquiry.attachment_url}
-            rel="noreferrer"
-            target="_blank"
+            download={inquiry.attachment_name || true}
+            href={getAttachmentDownloadUrl(inquiry)}
           >
-            <Paperclip aria-hidden="true" size={12} />
+            <Download aria-hidden="true" size={12} />
             {inquiry.attachment_name || '첨부 파일'}
             <span>{formatAttachmentMeta(inquiry)}</span>
           </a>
+        ) : inquiry.attachment_name ? (
+          <div className={styles.attachmentChip}>
+            <Paperclip aria-hidden="true" size={12} />
+            {inquiry.attachment_name}
+            <span>{formatAttachmentMeta(inquiry)}</span>
+          </div>
         ) : (
           <p className={styles.emptyText}>첨부된 자료가 없습니다.</p>
         )}
@@ -640,8 +657,8 @@ function ReplyPanel({
           <Mail size={14} />
         </span>
         <div className={styles.composerHeading}>
-          <strong>회신 초안</strong>
-          <span> · 메일 앱으로 발송</span>
+          <strong>답신 초안</strong>
+          <span> · 메일 형식으로 발송</span>
         </div>
         <button
           className={styles.templateButton}
@@ -657,7 +674,7 @@ function ReplyPanel({
         <div className={styles.mailRow}>
           <dt>TO</dt>
           <dd>
-            {inquiry.contact_name} &lt;{inquiry.contact_email}&gt;
+            {inquiry.contact_name} &lt;{inquiry.contact_email || '-'}&gt;
           </dd>
         </div>
         <div className={styles.mailRow}>
@@ -671,7 +688,7 @@ function ReplyPanel({
       </dl>
 
       <div className={styles.toolbar}>
-        <span className={styles.toolbarLabel}>회신 내용</span>
+        <span className={styles.toolbarLabel}>답신 내용</span>
         <span className={styles.charCount}>
           {reply.length.toLocaleString()}자
         </span>
@@ -760,7 +777,7 @@ function MemoPanel({
       />
       <footer className={styles.memoFooter}>
         <p className={styles.policyText}>
-          내부 메모는 관리자 화면에서만 사용됩니다.
+          내부 메모는 관리자 화면에서만 사용합니다.
         </p>
         <button
           className={styles.submitButton}
@@ -858,9 +875,9 @@ function createReplyTemplate(inquiry: IPartnershipInquiry) {
     '내부 검토를 위해 아래 사항을 추가로 확인하고 싶습니다.',
     '- 제휴 진행 시 기대하는 역할과 책임 범위',
     '- 예상 일정 및 우선 협의가 필요한 조건',
-    '- 미팅 가능 일정 2-3개',
+    '- 미팅 가능한 일정 2-3개',
     '',
-    '가능하신 일정을 회신해 주시면 담당자가 이어서 조율드리겠습니다.',
+    '가능하신 일정으로 회신해 주시면 담당자가 이어서 조율하겠습니다.',
     '',
     '감사합니다.',
     'VisionFlow 드림',
@@ -902,6 +919,12 @@ function getSlaText(inquiry: IPartnershipInquiry) {
   };
 }
 
+function splitParagraphs(value: string) {
+  const paragraphs = value.split(/\n{2,}/).filter(Boolean);
+
+  return paragraphs.length > 0 ? paragraphs : ['-'];
+}
+
 function getInitial(value?: string) {
   return value?.trim().slice(0, 1).toUpperCase() || '?';
 }
@@ -929,10 +952,6 @@ function formatFullDate(value?: string) {
 }
 
 function formatAttachmentMeta(inquiry: IPartnershipInquiry) {
-  if (!inquiry.attachment_url) {
-    return '-';
-  }
-
   const parts = [
     inquiry.attachment_type,
     inquiry.attachment_size
@@ -940,7 +959,11 @@ function formatAttachmentMeta(inquiry: IPartnershipInquiry) {
       : null,
   ].filter(Boolean);
 
-  return parts.length > 0 ? parts.join(' · ') : '파일 보기 가능';
+  if (parts.length > 0) {
+    return parts.join(' · ');
+  }
+
+  return inquiry.attachment_url ? '파일 보기 가능' : '-';
 }
 
 function formatFileSize(bytes: number) {
@@ -962,4 +985,10 @@ function formatFileSize(bytes: number) {
 
 function normalizeUrl(value: string) {
   return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+function getAttachmentDownloadUrl(inquiry: IPartnershipInquiry) {
+  return `/api/partnership-inquiries/${encodeURIComponent(
+    inquiry.id,
+  )}/attachment`;
 }
