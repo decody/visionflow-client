@@ -1,12 +1,17 @@
 ﻿import type { Metadata } from 'next';
 
-import { PartnershipListPage } from '@/features/admin/contact/partnership/partnership-list-page';
+import { QnaDetailPage } from '@/features/admin/qna/qna-detail-page';
 
 export const metadata: Metadata = {
-  description: 'VisionFlow CMS 제휴 문의 관리',
-  title: '제휴 문의 — VisionFlow Admin',
+  description: 'VisionFlow CMS Q&A 게시판 상세',
+  title: 'Q&A 상세 — VisionFlow Admin',
 };
 
-export default function Partnership() {
-  return <PartnershipListPage />;
+export default async function QnaDetail({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return <QnaDetailPage id={id} />;
 }
