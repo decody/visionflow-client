@@ -66,7 +66,7 @@ export const useUpdatePartnershipMutation = () => {
         (await response.json()) as PartnershipInquiryApiRow,
       );
     },
-    onSuccess: (updated) => {
+    onSuccess: async (updated) => {
       queryClient.setQueryData<IPartnershipInquiry[]>(
         ['partnership-list'],
         (current) =>
@@ -74,6 +74,13 @@ export const useUpdatePartnershipMutation = () => {
             item.id === updated.id ? updated : item,
           ) ?? [updated],
       );
+
+      await queryClient.invalidateQueries({
+        queryKey: ['partnership-list'],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['admin-alarms'],
+      });
     },
   });
 };

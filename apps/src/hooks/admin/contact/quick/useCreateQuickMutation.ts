@@ -123,6 +123,9 @@ export const useCreateQuickMutation = () => {
         queryKey: ['quick-list'],
         refetchType: 'none',
       });
+      void queryClient.invalidateQueries({
+        queryKey: ['admin-alarms'],
+      });
     },
   });
 };

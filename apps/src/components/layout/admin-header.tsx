@@ -17,23 +17,11 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useMemo } from 'react';
 
-import { useAdminAlarmsQuery } from '@/hooks/admin/alarms/useAdminAlarmsQuery';
-import { usePartnershipListQuery } from '@/hooks/admin/contact/partnership/usePartnershipQuery';
-import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
-import { useQuoteRequestListQuery } from '@/hooks/admin/contact/quote/useQuoteRequestQuery';
-import { useAdminQnaListQuery } from '@/hooks/admin/qna/useQnaQuery';
 import { LogoMark } from '../brand/logo-mark';
 import styles from './admin-shell.module.css';
 
 type NavItem = {
-  badgeKey?:
-    | 'generalInquiryPending'
-    | 'partnershipPending'
-    | 'qnaPending'
-    | 'quoteOpen';
-  badge?: number;
   href: string;
   icon: LucideIcon;
   label: string;
@@ -60,25 +48,21 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
     title: 'CONTENTS',
     items: [
       {
-        badgeKey: 'qnaPending',
         href: ROUTES.ADMIN.QNA.ROOT,
         icon: MessageCircleQuestionMarkIcon,
         label: 'Q&A',
       },
       {
-        badgeKey: 'partnershipPending',
         href: ROUTES.ADMIN.PARTNERSHIP.ROOT,
         icon: Handshake,
         label: 'Partnership',
       },
       {
-        badgeKey: 'generalInquiryPending',
         href: ROUTES.ADMIN.GENERAL_INQUIRY.ROOT,
         icon: MessagesSquare,
         label: 'General Inquiry',
       },
       {
-        badgeKey: 'quoteOpen',
         href: ROUTES.ADMIN.QUOTE_REQUEST.ROOT,
         icon: FileText,
         label: 'Quote Request',
@@ -115,73 +99,6 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
 
 export function AdminHeader() {
   const pathname = usePathname();
-  const { data: quicks } = useQuickListQuery();
-  const { data: partnerships } = usePartnershipListQuery();
-  const { data: qnas } = useAdminQnaListQuery({
-    limit: 500,
-    offset: 0,
-    status: 'all',
-  });
-  const { data: quoteRequests } = useQuoteRequestListQuery();
-  const { data: alarms } = useAdminAlarmsQuery();
-  const pendingGeneralInquiryCount = useMemo(
-    () =>
-      Array.isArray(quicks)
-        ? quicks.filter((quick) => quick.status === 'pending').length
-        : 0,
-    [quicks],
-  );
-  const pendingPartnershipCount = useMemo(
-    () =>
-      Array.isArray(partnerships)
-        ? partnerships.filter(
-            (partnership) => partnership.status === 'pending',
-          ).length
-        : 0,
-    [partnerships],
-  );
-  const pendingQnaCount = useMemo(() => {
-    const rows = qnas?.data;
-
-    if (!Array.isArray(rows)) {
-      return alarms?.counts.qnaPending ?? 0;
-    }
-
-    return rows.filter(
-      (qna) =>
-        !qna.answer?.trim() &&
-        qna.status !== 'done' &&
-        qna.status !== 'resolved',
-    ).length;
-  }, [alarms?.counts.qnaPending, qnas?.data]);
-  const openQuoteRequestCount = useMemo(() => {
-    if (!Array.isArray(quoteRequests)) {
-      return alarms?.counts.quotePending ?? 0;
-    }
-
-    return quoteRequests.filter((quote) => quote.status === 'pending')
-      .length;
-  }, [alarms?.counts.quoteOpen, quoteRequests]);
-
-  const getBadge = (item: NavItem) => {
-    if (item.badgeKey === 'generalInquiryPending') {
-      return pendingGeneralInquiryCount;
-    }
-
-    if (item.badgeKey === 'partnershipPending') {
-      return pendingPartnershipCount;
-    }
-
-    if (item.badgeKey === 'quoteOpen') {
-      return openQuoteRequestCount;
-    }
-
-    if (item.badgeKey === 'qnaPending') {
-      return pendingQnaCount;
-    }
-
-    return item.badge ?? 0;
-  };
 
   return (
     <header className={styles.header}>
@@ -208,7 +125,6 @@ export function AdminHeader() {
               <ul className={styles.navList}>
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  const badge = getBadge(item);
                   const isActive =
                     item.href === ROUTES.ADMIN.HOME
                       ? pathname === ROUTES.ADMIN.HOME
@@ -230,11 +146,6 @@ export function AdminHeader() {
                         <span className={styles.navLabel}>
                           {item.label}
                         </span>
-                        {badge ? (
-                          <span className={styles.navBadge}>
-                            {badge}
-                          </span>
-                        ) : null}
                       </Link>
                     </li>
                   );

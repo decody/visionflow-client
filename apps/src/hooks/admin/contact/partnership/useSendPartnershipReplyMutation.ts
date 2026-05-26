@@ -118,6 +118,9 @@ export const useSendPartnershipReplyMutation = () => {
       await queryClient.invalidateQueries({
         queryKey: ['partnership-list'],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ['admin-alarms'],
+      });
     },
   });
 };

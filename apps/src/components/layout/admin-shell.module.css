@@ -324,9 +324,50 @@
 }
 
 .notifPanelHeader span {
+  color: var(--color-danger);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-bold);
+}
+
+.notifSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.notifSummaryItem {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 6px;
+  background: var(--color-surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.notifSummaryItem:hover {
+  background: #ffffff;
+  border-color: var(--color-border);
+}
+
+.notifSummaryItem span {
   color: var(--color-text-secondary);
-  font-size: var(--fs-caption);
+  font-size: 11px;
   font-weight: var(--fw-semibold);
+}
+
+.notifSummaryItem strong {
+  color: var(--color-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-bold);
 }
 
 .notifList {

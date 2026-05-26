@@ -147,6 +147,9 @@ export const useSendQuickReplyMutation = () => {
       await queryClient.invalidateQueries({
         queryKey: ['quick-list'],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ['admin-alarms'],
+      });
     },
   });
 };

@@ -7,6 +7,10 @@ import Link from 'next/link';
 import { Fragment, useState } from 'react';
 
 import { useAdminAlarmsQuery } from '@/hooks/admin/alarms/useAdminAlarmsQuery';
+import { usePartnershipListQuery } from '@/hooks/admin/contact/partnership/usePartnershipQuery';
+import { useQuickListQuery } from '@/hooks/admin/contact/quick/useQuickQuery';
+import { useQuoteRequestListQuery } from '@/hooks/admin/contact/quote/useQuoteRequestQuery';
+import { useAdminQnaListQuery } from '@/hooks/admin/qna/useQnaQuery';
 import styles from './admin-shell.module.css';
 import { useTopbarConfig } from './topbar-context';
 
@@ -15,10 +19,34 @@ export function AdminTopbar() {
   const { action, breadcrumb } = useTopbarConfig();
   const { data: session } = useSession();
   const { data: alarms } = useAdminAlarmsQuery();
+  const { data: quicks } = useQuickListQuery();
+  const { data: partnerships } = usePartnershipListQuery();
+  const { data: quoteRequests } = useQuoteRequestListQuery();
+  const { data: qnas } = useAdminQnaListQuery({ limit: 500, offset: 0, status: 'all' });
   const lastIndex = breadcrumb.length - 1;
   const userName = session?.user?.name ?? session?.user?.email ?? '관리자';
   const alarmItems = alarms?.items ?? [];
-  const alarmCount = alarms?.counts.total ?? 0;
+
+  const generalCount = Array.isArray(quicks)
+    ? quicks.filter((q) => q.status === 'pending').length
+    : alarms?.counts.generalPending ?? 0;
+  const partnershipCount = Array.isArray(partnerships)
+    ? partnerships.filter((p) => p.status === 'pending').length
+    : alarms?.counts.partnershipPending ?? 0;
+  const quoteCount = Array.isArray(quoteRequests)
+    ? quoteRequests.filter((q) => q.status === 'pending').length
+    : alarms?.counts.quotePending ?? 0;
+  const qnaCount = Array.isArray(qnas?.data)
+    ? qnas.data.filter((q) => !q.is_notice && !q.answer?.trim() && q.status !== 'done' && q.status !== 'resolved').length
+    : alarms?.counts.qnaPending ?? 0;
+  const alarmCount = generalCount + partnershipCount + quoteCount + qnaCount;
+
+  const alarmSummary = [
+    { count: generalCount, href: ROUTES.ADMIN.GENERAL_INQUIRY.ROOT, label: '일반' },
+    { count: quoteCount, href: ROUTES.ADMIN.QUOTE_REQUEST.ROOT, label: '견적' },
+    { count: partnershipCount, href: ROUTES.ADMIN.PARTNERSHIP.ROOT, label: '제휴' },
+    { count: qnaCount, href: ROUTES.ADMIN.QNA.ROOT, label: 'Q&A' },
+  ];
 
   return (
     <header className={styles.topbar}>
@@ -65,6 +93,19 @@ export function AdminTopbar() {
                 <strong>운영 알람</strong>
                 <span>{alarmCount.toLocaleString()}건</span>
               </header>
+              <div className={styles.notifSummary} aria-label="알람 요약">
+                {alarmSummary.map((summary) => (
+                  <Link
+                    className={styles.notifSummaryItem}
+                    href={summary.href}
+                    key={summary.label}
+                    onClick={() => setIsAlarmOpen(false)}
+                  >
+                    <span>{summary.label}</span>
+                    <strong>{summary.count.toLocaleString()}</strong>
+                  </Link>
+                ))}
+              </div>
               {alarmItems.length > 0 ? (
                 <ul className={styles.notifList}>
                   {alarmItems.slice(0, 8).map((item) => (
@@ -89,9 +130,7 @@ export function AdminTopbar() {
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className={styles.notifEmpty}>확인할 알람이 없습니다.</p>
-              )}
+              ) : null}
             </section>
           ) : null}
         </div>
