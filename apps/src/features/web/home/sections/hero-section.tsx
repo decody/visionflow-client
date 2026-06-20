@@ -91,7 +91,27 @@ export function HeroSection() {
       ))}
       <div aria-hidden="true" className={styles.heroScroll}>
         <span className={styles.heroScrollText}>Scroll to explore</span>
-        <span className={styles.heroScrollIcon}>↓</span>
+        <svg
+          className={styles.heroScrollIcon}
+          fill="none"
+          height={32}
+          viewBox="0 0 20 32"
+          width={20}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M17 9C17 5.134 13.866 2 10 2C6.134 2 3 5.134 3 9V17C3 20.866 6.134 24 10 24C13.866 24 17 20.866 17 17V9Z"
+            stroke="white"
+            strokeOpacity="0.5"
+            strokeWidth="1.5"
+          />
+          <path
+            className={styles.heroScrollWheel}
+            d="M11 7C11 6.448 10.552 6 10 6C9.448 6 9 6.448 9 7V11C9 11.552 9.448 12 10 12C10.552 12 11 11.552 11 11V7Z"
+            fill="white"
+            fillOpacity="0.7"
+          />
+        </svg>
       </div>
     </section>
   );

@@ -9,6 +9,7 @@ import styles from '../home-page.module.css';
 
 type HomeStat = {
   value: string;
+  suffix: string;
   label: string;
   sub: string;
 };
@@ -19,21 +20,21 @@ const STAT_ROLL_STAGGER = 120;
 
 const staticWorkStats: HomeStat[] = [
   {
-    value: 'React/Vue',
-    label: '주요 프레임워크',
-    sub: '등록된 Work 기준',
+    value: '5',
+    suffix: '일',
+    label: '평균 납기',
+    sub: '광고 이미지 기준',
   },
   {
-    value: 'UI/UX',
-    label: '수행 역량',
-    sub: '기획부터 구현까지',
+    value: '85',
+    suffix: '%',
+    label: '재의뢰율',
+    sub: '프로젝트 완료 후',
   },
 ];
 
 const getWorkIndustry = (work: WorkRow) =>
   work.industry.trim() || DEFAULT_WORK_INDUSTRY;
-
-const createCountLabel = (count: number) => `${count}+`;
 
 const easeOutQuint = (progress: number) =>
   1 - Math.pow(1 - progress, 5);
@@ -42,7 +43,7 @@ const createCountRollItems = (value: string) => {
   const finalCount = Number.parseInt(value, 10);
 
   if (!Number.isFinite(finalCount)) {
-    return ['0+', value];
+    return ['0', value];
   }
 
   const first = Math.max(Math.floor(finalCount * 0.25), 1);
@@ -50,55 +51,29 @@ const createCountRollItems = (value: string) => {
   const overshoot = finalCount + 1;
 
   return [
-    '0+',
-    `${first}+`,
-    `${second}+`,
-    `${Math.max(finalCount - 1, 0)}+`,
-    `${overshoot}+`,
+    '0',
+    String(first),
+    String(second),
+    String(Math.max(finalCount - 1, 0)),
+    String(overshoot),
     value,
   ];
 };
 
 const getStatRollItems = (stat: HomeStat) => {
   if (
-    stat.label === '프로젝트 이력' ||
-    stat.label === '산업 도메인'
+    stat.label === '누적 프로젝트' ||
+    stat.label === '협력 고객사'
   ) {
     return createCountRollItems(stat.value);
   }
 
-  if (stat.label === '주요 프레임워크') {
-    return [
-      '-',
-      'HTML/CSS',
-      'Next.js',
-      'Vue',
-      'TypeScript',
-      'Nuxt',
-      'React',
-      'WebSquare',
-      'SCSS',
-      'Tailwind',
-      'JavaScript',
-      'Frontend',
-      stat.value,
-    ];
+  if (stat.label === '평균 납기') {
+    return ['-', '1', '2', '3', '4', '6', stat.value];
   }
 
-  return [
-    '-',
-    '운영',
-    '접근성',
-    '퍼블리싱',
-    'UX',
-    '기획',
-    'UI',
-    '개선',
-    '설계',
-    '구현',
-    '테스트',
-    stat.value,
-  ];
+  // 재의뢰율
+  return ['-', '30', '50', '70', '80', '90', stat.value];
 };
 
 interface StatsSectionProps {
@@ -110,10 +85,10 @@ export function StatsSection({ works }: StatsSectionProps) {
   const statRollRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const [statsAnimated, setStatsAnimated] = useState(false);
 
-  const projectHistoryValue = createCountLabel(works.length);
+  const projectHistoryValue = String(works.length);
   const industryDomainValue = useMemo(
     () =>
-      createCountLabel(
+      String(
         new Set(
           works
             .map((work) => getWorkIndustry(work))
@@ -126,13 +101,15 @@ export function StatsSection({ works }: StatsSectionProps) {
     () => [
       {
         value: projectHistoryValue,
-        label: '프로젝트 이력',
-        sub: '등록된 Work 기준',
+        suffix: '+',
+        label: '누적 프로젝트',
+        sub: '2024년까지 누적',
       },
       {
         value: industryDomainValue,
-        label: '산업 도메인',
-        sub: '등록된 산업 분야',
+        suffix: '+',
+        label: '협력 고객사',
+        sub: '스타트업부터 대기업까지',
       },
       ...staticWorkStats,
     ],
@@ -268,8 +245,9 @@ export function StatsSection({ works }: StatsSectionProps) {
                       </span>
                     ))}
                   </span>
-                  <span className={styles.statValueSr}>{s.value}</span>
+                  <span className={styles.statValueSr}>{s.value}{s.suffix}</span>
                 </strong>
+                <span aria-hidden="true" className={styles.statSuffix}>{s.suffix}</span>
               </span>
               <span className={styles.statLabel}>{s.label}</span>
               <span className={styles.statSub}>{s.sub}</span>

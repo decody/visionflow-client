@@ -14,7 +14,6 @@
 }
 
 .services,
-.why,
 .featured,
 .stats,
 .process,
@@ -23,19 +22,25 @@
   padding-block: 120px;
 }
 
+.why {
+  padding-block: 72px;
+}
+
 .logos {
   padding-block: 80px;
 }
 
 @media (max-width: 1023px) {
   .services,
-  .why,
   .featured,
   .stats,
   .process,
   .testimonials,
   .faq {
     padding-block: 80px;
+  }
+  .why {
+    padding-block: 56px;
   }
   .logos {
     padding-block: 60px;
@@ -44,13 +49,15 @@
 
 @media (max-width: 767px) {
   .services,
-  .why,
   .featured,
   .stats,
   .process,
   .testimonials,
   .faq {
     padding-block: 56px;
+  }
+  .why {
+    padding-block: 40px;
   }
   .logos {
     padding-block: 40px;
@@ -293,7 +300,7 @@
 
 .heroScroll {
   position: absolute;
-  bottom: 28px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -311,8 +318,19 @@
 }
 
 .heroScrollIcon {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 16px;
+  display: block;
+}
+
+.heroScrollWheel {
+  animation: mouseWheel 1.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center top;
+}
+
+@keyframes mouseWheel {
+  0%   { transform: translateY(0);   opacity: 0.7; }
+  40%  { transform: translateY(4px); opacity: 0.3; }
+  100% { transform: translateY(0);   opacity: 0.7; }
 }
 
 @media (max-width: 1023px) {
@@ -389,9 +407,15 @@
 
 .serviceVisual {
   position: relative;
-  height: 280px;
+  aspect-ratio: 588 / 280;
   overflow: hidden;
   isolation: isolate;
+}
+
+.serviceVisualImg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .serviceVisual::after {
@@ -1118,7 +1142,6 @@
   background: var(--color-surface);
   border-radius: 50%;
   color: var(--color-text);
-  font-size: 14px;
 }
 
 .serviceTitle {
@@ -1160,7 +1183,7 @@
     font-size: 22px;
   }
   .serviceVisual {
-    height: 200px;
+    aspect-ratio: 588 / 280;
   }
   .serviceVisualBadge {
     top: 24px;
@@ -1546,6 +1569,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .heroScrollWheel,
   .serviceCard,
   .cubeSvg,
   .visualDot,
@@ -1604,15 +1628,15 @@
 
 .whyVisual {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 220px;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 79, 255, 0.04),
-    rgba(0, 79, 255, 0.12)
-  );
+  aspect-ratio: 384 / 220;
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
+}
+
+.whyVisualImg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .whyVisualEyebrow {
@@ -1633,6 +1657,45 @@
   color: var(--color-muted);
   font-size: 11px;
   opacity: 0.7;
+}
+
+/* Korean Market Fit 커스텀 일러스트 */
+.whyKrVisual {
+  position: relative;
+  aspect-ratio: 384 / 220;
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
+  background: linear-gradient(90deg, rgba(0, 79, 255, 0.04), rgba(0, 79, 255, 0.12));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 32px;
+}
+
+.whyKrRow {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.whyKrTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: #fff;
+  border: 1.5px solid rgba(0, 79, 255, 0.3);
+  border-radius: var(--radius-xs);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+
+.whyKrTag svg {
+  flex-shrink: 0;
 }
 
 .whyIllust {
@@ -1751,7 +1814,7 @@
 /* === Featured Work === */
 .featuredHead {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-6);
@@ -1772,7 +1835,7 @@
   font-size: 14px;
   font-weight: var(--fw-bold);
   text-decoration: none;
-  margin-top: 14px;
+  flex-shrink: 0;
 }
 
 .seeAll:hover {
@@ -1810,7 +1873,19 @@
 
 .featuredImage {
   position: relative;
-  height: 330px;
+  aspect-ratio: 588 / 330;
+  overflow: hidden;
+}
+
+.featuredImagePng {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.featuredImageGradient {
+  position: absolute;
+  inset: 0;
   background-position: center;
   background-size: cover;
 }
@@ -2146,15 +2221,21 @@
 }
 
 .logoItem {
-  color: #8a8d92;
-  font-size: 18px;
-  font-weight: var(--fw-bold);
-  opacity: 0.6;
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.55;
   transition: opacity var(--transition-base);
 }
 
 .logoItem:hover {
   opacity: 1;
+}
+
+.logoImg {
+  display: block;
+  height: 36px;
+  width: auto;
+  object-fit: contain;
 }
 
 @media (max-width: 767px) {
