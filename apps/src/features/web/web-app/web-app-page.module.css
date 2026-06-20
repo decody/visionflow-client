@@ -111,11 +111,19 @@
   pointer-events: none;
 }
 
+/* 1640px 콘텐츠 래퍼 — Glow1·디바이스·텍스트 모두 제한 */
+.heroContentWrap {
+  position: absolute;
+  inset: 0;
+  max-width: 1640px;
+  margin-inline: auto;
+}
+
 /* 텍스트 콘텐츠 레이아웃 */
 .heroLayout {
   position: relative;
   z-index: 3;
-  padding: 130px 0 0 120px;
+  padding: 130px 0 0 0;
   height: 100%;
 }
 

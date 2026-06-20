@@ -170,13 +170,16 @@ export function WebAppPage() {
     <>
       {/* 1. Hero */}
       <section className={styles.hero}>
-        {/* 배경 레이어 */}
+        {/* 풀 와이드 배경 레이어 */}
         <div aria-hidden="true" className={styles.heroBackdrop} />
-        <div aria-hidden="true" className={styles.heroGlow1} />
         <div aria-hidden="true" className={styles.heroGlow2} />
         <div aria-hidden="true" className={styles.heroGrid} />
 
-        {/* 디바이스 목업 — 섹션 기준 우하단 절대 위치 */}
+        {/* 1640px 콘텐츠 영역 — Glow1·디바이스·텍스트 모두 포함 */}
+        <div className={styles.heroContentWrap}>
+        <div aria-hidden="true" className={styles.heroGlow1} />
+
+        {/* 디바이스 목업 — 1640px 기준 우하단 */}
         <div aria-hidden="true" className={styles.heroDevices}>
           <div className={styles.heroDesktop}>
             <div className={styles.heroDesktopBar}>
@@ -241,6 +244,7 @@ export function WebAppPage() {
           </div>
 
           </div>
+        </div>{/* /heroContentWrap */}
       </section>
 
       {/* 2. 서비스 타입 */}
