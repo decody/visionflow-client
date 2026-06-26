@@ -19,26 +19,58 @@ const STATS = [
 const SERVICE_TYPES = [
   {
     id: 'landing',
+    badge: '랜딩페이지',
+    duration: '2–4주',
+    price: '₩600만원~',
     title: '캠페인용 랜딩페이지',
     desc: '신제품 발표·캠페인용 단일 페이지. 빠른 런칭이 핵심입니다.',
+    deliverables: [
+      '반응형 디자인 + Lighthouse 95+',
+      'CMS 연동으로 카피 즉시 수정',
+      'A/B 테스트 셋업 + KPI 대시보드',
+    ],
     image: '/images/web-app/service-01-landing.png',
   },
   {
-    id: 'publishing',
-    title: '퍼블리싱·기업 사이트',
-    desc: '정보 전달과 신뢰감을 동시에 갖춘 브랜드 사이트.',
+    id: 'corp',
+    badge: '브랜드 사이트',
+    duration: '4–8주',
+    price: '₩1,500만원~',
+    title: '브랜드·기업 사이트',
+    desc: '회사 소개·제품 카탈로그 사이트. 5–20페이지 규모.',
+    deliverables: [
+      '다국어(i18n) 지원, SEO 최적화',
+      '관리자 페이지 + 블로그 CMS',
+      '디자인 시스템 토큰 인수인계',
+    ],
     image: '/images/web-app/service-02-corp.png',
   },
   {
-    id: 'frontend',
-    title: '리액트/뷰 프론트엔드',
-    desc: '복잡한 UI도 빠르고 안정적으로 구현합니다.',
+    id: 'ecommerce',
+    badge: '이커머스',
+    duration: '6–12주',
+    price: '₩3,000만원~',
+    title: '이커머스 프론트',
+    desc: '상품 상세·결제 플로우. D2C 자체몰 또는 헤드리스 커머스.',
+    deliverables: [
+      'Toss·PortOne·Stripe 결제 연동',
+      '재고·주문 관리자 화면',
+      '회원·쿠폰·리뷰 시스템',
+    ],
     image: '/images/web-app/service-03-frontend.png',
   },
   {
     id: 'app',
+    badge: '모바일 앱',
+    duration: '8–16주',
+    price: '₩5,000만원~',
     title: 'iOS·Android 앱',
-    desc: '하나의 코드베이스로 양쪽 플랫폼에 동시 출시합니다.',
+    desc: 'React Native 기반 크로스플랫폼 앱. 단일 코드베이스로 양 OS 동시 출시.',
+    deliverables: [
+      '푸시 알림 + 딥링크',
+      'Apple·Google 인증/결제',
+      '앱스토어 심사 대응 가이드',
+    ],
     image: '/images/web-app/service-04-app.png',
   },
 ] as const;
@@ -67,24 +99,6 @@ const TECH_STACKS = [
     label: 'INFRA · ANALYTICS',
     desc: 'Preview 배포 + 전환·에러 추적 완비',
     tags: ['Vercel', 'Cloudflare', 'GA4', 'Plausible', 'Sentry'],
-  },
-] as const;
-
-const AI_CARDS = [
-  {
-    title: 'AI 코드 제안',
-    desc: 'GitHub Copilot·Claude로 반복 코드를 줄이고, 개발자는 설계에 집중합니다.',
-    icon: '🤖',
-  },
-  {
-    title: '반응형·기기 최적화',
-    desc: '모바일·태블릿·데스크탑 모든 해상도에서 완벽 동작을 보장합니다.',
-    icon: '📱',
-  },
-  {
-    title: '운영·확장',
-    desc: '출시 후 기능 추가와 유지보수까지 같은 팀이 책임집니다.',
-    icon: '🔧',
   },
 ] as const;
 
@@ -123,43 +137,6 @@ const PROCESS_STEPS = [
     duration: '월 단위 (옵션)',
     desc: '런칭 후 1개월 무상 운영 포함. 이후 월 단위 운영 계약으로 콘텐츠 업데이트·기능 추가·성능 모니터링.',
     tags: ['주간 모니터링 리포트', '월간 개선 제안', '긴급 대응 SLA', '신규 기능 견적'],
-  },
-] as const;
-
-const PORTFOLIO_ITEMS = [
-  { title: '패션 브랜드 랜딩페이지', category: '랜딩/프로모', year: '2026' },
-  { title: '제조업 기업 공식 사이트', category: '기업 사이트', year: '2025' },
-  { title: '스타트업 SaaS 대시보드', category: '프론트엔드', year: '2026' },
-  { title: '헬스케어 iOS/Android 앱', category: '모바일 앱', year: '2025' },
-  { title: '이커머스 프로모 페이지', category: '랜딩/프로모', year: '2026' },
-  { title: '핀테크 관리자 어드민', category: '프론트엔드', year: '2025' },
-] as const;
-
-const TECH_STACK = {
-  left: ['Next.js', 'React', 'TypeScript', 'Tailwind CSS (퍼블리싱)'],
-  right: ['Node.js', 'Supabase', 'Vercel', 'React Native'],
-} as const;
-
-const FAQ_ITEMS = [
-  {
-    q: '개발 기간은 얼마나 걸리나요?',
-    a: '규모에 따라 2주~3개월입니다. 랜딩 페이지는 2~3주, 풀스택 앱은 2~3개월이 평균입니다. 상담 후 정확한 일정을 제시해드립니다.',
-  },
-  {
-    q: '기획·디자인도 함께 진행하나요?',
-    a: '네, 기획부터 운영까지 원스톱으로 진행합니다. 별도 에이전시를 쓰지 않아도 됩니다.',
-  },
-  {
-    q: '유지보수 계약이 따로 필요한가요?',
-    a: '별도 계약 없이 월정액 운영 플랜을 제공합니다. 필요에 따라 선택하실 수 있습니다.',
-  },
-  {
-    q: 'React Native와 네이티브 앱 중 어떤 걸 추천하나요?',
-    a: '대부분의 경우 React Native로 충분합니다. 복잡한 하드웨어 연동이나 초고성능이 필요한 경우에만 네이티브를 권장합니다.',
-  },
-  {
-    q: '견적은 어떻게 산정되나요?',
-    a: '페이지 수, 기능 복잡도, 납기를 기준으로 투명하게 산정합니다. 시뮬레이터로 먼저 예산 범위를 확인하신 후 상담 요청 주세요.',
   },
 ] as const;
 
@@ -251,8 +228,11 @@ export function WebAppPage() {
       <section className={styles.serviceTypes}>
         <Container>
           <header className={styles.sectionHead}>
-            <span className={styles.eyebrow}>서비스</span>
+            <span className={styles.eyebrow}>Services</span>
             <h2 className={styles.sectionTitle}>어떤 사이트가 필요하신가요?</h2>
+            <p className={styles.sectionSub}>
+              4개 서비스 중 가장 가까운 것을 선택해 자세히 살펴보세요. 패키지 결합 시 더 효율적입니다.
+            </p>
           </header>
           <ul className={styles.serviceGrid} role="list">
             {SERVICE_TYPES.map((s) => (
@@ -270,10 +250,26 @@ export function WebAppPage() {
                     />
                   </div>
                   <div className={styles.serviceBody}>
+                    <div className={styles.serviceTopRow}>
+                      <span className={styles.serviceBadge}>{s.badge}</span>
+                      <div className={styles.serviceMeta}>
+                        <span className={styles.serviceDuration}>{s.duration}</span>
+                        <span aria-hidden="true" className={styles.serviceMetaDot} />
+                        <span className={styles.servicePrice}>{s.price}</span>
+                      </div>
+                    </div>
                     <h3 className={styles.serviceTitle}>{s.title}</h3>
                     <p className={styles.serviceDesc}>{s.desc}</p>
+                    <ul className={styles.serviceDeliverables} role="list">
+                      {s.deliverables.map((d) => (
+                        <li className={styles.serviceDeliverable} key={d}>
+                          <span aria-hidden="true" className={styles.serviceDeliverableCheck}>✓</span>
+                          {d}
+                        </li>
+                      ))}
+                    </ul>
                     <span className={styles.serviceLink}>
-                      견적 받기 <span aria-hidden="true">→</span>
+                      자세히 보기 <span aria-hidden="true">→</span>
                     </span>
                   </div>
                 </Link>
@@ -602,33 +598,38 @@ export function WebAppPage() {
       {/* 10. CTA */}
       <section className={styles.cta}>
         <div aria-hidden="true" className={styles.ctaOrb1} />
-        <div aria-hidden="true" className={styles.ctaOrb2} />
         <div aria-hidden="true" className={styles.ctaGrid} />
         <Container>
           <div className={styles.ctaInner}>
             <span className={styles.ctaEyebrow}>
               <span aria-hidden="true" className={styles.ctaEyebrowDot} />
-              시작해보세요
+              Start Your Project
             </span>
             <h2 className={styles.ctaTitle}>어떤 사이트가 필요하신가요?</h2>
             <p className={styles.ctaSub}>
-              아이디어 단계여도 좋습니다. 30분 무료 상담으로 가능성을 먼저
-              확인해보세요.
+              5분 시뮬레이터로 예산을 먼저 확인하시거나, 무료 견적을 바로 문의하세요.
             </p>
             <div className={styles.ctaButtons}>
               <Link
                 className={`${styles.ctaButton} ${styles.ctaButtonPrimary}`}
-                href={ROUTES.CONTACT.QUOTE}
+                href="#simulator"
               >
-                무료 견적 받기 <span aria-hidden="true">→</span>
+                패키지 시뮬레이터 시작 <span aria-hidden="true">→</span>
               </Link>
               <Link
                 className={`${styles.ctaButton} ${styles.ctaButtonGhost}`}
-                href={ROUTES.KAKAO}
+                href={ROUTES.CONTACT.QUOTE}
               >
-                카카오톡 문의
+                무료 견적 받기
               </Link>
             </div>
+            <ul className={styles.ctaTrust} role="list">
+              {['1영업일 응답', '무료 진단', 'NDA 사전 가능'].map((t) => (
+                <li className={styles.ctaTrustItem} key={t}>
+                  <span aria-hidden="true">✓</span> {t}
+                </li>
+              ))}
+            </ul>
           </div>
         </Container>
       </section>

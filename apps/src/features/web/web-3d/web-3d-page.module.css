@@ -15,9 +15,10 @@
 .sectionHead {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  text-align: left;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  margin-bottom: 56px;
 }
 
 .eyebrow {
@@ -35,16 +36,16 @@
 .sectionTitle {
   margin: 0;
   color: var(--color-text);
-  font-size: 32px;
+  font-size: 40px;
   font-weight: var(--fw-bold);
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .sectionSub {
   margin: 0;
   color: var(--color-muted);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: var(--fs-body, 16px);
+  line-height: 1.65;
 }
 
 @media (max-width: 767px) {
@@ -353,9 +354,28 @@
   object-fit: cover;
 }
 
+/* 3D 프리뷰 카드 — 단일 (피그마: right 80, top 200, 440×320) */
+.hero3dCard {
+  position: absolute;
+  right: 80px;
+  top: 200px;
+  width: 440px;
+  height: 320px;
+}
+
+.hero3dCardImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
 /* 반응형 */
 @media (max-width: 1200px) {
-  .heroDevices {
+  .heroDevices,
+  .hero3dCard {
     display: none;
   }
   .hero {
@@ -398,7 +418,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
-  margin: 48px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -461,48 +481,49 @@
 .serviceBody {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   padding: 28px 32px;
 }
 
-.serviceTopRow {
+/* 메타 행: 카테고리 뱃지 + 기간·가격 */
+.svcMetaRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.serviceBadge {
+.svcBadge {
   display: inline-flex;
   align-items: center;
   padding: 5px 10px;
-  background: rgba(0, 79, 255, 0.1);
-  border-radius: var(--radius-xs);
+  background: rgba(0, 79, 255, 0.08);
+  border-radius: 9999px;
   color: var(--color-primary);
   font-size: 12px;
   font-weight: var(--fw-bold);
 }
 
-.serviceMeta {
-  display: flex;
+.svcMeta {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
-.serviceMetaDot {
+.svcMetaDur {
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: var(--fw-medium);
+}
+
+.svcMetaDot {
   width: 3px;
   height: 3px;
   border-radius: 50%;
   background: var(--color-muted);
 }
 
-.serviceDuration {
+.svcMetaPrice {
   color: var(--color-text);
-  font-size: 13px;
-  font-weight: var(--fw-bold);
-}
-
-.servicePrice {
-  color: var(--color-primary);
   font-size: 13px;
   font-weight: var(--fw-bold);
 }
@@ -522,42 +543,48 @@
   line-height: 1.6;
 }
 
-.serviceDeliverables {
+/* 산출물 체크 리스트 */
+.svcDeliverables {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  padding-top: 8px;
 }
 
-.serviceDeliverable {
+.svcDeliverItem {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   color: var(--color-text);
-  font-size: 13px;
-  font-weight: var(--fw-medium);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-.serviceDeliverableCheck {
+.svcCheck {
   color: #03c75a;
+  font-size: 13px;
   font-weight: var(--fw-bold);
+  flex-shrink: 0;
+  line-height: 1.5;
 }
 
 .serviceLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--color-primary);
   font-size: 14px;
   font-weight: var(--fw-bold);
-  padding-top: 12px;
+  padding-top: 16px;
+  margin-top: auto;
 }
 
 @media (max-width: 767px) {
   .serviceTitle {
-    font-size: 18px;
+    font-size: 20px;
   }
   .serviceBody {
-    padding: 20px 24px;
+    padding: 24px;
   }
 }
 
@@ -581,16 +608,16 @@
 .techTitle {
   margin: 0;
   color: var(--color-text);
-  font-size: 32px;
+  font-size: 36px;
   font-weight: var(--fw-bold);
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .techSub {
   margin: 0;
   color: var(--color-muted);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: var(--fs-body, 16px);
+  line-height: 1.65;
 }
 
 /* 4열 가로 그리드 */
@@ -606,24 +633,25 @@
 .techCard {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   padding: 24px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
 }
 
 .techCardLabel {
-  color: var(--color-muted);
+  color: var(--color-primary);
   font-size: 11px;
   font-weight: var(--fw-bold);
+  letter-spacing: 0.88px;
 }
 
 .techCardDesc {
   margin: 0;
   color: var(--color-text);
   font-size: 13px;
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-bold);
   line-height: 1.5;
 }
 
@@ -699,65 +727,58 @@
   line-height: 1.6;
 }
 
-/* Step 카드 + 커넥터 가로 배치 */
+/* Step 카드 3개 가로 배치 (커넥터 없음, gap 30) */
 .aiSteps {
-  display: flex;
-  align-items: center;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: stretch;
+  gap: 30px;
   margin-bottom: 32px;
 }
 
-.aiConnector {
-  flex-shrink: 0;
-  display: block;
-}
-
-/* 카드 */
+/* 카드 — 3개 동일 배경 */
 .aiStep {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 32px;
   background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
 }
 
-.aiStepHighlight {
-  background: rgba(0, 79, 255, 0.04);
-}
-
-/* 아이콘 박스 */
+/* 아이콘 박스 — 연한 파란 배경 */
 .aiStepIcon {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 56px;
   height: 56px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
+  background: rgba(0, 79, 255, 0.1);
+  border-radius: 12px;
   flex-shrink: 0;
+  font-size: 24px;
+  line-height: 1;
 }
 
-/* Step 번호 pill */
+/* Step 배지 pill — 파란 */
 .aiStepNum {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  background: rgba(0, 79, 255, 0.1);
   border-radius: 9999px;
-  color: var(--color-muted);
+  color: var(--color-primary);
   font-size: 11px;
   font-weight: var(--fw-bold);
+  letter-spacing: 0.5px;
   width: fit-content;
 }
 
 .aiStepTitle {
   margin: 0;
   color: var(--color-text);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: var(--fw-bold);
   line-height: 1.3;
 }
@@ -765,7 +786,7 @@
 .aiStepDesc {
   margin: 0;
   color: var(--color-muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.65;
 }
 
@@ -795,13 +816,8 @@
 
 @media (max-width: 1023px) {
   .aiSteps {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
     gap: 16px;
-  }
-  .aiConnector {
-    transform: rotate(90deg);
-    align-self: center;
   }
   .aiTitle {
     font-size: 28px;
@@ -901,6 +917,7 @@
   width: 2px;
   background: rgba(0, 79, 255, 0.25);
   min-height: 24px;
+  margin-top: 8px;
 }
 
 /* 우: Card */
@@ -961,11 +978,17 @@
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  background: rgba(0, 79, 255, 0.1);
-  border-radius: var(--radius-xs);
-  color: var(--color-primary);
-  font-size: 11px;
+  background: rgba(3, 199, 90, 0.1);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 12px;
   font-weight: var(--fw-medium);
+}
+
+/* 체크마크 — 녹색 */
+.processTag > span {
+  color: #03c75a;
+  font-weight: var(--fw-bold);
 }
 
 @media (max-width: 767px) {
@@ -1020,7 +1043,7 @@
 /* 두 컬럼 레이아웃 */
 .simRow {
   display: grid;
-  grid-template-columns: 1fr 476px;
+  grid-template-columns: 1fr 400px;
   gap: 24px;
   align-items: start;
 }
@@ -1151,7 +1174,7 @@
   height: 22px;
   border-radius: 50%;
   background: #fff;
-  border: 4px solid var(--color-primary);
+  border: 3px solid var(--color-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   pointer-events: none;
   transition: left 120ms ease;
@@ -1259,7 +1282,7 @@
 .simResult {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   padding: 32px;
   background: linear-gradient(162deg, #004fff 0%, #002999 80%);
   border-radius: 16px;
@@ -1303,7 +1326,7 @@
 
 .simBudgetValue {
   margin: 0;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: var(--fw-bold);
   line-height: 1.2;
 }
@@ -1424,7 +1447,7 @@
 /* 헤더 행 — space-between */
 .casesHeadRow {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 40px;
@@ -1435,6 +1458,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
+  margin-bottom: 40px;
 }
 
 .casesTitle {
@@ -1488,10 +1512,10 @@
   overflow: hidden;
 }
 
-/* 이미지 영역 */
+/* 이미지 영역 — 피그마 384×180 */
 .casesImage {
   position: relative;
-  aspect-ratio: 384 / 240;
+  aspect-ratio: 384 / 180;
   overflow: hidden;
 }
 
@@ -1505,8 +1529,8 @@
 .casesBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 24px;
+  gap: 8px;
+  padding: 24px 28px;
 }
 
 .casesTopRow {
@@ -1534,9 +1558,10 @@
 .casesCardTitle {
   margin: 0;
   color: var(--color-text);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: var(--fw-bold);
-  line-height: 1.4;
+  line-height: 1.3;
+  letter-spacing: -0.22px;
 }
 
 .casesClient {
@@ -1557,6 +1582,63 @@
 
 .casesMetric span {
   color: #03c75a;
+}
+
+/* 3D 케이스 카드 보강 */
+.cases3dCat {
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.6px;
+}
+
+.cases3dDesc {
+  margin: 0;
+  flex: 1;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.cases3dLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  text-decoration: none;
+}
+
+.cases3dLink:hover {
+  text-decoration: underline;
+}
+
+/* 하단 More 버튼 — 풀폭 회색 */
+.casesMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 16px 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  text-decoration: none;
+  transition: background 200ms ease;
+}
+
+.casesMore:hover {
+  background: #eef1f5;
+}
+
+.casesMore span {
+  color: var(--color-primary);
 }
 
 @media (max-width: 1023px) {
@@ -1997,6 +2079,22 @@
   pointer-events: none;
 }
 
+.ctaOrb2 {
+  position: absolute;
+  top: 250px;
+  left: -150px;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(120, 180, 255, 0.25),
+    transparent 70%
+  );
+  filter: blur(60px);
+  pointer-events: none;
+}
+
 .ctaGrid {
   position: absolute;
   inset: 0;
@@ -2034,7 +2132,7 @@
 .ctaEyebrowDot {
   width: 6px;
   height: 6px;
-  background: #03c75a;
+  background: #40c057;
   border-radius: 50%;
 }
 
@@ -2043,33 +2141,14 @@
   color: #fff;
   font-size: 56px;
   font-weight: var(--fw-bold);
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .ctaSub {
   margin: 0;
   color: rgba(255, 255, 255, 0.85);
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1.65;
-}
-
-.ctaTrust {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 24px;
-  margin: 0;
-  padding-top: 8px;
-  list-style: none;
-}
-
-.ctaTrustItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
-  font-weight: var(--fw-medium);
 }
 
 .ctaButtons {
@@ -2152,5 +2231,337 @@
   .ctaButton,
   .simCta {
     transition-duration: 1ms;
+  }
+}
+
+/* ============================================================
+   Interactive 3D Demo — 소파 컨피규레이터 (다크 섹션)
+   ============================================================ */
+.demo {
+  position: relative;
+  background: linear-gradient(110deg, #0f1429 0%, #141f47 50%, #050a1a 100%);
+  padding-block: 96px;
+  overflow: hidden;
+}
+
+.demoGlow {
+  position: absolute;
+  left: -120px;
+  top: 200px;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 79, 255, 0.35), transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+/* 헤더 — 좌측, 흰 텍스트 */
+.demoHead {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.demoEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.96px;
+}
+
+.demoEyebrowDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #03c75a;
+  flex-shrink: 0;
+}
+
+.demoTitle {
+  margin: 0;
+  color: #fff;
+  font-size: 36px;
+  font-weight: var(--fw-bold);
+  line-height: 1.3;
+}
+
+.demoSub {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+/* 데모 본체 — 좌 뷰포트 + 우 옵션 패널 */
+.demoBody {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 500px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* 뷰포트 */
+.demoViewport {
+  position: relative;
+  min-height: 563px;
+  background: linear-gradient(141deg, #0a0f24 14%, #1a295c 86%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.demoSofa {
+  width: 70%;
+  max-width: 420px;
+  height: auto;
+  transition: filter 300ms ease;
+  filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.5));
+}
+
+.demoViewBadge {
+  position: absolute;
+  top: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.55px;
+  color: #fff;
+}
+
+.demoViewBadgeLeft {
+  left: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.demoViewBadgeRight {
+  right: 15px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: var(--fw-medium);
+}
+
+.demoViewPulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #03c75a;
+}
+
+.demoViewHint {
+  position: absolute;
+  left: 15px;
+  bottom: 15px;
+  padding: 5px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+}
+
+/* 옵션 패널 */
+.demoPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 36px;
+  background: #fff;
+}
+
+.demoPanelTitle {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 20px;
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.2px;
+}
+
+.demoPanelSub {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.demoGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.demoGroupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.demoGroupLabel {
+  color: var(--color-text);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.96px;
+}
+
+.demoGroupValue {
+  color: var(--color-primary);
+  font-weight: var(--fw-medium);
+}
+
+/* 패브릭 스와치 */
+.demoSwatches {
+  display: flex;
+  gap: 12px;
+}
+
+.demoSwatch {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  border: 1px solid #e8edf2;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.demoSwatch:hover {
+  transform: scale(1.05);
+}
+
+.demoSwatchActive {
+  border: 2px solid var(--color-primary);
+}
+
+/* 다리 옵션 */
+.demoLegs {
+  display: flex;
+  gap: 8px;
+}
+
+.demoLeg {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e8edf2;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: var(--fw-medium);
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.demoLegActive {
+  background: rgba(0, 79, 255, 0.06);
+  border: 1.5px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.demoLegDot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.demoDivider {
+  height: 1px;
+  background: #e8edf2;
+}
+
+/* 가격 */
+.demoPrice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.demoPriceLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+}
+
+.demoPricePulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #03c75a;
+}
+
+.demoPriceValue {
+  color: var(--color-text);
+  font-size: 32px;
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.64px;
+}
+
+.demoCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 16px 24px;
+  background: var(--color-primary);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: var(--fw-bold);
+  text-decoration: none;
+  transition: opacity 200ms ease;
+}
+
+.demoCta:hover {
+  opacity: 0.9;
+}
+
+@media (max-width: 1023px) {
+  .demoBody {
+    grid-template-columns: 1fr;
+  }
+  .demoViewport {
+    min-height: 360px;
+  }
+  .demoTitle {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 767px) {
+  .demo {
+    padding-block: 72px;
+  }
+  .demoSwatch {
+    width: 52px;
+    height: 52px;
+  }
+  .demoLegs {
+    flex-wrap: wrap;
   }
 }
