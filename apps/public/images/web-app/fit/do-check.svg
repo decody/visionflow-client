@@ -1,0 +1,20 @@
+<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="12" height="12" fill="#E5E5E5"/>
+<g id="09 &#226;&#128;&#148; Do / Dont">
+<rect width="1440" height="854" transform="translate(-156 -369)" fill="white"/>
+<g id="DoDontRow">
+<g id="Do Column">
+<rect x="-36" y="-110" width="588" height="499" rx="16" fill="#004FFF" fill-opacity="0.04"/>
+<rect x="-35.5" y="-109.5" width="587" height="498" rx="15.5" stroke="#004FFF" stroke-opacity="0.18"/>
+<g id="Item">
+<g id="Check">
+<rect x="-4" y="-4" width="20" height="20" rx="4" fill="#004FFF"/>
+<g id="Frame">
+<path id="Vector" d="M2.5 6L5 8.5L9.5 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</svg>

@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type WorkRow } from '@visionflow/shared';
+import { type WorkRow } from '@visionflow/shared';
+
+import { requestWorkWrite } from './requestWorkWrite';
 
 export type WorkMutationValues = {
   category: string;
@@ -17,12 +19,15 @@ export const useCreateWorkMutation = () => {
 
   return useMutation({
     mutationFn: async (values: WorkMutationValues) => {
-      const { data } = await apiClient.post<WorkRow>('works', {
-        ...values,
-        image: values.image?.trim() || null,
-        linkLabel: values.linkLabel?.trim() || null,
-        linkUrl: values.linkUrl?.trim() || null,
-        roles: values.roles.filter(Boolean).join(', '),
+      const data = await requestWorkWrite<WorkRow>('/api/admin/works', {
+        method: 'POST',
+        payload: {
+          ...values,
+          image: values.image?.trim() || null,
+          linkLabel: values.linkLabel?.trim() || null,
+          linkUrl: values.linkUrl?.trim() || null,
+          roles: values.roles.filter(Boolean).join(', '),
+        },
       });
 
       return {
