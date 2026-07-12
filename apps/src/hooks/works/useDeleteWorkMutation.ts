@@ -1,12 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type WorkRow } from '@visionflow/shared';
+import { type WorkRow } from '@visionflow/shared';
+
+import { requestWorkWrite } from './requestWorkWrite';
 
 export const useDeleteWorkMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (workId: string) => {
-      await apiClient.delete<WorkRow>(`works/${workId}`);
+      await requestWorkWrite<WorkRow>(`/api/admin/works/${workId}`, {
+        method: 'DELETE',
+      });
 
       return workId;
     },
