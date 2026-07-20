@@ -1,26 +1,20 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { apiClient, type IFaq } from '@visionflow/shared';
+import type { IFaq } from '@visionflow/shared';
 
-const normalizeFaq = (faq: IFaq): IFaq => {
-  const isVisible = faq.is_visible ?? faq.isVisible;
-
-  return {
-    ...faq,
-    isVisible,
-    is_visible: isVisible,
-    created_at: faq.created_at ?? faq.createdAt,
-    updated_at: faq.updated_at ?? faq.updatedAt,
-  };
-};
-
+// 공개 FAQ는 Spring 백엔드(/api/faq, is_visible=true)로 위임하는 Next 라우트에서 가져온다.
+// Next 라우트가 이미 camelCase/snake_case를 모두 채워주므로 별도 정규화가 필요 없다.
 const fetchFaqList = async (): Promise<IFaq[]> => {
-  const { data } = await apiClient.get<IFaq[] | null>('faq', {
-    isVisible: 'eq.true',
-  });
+  const response = await fetch('/api/faq');
 
-  return (data ?? []).map(normalizeFaq).filter((faq) => faq.is_visible === true);
+  if (!response.ok) {
+    throw new Error('FAQ를 불러오지 못했습니다.');
+  }
+
+  const data = (await response.json()) as IFaq[];
+
+  return data.filter((faq) => faq.is_visible === true);
 };
 
 export const useFaqListQuery = () => {

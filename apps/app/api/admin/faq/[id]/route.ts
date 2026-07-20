@@ -1,20 +1,15 @@
-import type { ICreateFaqRequest, IFaq } from '@visionflow/shared';
+import type { ICreateFaqRequest } from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { auth } from '../../../../../auth';
 import { canManageContent } from '@/lib/admin-permissions';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-
-type FaqRow = {
-  answer: string;
-  category: string | null;
-  created_at: string;
-  id: number;
-  is_visible: boolean;
-  question: string;
-  updated_at: string;
-};
+import {
+  backendUrl,
+  readJson,
+  springFaqToIFaq,
+  type SpringFaq,
+} from '@/lib/backend';
 
 const jsonError = (
   message: string,
@@ -22,32 +17,28 @@ const jsonError = (
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
 
-const toFaq = (row: FaqRow): IFaq => ({
-  answer: row.answer,
-  category: row.category,
-  created_at: row.created_at,
-  createdAt: row.created_at,
-  id: row.id,
-  is_visible: row.is_visible,
-  isVisible: row.is_visible,
-  question: row.question,
-  updated_at: row.updated_at,
-  updatedAt: row.updated_at,
-});
+const requireManager = async (): Promise<NextResponse | null> => {
+  const session = await auth();
 
+  if (!session) return jsonError('Unauthorized', 401);
+  if (!canManageContent(session.user?.role)) {
+    return jsonError('Forbidden', 403);
+  }
+
+  return null;
+};
+
+/**
+ * FAQ 수정(전체 교체). Spring `PUT /api/admin/faq/{id}`로 위임.
+ * 프론트는 PATCH 관례를 유지하되 Spring 계약(PUT)으로 매핑한다. 없으면 Spring이 404.
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
+  const denied = await requireManager();
 
-  if (!session) {
-    return jsonError('Unauthorized', 401);
-  }
-
-  if (!canManageContent(session.user?.role)) {
-    return jsonError('Forbidden', 403);
-  }
+  if (denied) return denied;
 
   try {
     const { id } = await params;
@@ -63,31 +54,28 @@ export async function PATCH(
       return jsonError('question and answer are required.', 400);
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('faq')
-      .update({
+    const response = await fetch(backendUrl(`/api/admin/faq/${id}`), {
+      body: JSON.stringify({
         answer,
         category: payload.category?.trim() || 'default',
-        is_visible: payload.is_visible ?? payload.isVisible ?? false,
+        isVisible: payload.is_visible ?? payload.isVisible ?? false,
         question,
-        updated_at:
-          payload.updated_at ??
-          payload.updatedAt ??
-          new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select('*')
-      .single();
+      }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'PUT',
+    });
 
-    if (error) {
-      return jsonError('Failed to update FAQ.', 500, error.message);
+    const body = await readJson(response);
+
+    if (!response.ok) {
+      return jsonError('Failed to update FAQ.', response.status, body);
     }
 
-    return NextResponse.json(toFaq(data as FaqRow));
+    return NextResponse.json(springFaqToIFaq(body as SpringFaq));
   } catch (error) {
     return jsonError(
       'Failed to update FAQ.',
-      500,
+      502,
       error instanceof Error ? error.message : error,
     );
   }
