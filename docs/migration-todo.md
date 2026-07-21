@@ -3,7 +3,7 @@
 Supabase(BaaS) → **Spring Boot** 점진 이관(strangler)의 **남은 작업 체크리스트**.
 코드 실측 기준으로 작성. 전략·배경은 백엔드 저장소 [`ROADMAP.md`](../../visionflow-server/ROADMAP.md) 참조.
 
-> 최종 갱신: **2026-07-20** · 기준 커밋: server `918a71d`(FAQ JPA→MyBatis), client `89288c8`(FAQ 프론트 BFF 이관)
+> 최종 갱신: **2026-07-21** · 기준 커밋: server `918a71d`(FAQ MyBatis) + Spring Security(미커밋), client `89288c8`(FAQ 프론트 BFF 이관)
 
 ---
 
@@ -11,22 +11,31 @@ Supabase(BaaS) → **Spring Boot** 점진 이관(strangler)의 **남은 작업 �
 
 | 영역 | 이관 완료 | 남음 |
 |---|---|---|
-| **백엔드(Spring)** | `faq` 도메인(MyBatis), `health` | 그 외 **전 도메인**, 시큐리티, Testcontainers |
+| **백엔드(Spring)** | `faq` 도메인(MyBatis), `health`, **Spring Security(HS256 JWT 검증)** | 그 외 **전 도메인**, Testcontainers, 프론트 BFF 서명 연동 |
 | **프론트(Next)** | FAQ → Spring(BFF) + Playwright 테스트 | 그 외 **31개 파일**이 여전히 Supabase 직접 호출 |
 
 - 프론트 FAQ 경로: `브라우저 → Next API 라우트(NextAuth) → Spring → Postgres` (BFF). 로컬 전구간 green 검증됨.
-- ⚠️ **미해결 리스크**: Spring `AdminFaqController`가 **미인증**. 지금은 NextAuth BFF 게이트가 임시 방어 → 실배포 전 반드시 3단계(시큐리티) 필요.
+- ✅ **인증 종단 완료**: Spring `AdminFaqController`는 ROLE_ADMIN/ROLE_SUPERADMIN(Bearer JWT) 필요(백엔드) + BFF가 HS256 JWT 서명·첨부(프론트). 로컬 전구간 e2e 통과.
+  ⚠️ 배포 전제: `BACKEND_JWT_SECRET`을 프론트·백엔드에 **동일** 값으로 주입해야 함(미설정 시 관리자 호출 실패).
 
 ---
 
-## 1. 🔴 인증 (Spring Security) — 최우선
+## 1. 🔴 인증 (Spring Security) — 최우선  *(백엔드 완료 / 프론트 서명 연동 남음)*
 
-FAQ 어드민이 미인증 상태로 열려 있어, 배포 가능 상태로 만들려면 먼저 해결해야 함.
+**신뢰 모델 결정: BFF 발급 HS256 서명 JWT.** 브라우저는 Spring을 직접 호출하지 않는다. Next BFF가
+NextAuth로 인증한 뒤 userId(sub)+role 클레임을 담은 단기 HS256 JWT를 공유 비밀로 서명해
+`Authorization: Bearer`로 Spring에 전달, Spring이 stateless 리소스 서버로 검증한다.
+(NextAuth v5 기본 세션은 JWE라 Spring 직접검증이 비표준 → BFF 재서명 채택.)
 
-- [ ] NextAuth 세션(JWT)을 Spring Security가 검증 (공유 시크릿 또는 JWKS)
-- [ ] 권한 분기 이관 — role: `SuperAdmin` / `admin` / `Viewer` (프론트 `canManageContent` 대응)
-- [ ] `AdminFaqController` 보호 적용 → BFF 게이트에만 의존하지 않도록
-- [ ] 인증 실패/권한 부족 응답 계약(401/403)을 프론트 BFF 라우트와 일치시키기
+- [x] **백엔드(server `visionflow-server`)** — `SecurityConfig`(HS256 JwtDecoder, `/api/admin/**`=ROLE_ADMIN/ROLE_SUPERADMIN),
+      role 클레임→권한 변환, 401/403 JSON, `AdminFaqController` 보호, 보안 테스트 7건 통과.
+- [x] **프론트(client)** — BFF가 HS256 JWT를 **서명**해 Spring 호출에 첨부(완료)
+  - [x] `lib/backend.ts`에 `signBackendToken`/`backendAuthHeaders`(node:crypto HMAC, HS256, `sub`=userId·`role`·`iss=visionflow-bff`·exp 2분). jose 등 외부 의존성 없음
+  - [x] `app/api/admin/faq/route.ts`(GET·POST)+`[id]/route.ts`(PATCH)의 Spring `fetch`에 `Authorization: Bearer` 부착. `requireManager`가 세션에서 userId/role을 꺼내 서명 신원으로 반환
+  - [x] `.env.example`에 `BACKEND_JWT_SECRET`(백엔드와 **동일** 값, 32바이트 이상)·`BACKEND_JWT_ISSUER` 문서화
+  - [x] 전구간 e2e 검증: 로컬 Spring(security 활성)에 node:crypto 서명 토큰 호출 → admin/superadmin 200·Viewer 403·무토큰 401·위조서명 401 전부 통과
+  - [ ] (선택) Playwright: 서명 토큰 경로 계약 테스트 — 실제 세션+백엔드 필요라 후속
+- [x] 인증 실패/권한 부족 응답 계약(401/403)은 백엔드가 `ApiExceptionHandler` 형태로 통일 완료
 
 ## 2. 🟠 FAQ 마무리 (잔여)
 

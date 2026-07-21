@@ -5,9 +5,11 @@ import { NextResponse } from 'next/server';
 import { auth } from '../../../../../auth';
 import { canManageContent } from '@/lib/admin-permissions';
 import {
+  backendAuthHeaders,
   backendUrl,
   readJson,
   springFaqToIFaq,
+  type BackendPrincipal,
   type SpringFaq,
 } from '@/lib/backend';
 
@@ -17,15 +19,19 @@ const jsonError = (
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
 
-const requireManager = async (): Promise<NextResponse | null> => {
+const requireManager = async (): Promise<BackendPrincipal | NextResponse> => {
   const session = await auth();
 
   if (!session) return jsonError('Unauthorized', 401);
-  if (!canManageContent(session.user?.role)) {
+
+  const role = session.user?.role;
+  const userId = session.user?.id;
+
+  if (!canManageContent(role) || !role || !userId) {
     return jsonError('Forbidden', 403);
   }
 
-  return null;
+  return { role, userId };
 };
 
 /**
@@ -36,9 +42,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const denied = await requireManager();
+  const gate = await requireManager();
 
-  if (denied) return denied;
+  if (gate instanceof NextResponse) return gate;
 
   try {
     const { id } = await params;
@@ -61,7 +67,10 @@ export async function PATCH(
         isVisible: payload.is_visible ?? payload.isVisible ?? false,
         question,
       }),
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...backendAuthHeaders(gate),
+      },
       method: 'PUT',
     });
 
