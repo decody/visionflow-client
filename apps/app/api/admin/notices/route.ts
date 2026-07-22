@@ -1,25 +1,17 @@
-import type { ICreateNoticeRequest, INotice } from '@visionflow/shared';
+import type { ICreateNoticeRequest } from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { auth } from '../../../../auth';
 import { canManageContent } from '@/lib/admin-permissions';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-
-type NoticeRow = {
-  category: string | null;
-  content_html: string | null;
-  content_json: Record<string, unknown> | null;
-  created_at: string;
-  created_by: string | null;
-  date: string;
-  description: string | null;
-  id: string;
-  is_important: boolean;
-  is_published: boolean;
-  title: string;
-  updated_at: string;
-};
+import {
+  backendAuthHeaders,
+  backendUrl,
+  readJson,
+  springNoticeToINotice,
+  type BackendPrincipal,
+  type SpringNotice,
+} from '@/lib/backend';
 
 const jsonError = (
   message: string,
@@ -27,23 +19,27 @@ const jsonError = (
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
 
-const toNotice = (row: NoticeRow): INotice => ({
-  category: row.category ?? '',
-  contentHtml: row.content_html,
-  contentJson: row.content_json,
-  createdAt: row.created_at,
-  createdBy: row.created_by,
-  date: row.date,
-  description: row.description,
-  id: row.id,
-  isImportant: row.is_important,
-  isPublished: row.is_published,
-  title: row.title,
-  updatedAt: row.updated_at,
-});
+/**
+ * 관리자 권한 게이트. NextAuth 세션을 검증하고, 통과 시 Spring 호출에 서명해 실을
+ * 사용자 신원(userId/role)을 돌려준다. Spring도 이 신원이 담긴 Bearer JWT를 재검증한다
+ * (BFF 게이트 + Spring Security 이중 방어). FAQ 라우트와 동일 패턴.
+ */
+const requireManager = async (): Promise<BackendPrincipal | NextResponse> => {
+  const session = await auth();
 
-const getToday = () => new Date().toISOString().slice(0, 10);
+  if (!session) return jsonError('Unauthorized', 401);
 
+  const role = session.user?.role;
+  const userId = session.user?.id;
+
+  if (!canManageContent(role) || !role || !userId) {
+    return jsonError('Forbidden', 403);
+  }
+
+  return { role, userId };
+};
+
+// 프론트 카테고리 라벨(영문/한글 혼재)을 한글로 정규화한 뒤 Spring에 전달한다.
 const noticeCategoryMap: Record<string, string> = {
   Event: '이벤트',
   Guide: '공지',
@@ -66,39 +62,42 @@ const normalizeNoticeCategory = (category?: string | null) => {
   return noticeCategoryMap[trimmedCategory] ?? trimmedCategory;
 };
 
-const getSessionUserId = async (email?: string | null) => {
-  const normalizedEmail = email?.trim();
+/** 관리자 공지 전체 목록(비공개 포함). Spring `GET /api/admin/notices`로 위임(category/keyword 전달). */
+export async function GET(request: NextRequest) {
+  const gate = await requireManager();
 
-  if (!normalizedEmail) {
-    return null;
+  if (gate instanceof NextResponse) return gate;
+
+  try {
+    const query = new URL(request.url).searchParams.toString();
+    const response = await fetch(
+      backendUrl(`/api/admin/notices${query ? `?${query}` : ''}`),
+      { cache: 'no-store', headers: backendAuthHeaders(gate) },
+    );
+
+    const body = await readJson(response);
+
+    if (!response.ok) {
+      return jsonError('Failed to load notices.', response.status, body);
+    }
+
+    const rows = (body ?? []) as SpringNotice[];
+
+    return NextResponse.json(rows.map(springNoticeToINotice));
+  } catch (error) {
+    return jsonError(
+      'Failed to reach notice backend.',
+      502,
+      error instanceof Error ? error.message : error,
+    );
   }
+}
 
-  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return (
-    data.users.find(
-      (user) => user.email?.toLowerCase() === normalizedEmail.toLowerCase(),
-    )?.id ?? null
-  );
-};
-
+/** 공지 생성. Spring `POST /api/admin/notices`로 위임. 타임스탬프는 DB가 소유(전달하지 않음). */
 export async function POST(request: NextRequest) {
-  const session = await auth();
+  const gate = await requireManager();
 
-  if (!session) {
-    return jsonError('Unauthorized', 401);
-  }
-
-  if (!canManageContent(session.user?.role)) {
-    return jsonError('Forbidden', 403);
-  }
+  if (gate instanceof NextResponse) return gate;
 
   try {
     const payload = (await request.json()) as ICreateNoticeRequest;
@@ -113,38 +112,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const now = new Date().toISOString();
-    const createdBy =
-      payload.createdBy ?? (await getSessionUserId(session.user?.email));
-    const { data, error } = await supabaseAdmin
-      .from('notices')
-      .insert({
+    const response = await fetch(backendUrl('/api/admin/notices'), {
+      body: JSON.stringify({
         category: normalizeNoticeCategory(payload.category),
-        content_html: contentHtml,
-        content_json: payload.contentJson ?? null,
-        created_at: payload.createdAt ?? now,
-        created_by: createdBy,
-        date: payload.date ?? getToday(),
+        contentHtml,
+        createdBy: gate.userId,
+        date: payload.date,
         description,
-        is_important: payload.isImportant ?? false,
-        is_published: payload.isPublished ?? true,
+        isImportant: payload.isImportant ?? false,
+        isPublished: payload.isPublished ?? true,
         title,
-        updated_at: payload.updatedAt ?? now,
-      })
-      .select('*')
-      .single();
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+        ...backendAuthHeaders(gate),
+      },
+      method: 'POST',
+    });
 
-    if (error) {
-      return jsonError('Failed to create notice.', 500, error.message);
+    const body = await readJson(response);
+
+    if (!response.ok) {
+      return jsonError('Failed to create notice.', response.status, body);
     }
 
-    return NextResponse.json(toNotice(data as NoticeRow), {
-      status: 201,
-    });
+    return NextResponse.json(
+      springNoticeToINotice(body as SpringNotice),
+      { status: 201 },
+    );
   } catch (error) {
     return jsonError(
       'Failed to create notice.',
-      500,
+      502,
       error instanceof Error ? error.message : error,
     );
   }

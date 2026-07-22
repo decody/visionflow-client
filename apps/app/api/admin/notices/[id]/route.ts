@@ -1,25 +1,17 @@
-import type { ICreateNoticeRequest, INotice } from '@visionflow/shared';
+import type { ICreateNoticeRequest } from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { auth } from '../../../../../auth';
 import { canManageContent } from '@/lib/admin-permissions';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-
-type NoticeRow = {
-  category: string | null;
-  content_html: string | null;
-  content_json: Record<string, unknown> | null;
-  created_at: string;
-  created_by: string | null;
-  date: string;
-  description: string | null;
-  id: string;
-  is_important: boolean;
-  is_published: boolean;
-  title: string;
-  updated_at: string;
-};
+import {
+  backendAuthHeaders,
+  backendUrl,
+  readJson,
+  springNoticeToINotice,
+  type BackendPrincipal,
+  type SpringNotice,
+} from '@/lib/backend';
 
 const jsonError = (
   message: string,
@@ -27,22 +19,20 @@ const jsonError = (
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
 
-const toNotice = (row: NoticeRow): INotice => ({
-  category: row.category ?? '',
-  contentHtml: row.content_html,
-  contentJson: row.content_json,
-  createdAt: row.created_at,
-  createdBy: row.created_by,
-  date: row.date,
-  description: row.description,
-  id: row.id,
-  isImportant: row.is_important,
-  isPublished: row.is_published,
-  title: row.title,
-  updatedAt: row.updated_at,
-});
+const requireManager = async (): Promise<BackendPrincipal | NextResponse> => {
+  const session = await auth();
 
-const getToday = () => new Date().toISOString().slice(0, 10);
+  if (!session) return jsonError('Unauthorized', 401);
+
+  const role = session.user?.role;
+  const userId = session.user?.id;
+
+  if (!canManageContent(role) || !role || !userId) {
+    return jsonError('Forbidden', 403);
+  }
+
+  return { role, userId };
+};
 
 const noticeCategoryMap: Record<string, string> = {
   Event: '이벤트',
@@ -66,19 +56,50 @@ const normalizeNoticeCategory = (category?: string | null) => {
   return noticeCategoryMap[trimmedCategory] ?? trimmedCategory;
 };
 
+/** 관리자 공지 단건 조회(비공개 포함). Spring `GET /api/admin/notices/{id}`로 위임. 없으면 404. */
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const gate = await requireManager();
+
+  if (gate instanceof NextResponse) return gate;
+
+  try {
+    const { id } = await params;
+
+    const response = await fetch(backendUrl(`/api/admin/notices/${id}`), {
+      cache: 'no-store',
+      headers: backendAuthHeaders(gate),
+    });
+
+    const body = await readJson(response);
+
+    if (!response.ok) {
+      return jsonError('Failed to load notice.', response.status, body);
+    }
+
+    return NextResponse.json(springNoticeToINotice(body as SpringNotice));
+  } catch (error) {
+    return jsonError(
+      'Failed to reach notice backend.',
+      502,
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
+
+/**
+ * 공지 수정(전체 교체). Spring `PUT /api/admin/notices/{id}`로 위임.
+ * 프론트는 PATCH 관례를 유지하되 Spring 계약(PUT)으로 매핑한다. 없으면 Spring이 404.
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
+  const gate = await requireManager();
 
-  if (!session) {
-    return jsonError('Unauthorized', 401);
-  }
-
-  if (!canManageContent(session.user?.role)) {
-    return jsonError('Forbidden', 403);
-  }
+  if (gate instanceof NextResponse) return gate;
 
   try {
     const { id } = await params;
@@ -98,32 +119,67 @@ export async function PATCH(
       );
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('notices')
-      .update({
+    const response = await fetch(backendUrl(`/api/admin/notices/${id}`), {
+      body: JSON.stringify({
         category: normalizeNoticeCategory(payload.category),
-        content_html: contentHtml,
-        content_json: payload.contentJson ?? null,
-        date: payload.date ?? getToday(),
+        contentHtml,
+        date: payload.date,
         description,
-        is_important: payload.isImportant ?? false,
-        is_published: payload.isPublished ?? true,
+        isImportant: payload.isImportant ?? false,
+        isPublished: payload.isPublished ?? true,
         title,
-        updated_at: payload.updatedAt ?? new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select('*')
-      .single();
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+        ...backendAuthHeaders(gate),
+      },
+      method: 'PUT',
+    });
 
-    if (error) {
-      return jsonError('Failed to update notice.', 500, error.message);
+    const body = await readJson(response);
+
+    if (!response.ok) {
+      return jsonError('Failed to update notice.', response.status, body);
     }
 
-    return NextResponse.json(toNotice(data as NoticeRow));
+    return NextResponse.json(springNoticeToINotice(body as SpringNotice));
   } catch (error) {
     return jsonError(
       'Failed to update notice.',
-      500,
+      502,
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
+
+/** 공지 삭제. Spring `DELETE /api/admin/notices/{id}`로 위임. 성공 시 204, 없으면 404. */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const gate = await requireManager();
+
+  if (gate instanceof NextResponse) return gate;
+
+  try {
+    const { id } = await params;
+
+    const response = await fetch(backendUrl(`/api/admin/notices/${id}`), {
+      headers: backendAuthHeaders(gate),
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const body = await readJson(response);
+
+      return jsonError('Failed to delete notice.', response.status, body);
+    }
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    return jsonError(
+      'Failed to delete notice.',
+      502,
       error instanceof Error ? error.message : error,
     );
   }

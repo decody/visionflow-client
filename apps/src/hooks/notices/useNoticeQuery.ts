@@ -1,32 +1,49 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient, type INotice, type INoticeListResponse } from '@visionflow/shared';
+import type { INotice, INoticeListResponse } from '@visionflow/shared';
 
-type NoticeRpcResponse = {
-  totalCount: number;
-  limit: number;
-  offset: number;
-  data: INotice[];
+// 브라우저 → 같은 오리진 Next BFF(/api/notices) → Spring. Supabase RPC(get_notices) 제거.
+const readError = async (response: Response, fallback: string) => {
+  const data = (await response.json().catch(() => null)) as
+    | { message?: string }
+    | null;
+
+  return new Error(data?.message ?? fallback);
 };
 
 const fetchNoticeList = async (): Promise<INoticeListResponse> => {
-  const { data } = await apiClient.rpc<NoticeRpcResponse | null>('get_notices');
+  const response = await fetch('/api/notices', { cache: 'no-store' });
 
+  if (!response.ok) {
+    throw await readError(response, '공지 목록을 불러오지 못했습니다.');
+  }
+
+  const data = (await response.json()) as INotice[];
+
+  // 기존 RPC 응답 형태(INoticeListResponse) 유지 — 페이지가 .data 로 접근한다.
   return {
-    total_count: data?.totalCount ?? 0,
-    limit: data?.limit ?? 0,
-    offset: data?.offset ?? 0,
-    data: data?.data ?? [],
+    total_count: data.length,
+    limit: data.length,
+    offset: 0,
+    data,
   };
 };
 
 const fetchNotice = async (
   noticeId: string,
 ): Promise<INotice | null> => {
-  const { data } = await apiClient.get<INotice | null>(
-    `notices/${noticeId}`,
-  );
+  const response = await fetch(`/api/notices/${noticeId}`, {
+    cache: 'no-store',
+  });
 
-  return data ?? null;
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw await readError(response, '공지를 불러오지 못했습니다.');
+  }
+
+  return (await response.json()) as INotice;
 };
 
 export const useNoticeListQuery = () => {

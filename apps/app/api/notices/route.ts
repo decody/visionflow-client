@@ -1,0 +1,44 @@
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+
+import {
+  backendUrl,
+  readJson,
+  springNoticeToINotice,
+  type SpringNotice,
+} from '@/lib/backend';
+
+/**
+ * 공개 공지 목록 — Spring `GET /api/notices`(is_published=true 만)로 위임한다. 인증 불필요.
+ * 브라우저는 Supabase RPC(get_notices) 대신 이 같은 오리진 라우트를 호출한다(BFF).
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const query = new URL(request.url).searchParams.toString();
+    const response = await fetch(
+      backendUrl(`/api/notices${query ? `?${query}` : ''}`),
+      { cache: 'no-store' },
+    );
+
+    const body = await readJson(response);
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { details: body, message: 'Failed to load notices.' },
+        { status: response.status },
+      );
+    }
+
+    const rows = (body ?? []) as SpringNotice[];
+
+    return NextResponse.json(rows.map(springNoticeToINotice));
+  } catch (error) {
+    return NextResponse.json(
+      {
+        details: error instanceof Error ? error.message : error,
+        message: 'Failed to reach notice backend.',
+      },
+      { status: 502 },
+    );
+  }
+}

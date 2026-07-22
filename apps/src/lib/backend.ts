@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 
-import type { IFaq, UserRole } from '@visionflow/shared';
+import type { IFaq, INotice, UserRole } from '@visionflow/shared';
 
 /**
  * Spring 백엔드(visionflow-server) 호출 헬퍼 — 서버 전용.
@@ -98,6 +98,37 @@ export const springFaqToIFaq = (faq: SpringFaq): IFaq => ({
   question: faq.question,
   updated_at: faq.updatedAt,
   updatedAt: faq.updatedAt,
+});
+
+// Spring NoticeResponse(JSON, camelCase) 원본 형태.
+export type SpringNotice = {
+  category: string | null;
+  contentHtml: string | null;
+  createdAt: string;
+  createdBy: string | null;
+  date: string;
+  description: string | null;
+  id: string;
+  isImportant: boolean;
+  isPublished: boolean;
+  title: string;
+  updatedAt: string;
+};
+
+// Spring 응답을 프론트 INotice로 변환. content_json은 백엔드가 다루지 않는 죽은 필드라 항상 null.
+export const springNoticeToINotice = (notice: SpringNotice): INotice => ({
+  category: notice.category ?? '',
+  contentHtml: notice.contentHtml,
+  contentJson: null,
+  createdAt: notice.createdAt,
+  createdBy: notice.createdBy,
+  date: notice.date,
+  description: notice.description,
+  id: notice.id,
+  isImportant: notice.isImportant,
+  isPublished: notice.isPublished,
+  title: notice.title,
+  updatedAt: notice.updatedAt,
 });
 
 // fetch 응답 body를 안전하게 JSON 파싱(비어 있으면 null).
