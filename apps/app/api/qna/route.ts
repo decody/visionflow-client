@@ -1,42 +1,13 @@
-import type { IQna } from '@visionflow/shared';
-import bcrypt from 'bcryptjs';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { supabaseAdmin } from '@/lib/supabase-admin';
-
-type QnaRow = {
-  answer?: string | null;
-  author_name?: string | null;
-  category?: string | null;
-  content?: string | null;
-  created_at?: string;
-  id: string | number;
-  is_notice?: boolean | null;
-  is_secret?: boolean | null;
-  password?: string | null;
-  password_hash?: string | null;
-  question?: string | null;
-  status?: string | null;
-  title?: string | null;
-  updated_at?: string;
-  view_count?: number | null;
-};
-
-type QnaInsertPayload = {
-  author_name: string;
-  category?: string;
-  content: string;
-  created_at: string;
-  is_notice: boolean;
-  is_secret: boolean;
-  password_hash?: string | null;
-  question?: string;
-  status: string;
-  title: string;
-  updated_at: string;
-  view_count: number;
-};
+import {
+  backendUrl,
+  readJson,
+  springQnaToIQna,
+  type SpringQna,
+  type SpringQnaPage,
+} from '@/lib/backend';
 
 const jsonError = (
   message: string,
@@ -44,106 +15,42 @@ const jsonError = (
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
 
-const isMissingColumnError = (error: { message?: string } | null) => {
-  const message = error?.message?.toLowerCase() ?? '';
-
-  return (
-    message.includes('schema cache') ||
-    message.includes('column') ||
-    message.includes('could not find')
-  );
-};
-
-const isMissingPasswordHashError = (
-  error: { message?: string } | null,
-) => error?.message?.toLowerCase().includes('password_hash') ?? false;
-
-const insertQna = (payload: QnaInsertPayload) =>
-  supabaseAdmin.from('qna').insert(payload).select('*').single();
-
-const isProtectedQna = (row: QnaRow) =>
-  row.is_secret === true ||
-  Boolean(row.password_hash?.trim()) ||
-  Boolean(row.password?.trim());
-
-const toQna = (row: QnaRow): IQna => ({
-  answer: row.answer ?? null,
-  author_name: row.author_name ?? null,
-  authorName: row.author_name ?? null,
-  category: row.category ?? null,
-  content: row.content ?? null,
-  created_at: row.created_at,
-  createdAt: row.created_at,
-  id: String(row.id),
-  is_notice: row.is_notice ?? false,
-  isNotice: row.is_notice ?? false,
-  is_secret: isProtectedQna(row),
-  isSecret: isProtectedQna(row),
-  question: row.question ?? row.title ?? null,
-  status: row.status ?? null,
-  title: row.title ?? row.question ?? null,
-  updated_at: row.updated_at,
-  updatedAt: row.updated_at,
-  view_count: row.view_count ?? 0,
-  viewCount: row.view_count ?? 0,
-});
-
-const redactSecretQna = (qna: IQna): IQna => {
-  if (!qna.is_secret && !qna.isSecret) {
-    return qna;
-  }
-
-  return {
-    ...qna,
-    answer: null,
-    content: null,
-    question: qna.title ?? qna.question,
-  };
-};
-
+/**
+ * 공개 Q&A 목록 — Spring `GET /api/qna`(페이징/공지필터/비밀글 redaction)로 위임한다. 인증 불필요.
+ * 브라우저는 Supabase 대신 이 같은 오리진 라우트를 호출한다(BFF). notice/limit/offset은 그대로 전달.
+ */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const limit = Math.max(0, Number(searchParams.get('limit') ?? 10));
-  const offset = Math.max(0, Number(searchParams.get('offset') ?? 0));
-  const noticeOnly = searchParams.get('notice') === 'true';
+  try {
+    const query = new URL(request.url).searchParams.toString();
+    const response = await fetch(
+      backendUrl(`/api/qna${query ? `?${query}` : ''}`),
+      { cache: 'no-store' },
+    );
 
-  if (limit === 0) {
+    const body = await readJson(response);
+
+    if (!response.ok) {
+      return jsonError('Failed to fetch Q&A list.', response.status, body);
+    }
+
+    const page = body as SpringQnaPage;
+
     return NextResponse.json({
-      data: [],
-      limit,
-      offset,
-      total_count: 0,
+      data: (page.data ?? []).map(springQnaToIQna),
+      limit: page.limit,
+      offset: page.offset,
+      total_count: page.totalCount,
     });
+  } catch (error) {
+    return jsonError(
+      'Failed to reach Q&A backend.',
+      502,
+      error instanceof Error ? error.message : error,
+    );
   }
-
-  let query = supabaseAdmin
-    .from('qna')
-    .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  query = noticeOnly
-    ? query.eq('is_notice', true)
-    : query.or('is_notice.is.false,is_notice.is.null');
-
-  const { count, data, error } = await query;
-
-  if (error) {
-    return jsonError('Failed to fetch Q&A list.', 500, error.message);
-  }
-
-  const qnas = ((data ?? []) as QnaRow[])
-    .map(toQna)
-    .map(redactSecretQna);
-
-  return NextResponse.json({
-    data: qnas,
-    limit,
-    offset,
-    total_count: count ?? offset + qnas.length,
-  });
 }
 
+/** Q&A 작성. Spring `POST /api/qna`로 위임. 비밀글이면 password 필수(Spring이 bcrypt 저장). */
 export async function POST(request: NextRequest) {
   try {
     const payload = (await request.json()) as {
@@ -155,18 +62,14 @@ export async function POST(request: NextRequest) {
       password?: string | null;
       title?: string;
     };
-    const author = (
-      payload.author ??
-      payload.authorName ??
-      ''
-    ).trim();
+    const authorName = (payload.author ?? payload.authorName ?? '').trim();
     const category = payload.category?.trim();
     const content = payload.content?.trim();
+    const title = payload.title?.trim();
     const isSecret = payload.isSecret === true;
     const password = payload.password?.trim();
-    const title = payload.title?.trim();
 
-    if (!author || !category || !title || !content) {
+    if (!authorName || !category || !title || !content) {
       return jsonError(
         'author, category, title, and content are required.',
         400,
@@ -177,79 +80,32 @@ export async function POST(request: NextRequest) {
       return jsonError('password is required for secret Q&A.', 400);
     }
 
-    const now = new Date().toISOString();
-    const passwordHash =
-      isSecret && password ? await bcrypt.hash(password, 12) : null;
-    const insertPayload: QnaInsertPayload = {
-      author_name: author,
-      category,
-      content,
-      created_at: now,
-      is_notice: false,
-      is_secret: isSecret,
-      password_hash: passwordHash,
-      question: title,
-      status: 'pending',
-      title,
-      updated_at: now,
-      view_count: 0,
-    };
+    const response = await fetch(backendUrl('/api/qna'), {
+      body: JSON.stringify({
+        authorName,
+        category,
+        content,
+        isSecret,
+        password: isSecret ? password : undefined,
+        title,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
 
-    let { data, error } = await insertQna(insertPayload);
+    const body = await readJson(response);
 
-    if (error && isMissingColumnError(error)) {
-      const { category: _category, ...payloadWithoutCategory } =
-        insertPayload;
-
-      ({ data, error } = await insertQna(payloadWithoutCategory));
+    if (!response.ok) {
+      return jsonError('Failed to create Q&A.', response.status, body);
     }
 
-    if (
-      error &&
-      isMissingColumnError(error) &&
-      !isMissingPasswordHashError(error)
-    ) {
-      const {
-        category: _category,
-        question: _question,
-        ...payloadWithoutCategoryAndQuestion
-      } = insertPayload;
-
-      ({ data, error } = await insertQna(
-        payloadWithoutCategoryAndQuestion,
-      ));
-    }
-
-    if (error && isMissingColumnError(error) && !isSecret) {
-      const {
-        category: _category,
-        password_hash: _passwordHash,
-        question: _question,
-        ...minimalPayload
-      } = insertPayload;
-
-      ({ data, error } = await insertQna(minimalPayload));
-    }
-
-    if (error && isMissingColumnError(error) && isSecret) {
-      return jsonError(
-        '비밀글 비밀번호 저장 컬럼이 아직 DB에 없습니다. supabase/migrations/202605260001_add_qna_password_hash.sql 마이그레이션을 먼저 적용해 주세요.',
-        500,
-        error.message,
-      );
-    }
-
-    if (error) {
-      return jsonError('Failed to create Q&A.', 500, error.message);
-    }
-
-    return NextResponse.json(redactSecretQna(toQna(data as QnaRow)), {
+    return NextResponse.json(springQnaToIQna(body as SpringQna), {
       status: 201,
     });
   } catch (error) {
     return jsonError(
       'Failed to create Q&A.',
-      500,
+      502,
       error instanceof Error ? error.message : error,
     );
   }

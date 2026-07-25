@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 
-import type { IFaq, INotice, UserRole } from '@visionflow/shared';
+import type { IFaq, INotice, IQna, UserRole } from '@visionflow/shared';
 
 /**
  * Spring 백엔드(visionflow-server) 호출 헬퍼 — 서버 전용.
@@ -129,6 +129,54 @@ export const springNoticeToINotice = (notice: SpringNotice): INotice => ({
   isPublished: notice.isPublished,
   title: notice.title,
   updatedAt: notice.updatedAt,
+});
+
+// Spring QnaResponse(JSON, camelCase) 원본 형태. Spring은 title을 정본으로 쓰고 question 컬럼은 없앰.
+export type SpringQna = {
+  answer: string | null;
+  authorName: string | null;
+  category: string | null;
+  content: string | null;
+  createdAt: string;
+  id: string;
+  isNotice: boolean;
+  isSecret: boolean;
+  status: string | null;
+  title: string;
+  updatedAt: string;
+  viewCount: number;
+};
+
+// Spring 페이지 응답(공개/관리 목록).
+export type SpringQnaPage = {
+  data: SpringQna[];
+  limit: number;
+  offset: number;
+  totalCount: number;
+};
+
+// Spring 응답을 프론트 IQna로 변환. 기존 UI 호환을 위해 camelCase/snake_case를 모두 채운다.
+// question은 Spring에 없으므로 title로 매핑(프론트는 question ?? title 순으로 읽음).
+export const springQnaToIQna = (qna: SpringQna): IQna => ({
+  answer: qna.answer,
+  author_name: qna.authorName,
+  authorName: qna.authorName,
+  category: qna.category,
+  content: qna.content,
+  created_at: qna.createdAt,
+  createdAt: qna.createdAt,
+  id: qna.id,
+  is_notice: qna.isNotice,
+  isNotice: qna.isNotice,
+  is_secret: qna.isSecret,
+  isSecret: qna.isSecret,
+  question: qna.title,
+  status: qna.status,
+  title: qna.title,
+  updated_at: qna.updatedAt,
+  updatedAt: qna.updatedAt,
+  view_count: qna.viewCount,
+  viewCount: qna.viewCount,
 });
 
 // fetch 응답 body를 안전하게 JSON 파싱(비어 있으면 null).

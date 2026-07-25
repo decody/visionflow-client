@@ -1,28 +1,12 @@
-import type { IQna } from '@visionflow/shared';
-import bcrypt from 'bcryptjs';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { incrementQnaViewCount } from '@/lib/qna-view-count';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-
-type QnaRow = {
-  answer?: string | null;
-  author_name?: string | null;
-  category?: string | null;
-  content?: string | null;
-  created_at?: string;
-  id: string | number;
-  is_notice?: boolean | null;
-  is_secret?: boolean | null;
-  password?: string | null;
-  password_hash?: string | null;
-  question?: string | null;
-  status?: string | null;
-  title?: string | null;
-  updated_at?: string;
-  view_count?: number | null;
-};
+import {
+  backendUrl,
+  readJson,
+  springQnaToIQna,
+  type SpringQna,
+} from '@/lib/backend';
 
 const jsonError = (
   message: string,
@@ -30,101 +14,45 @@ const jsonError = (
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
 
-const toQna = (row: QnaRow): IQna => ({
-  answer: row.answer ?? null,
-  author_name: row.author_name ?? null,
-  authorName: row.author_name ?? null,
-  category: row.category ?? null,
-  content: row.content ?? null,
-  created_at: row.created_at,
-  createdAt: row.created_at,
-  id: String(row.id),
-  is_notice: row.is_notice ?? false,
-  isNotice: row.is_notice ?? false,
-  is_secret: row.is_secret ?? false,
-  isSecret: row.is_secret ?? false,
-  question: row.question ?? row.title ?? null,
-  status: row.status ?? null,
-  title: row.title ?? row.question ?? null,
-  updated_at: row.updated_at,
-  updatedAt: row.updated_at,
-  view_count: row.view_count ?? 0,
-  viewCount: row.view_count ?? 0,
-});
-
-async function isPasswordMatch(password: string, row: QnaRow) {
-  if (row.password_hash) {
-    return bcrypt.compare(password, row.password_hash);
-  }
-
-  return row.password === password;
-}
-
-const isProtectedQna = (row: QnaRow) =>
-  row.is_secret === true ||
-  Boolean(row.password_hash?.trim()) ||
-  Boolean(row.password?.trim());
-
+/**
+ * 비밀글 열람 — Spring `POST /api/qna/{id}/verify`로 위임한다. 인증 불필요.
+ * 비밀번호 일치 시 전체 + 조회수 증가, 불일치 403, 없으면 404. 응답은 기존 계약대로 { qna } 로 감싼다.
+ */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const payload = (await request.json()) as { password?: string };
-  const password = payload.password?.trim();
+  try {
+    const { id } = await params;
+    const payload = (await request.json()) as { password?: string };
+    const password = payload.password?.trim();
 
-  if (!id) {
-    return jsonError('Q&A id is required.', 400);
-  }
+    if (!id) {
+      return jsonError('Q&A id is required.', 400);
+    }
 
-  if (!password) {
-    return jsonError('password is required.', 400);
-  }
+    if (!password) {
+      return jsonError('password is required.', 400);
+    }
 
-  const { data, error } = await supabaseAdmin
-    .from('qna')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error || !data) {
-    return jsonError('Q&A not found.', 404, error?.message);
-  }
-
-  const row = data as QnaRow;
-  const qna = toQna(row);
-
-  if (!isProtectedQna(row)) {
-    const viewCount = await incrementQnaViewCount(
-      id,
-      qna.view_count ?? qna.viewCount ?? 0,
-    );
-
-    return NextResponse.json({
-      qna: {
-        ...qna,
-        view_count: viewCount,
-        viewCount,
-      },
+    const response = await fetch(backendUrl(`/api/qna/${id}/verify`), {
+      body: JSON.stringify({ password }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
     });
+
+    const body = await readJson(response);
+
+    if (!response.ok) {
+      return jsonError('Password does not match.', response.status, body);
+    }
+
+    return NextResponse.json({ qna: springQnaToIQna(body as SpringQna) });
+  } catch (error) {
+    return jsonError(
+      'Failed to reach Q&A backend.',
+      502,
+      error instanceof Error ? error.message : error,
+    );
   }
-
-  const matched = await isPasswordMatch(password, row);
-
-  if (!matched) {
-    return jsonError('Password does not match.', 403);
-  }
-
-  const viewCount = await incrementQnaViewCount(
-    id,
-    qna.view_count ?? qna.viewCount ?? 0,
-  );
-
-  return NextResponse.json({
-    qna: {
-      ...qna,
-      view_count: viewCount,
-      viewCount,
-    },
-  });
 }
