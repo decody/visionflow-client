@@ -1,13 +1,16 @@
-import type { IQuoteInquiry } from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { auth } from '../../../../../auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { canManageContent } from '@/lib/admin-permissions';
+import {
+  backendAuthHeaders,
+  backendUrl,
+  readJson,
+  type BackendPrincipal,
+} from '@/lib/backend';
 
 export const dynamic = 'force-dynamic';
-
-const ATTACHMENT_BUCKET = 'quote-attachments';
 
 const jsonError = (
   message: string,
@@ -15,46 +18,34 @@ const jsonError = (
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
 
-const encodeContentDispositionFilename = (fileName: string) => {
-  const fallback =
-    fileName
-      .replace(/[^\x20-\x7e]/g, '_')
-      .replace(/["\\]/g, '_')
-      .trim() || 'attachment';
-  const encoded = encodeURIComponent(fileName).replace(
-    /['()*]/g,
-    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
+/** 콘텐츠 관리 권한 게이트(첨부 다운로드용). Spring 어드민 첨부 엔드포인트 호출에 실을 신원을 돌려준다. */
+const requireManager = async (): Promise<BackendPrincipal | NextResponse> => {
+  const session = await auth();
 
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`;
-};
+  if (!session) return jsonError('Unauthorized', 401);
 
-const parseStoredAttachment = (value?: string | null) => {
-  if (!value) {
-    return null;
+  const role = session.user?.role;
+  const userId = session.user?.id;
+
+  if (!canManageContent(role) || !role || !userId) {
+    return jsonError('Forbidden', 403);
   }
 
-  const match = value.match(/^(?<name>.+) \((?<path>quote-inquiries\/.+)\)$/);
-
-  if (!match?.groups?.path) {
-    return null;
-  }
-
-  return {
-    name: match.groups.name?.trim() || 'attachment',
-    path: match.groups.path,
-  };
+  return { role, userId };
 };
 
+/**
+ * 첨부 다운로드 — Spring `GET /api/admin/quote-inquiries/{id}/attachment?index=`로 위임한다.
+ * 파일 바이트를 그대로 스트리밍하고, Spring이 만든 Content-Disposition/Content-Type을 전달한다.
+ * (기존 Supabase Storage 직접 다운로드를 대체.)
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
+  const gate = await requireManager();
 
-  if (!session) {
-    return jsonError('Unauthorized', 401);
-  }
+  if (gate instanceof NextResponse) return gate;
 
   const { id } = await params;
 
@@ -63,42 +54,39 @@ export async function GET(
   }
 
   try {
-    const { data: inquiry, error: inquiryError } = await supabaseAdmin
-      .from('quote_inquiries')
-      .select('id, attached_files')
-      .eq('id', id)
-      .single();
+    const index = request.nextUrl.searchParams.get('index') ?? '0';
+    const response = await fetch(
+      backendUrl(
+        `/api/admin/quote-inquiries/${encodeURIComponent(
+          id,
+        )}/attachment?index=${encodeURIComponent(index)}`,
+      ),
+      { cache: 'no-store', headers: backendAuthHeaders(gate) },
+    );
 
-    if (inquiryError) {
-      return jsonError('Failed to load quote inquiry attachment.', 502, inquiryError);
-    }
+    if (!response.ok) {
+      const body = await readJson(response);
 
-    const index = Number(request.nextUrl.searchParams.get('index') ?? '0');
-    const attachmentValue = (
-      (inquiry as Pick<IQuoteInquiry, 'attached_files'>).attached_files ?? []
-    )[Number.isInteger(index) && index >= 0 ? index : 0];
-    const attachment = parseStoredAttachment(attachmentValue);
-
-    if (!attachment) {
-      return jsonError('Attachment file is not available.', 404);
-    }
-
-    const { data: file, error: downloadError } = await supabaseAdmin.storage
-      .from(ATTACHMENT_BUCKET)
-      .download(attachment.path);
-
-    if (downloadError || !file) {
-      return jsonError('Failed to download attachment file.', 502, downloadError);
+      return jsonError(
+        'Failed to download attachment file.',
+        response.status,
+        body,
+      );
     }
 
     const headers = new Headers({
       'Cache-Control': 'private, max-age=0, no-store',
-      'Content-Disposition': encodeContentDispositionFilename(attachment.name),
-      'Content-Type': file.type || 'application/octet-stream',
+      'Content-Type':
+        response.headers.get('content-type') ?? 'application/octet-stream',
       'X-Content-Type-Options': 'nosniff',
     });
+    const disposition = response.headers.get('content-disposition');
 
-    return new NextResponse(file, { headers });
+    if (disposition) {
+      headers.set('Content-Disposition', disposition);
+    }
+
+    return new NextResponse(response.body, { headers });
   } catch (error) {
     return jsonError(
       error instanceof Error ? error.message : 'Unexpected error',

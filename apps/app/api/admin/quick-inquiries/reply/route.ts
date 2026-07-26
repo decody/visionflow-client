@@ -1,42 +1,23 @@
-import type { IQuickInquiry } from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+
 import { auth } from '../../../../../auth';
+import { canManageContent } from '@/lib/admin-permissions';
+import {
+  backendAuthHeaders,
+  backendUrl,
+  readJson,
+  springQuickToIQuickInquiry,
+  type BackendPrincipal,
+  type SpringQuickInquiry,
+} from '@/lib/backend';
+
+export const dynamic = 'force-dynamic';
 
 type ReplyPayload = {
   inquiryId?: string;
   replyContent?: string;
 };
-
-const ALLOWED_REPLY_ROLES = ['SuperAdmin', 'admin'] as const;
-const MAX_REPLY_CONTENT_LENGTH = 5000;
-
-const getRequiredEnv = (name: string) => {
-  const value = process.env[name];
-
-  if (!value) {
-    throw new Error(`${name} is required`);
-  }
-
-  return value;
-};
-
-const escapeHtml = (value: string) =>
-  value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-
-const toHtml = (value: string) =>
-  escapeHtml(value)
-    .split(/\n{2,}/)
-    .map(
-      (paragraph) => `<p>${paragraph.replaceAll('\n', '<br>')}</p>`,
-    )
-    .join('');
 
 const jsonError = (
   message: string,
@@ -44,195 +25,67 @@ const jsonError = (
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
 
-const parseProviderError = async (response: Response) => {
-  const text = await response.text();
-
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return text;
-  }
-};
-
-const getProviderMessage = (detail: unknown) => {
-  if (
-    detail &&
-    typeof detail === 'object' &&
-    'message' in detail &&
-    typeof detail.message === 'string'
-  ) {
-    return detail.message;
-  }
-
-  return typeof detail === 'string' ? detail : null;
-};
-
-const canSendReply = (role?: string | null) =>
-  ALLOWED_REPLY_ROLES.some((allowedRole) => allowedRole === role);
-
-const getSessionUserId = async (email?: string | null) => {
-  const normalizedEmail = email?.trim();
-
-  if (!normalizedEmail) {
-    return null;
-  }
-
-  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return (
-    data.users.find(
-      (user) => user.email?.toLowerCase() === normalizedEmail.toLowerCase(),
-    )?.id ?? null
-  );
-};
-
-const getInquiry = async (inquiryId: string) => {
-  const { data, error } = await supabaseAdmin
-    .from('quick_inquiries')
-    .select('id,email,subject,status')
-    .eq('id', inquiryId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return data as Pick<
-    IQuickInquiry,
-    'email' | 'id' | 'status' | 'subject'
-  > | null;
-};
-
-export async function POST(request: NextRequest) {
+/** 콘텐츠 관리 권한 게이트(답장 발송용). Spring 어드민 reply 엔드포인트 호출에 실을 신원을 돌려준다. */
+const requireManager = async (): Promise<BackendPrincipal | NextResponse> => {
   const session = await auth();
 
-  if (!session) {
-    return jsonError('Unauthorized', 401);
-  }
+  if (!session) return jsonError('Unauthorized', 401);
 
-  if (!canSendReply(session.user?.role)) {
+  const role = session.user?.role;
+  const userId = session.user?.id;
+
+  if (!canManageContent(role) || !role || !userId) {
     return jsonError('Forbidden', 403);
   }
 
+  return { role, userId };
+};
+
+/**
+ * 답장 발송 — Spring `POST /api/admin/quick-inquiries/{id}/reply`로 위임한다.
+ * 이메일 발송(SMTP 미설정 시 no-op)·status=completed 확정을 Spring이 수행한다.
+ * repliedBy는 Spring이 토큰 sub(=BFF가 서명한 userId)에서 채운다. 기존 Resend 직접 호출을 대체.
+ */
+export async function POST(request: NextRequest) {
+  const gate = await requireManager();
+
+  if (gate instanceof NextResponse) return gate;
+
   try {
     const payload = (await request.json()) as ReplyPayload;
-    const inquiryId = payload.inquiryId?.trim();
+    const id = payload.inquiryId?.trim();
     const replyContent = payload.replyContent?.trim();
 
-    if (!inquiryId || !replyContent) {
-      return jsonError(
-        'inquiryId and replyContent are required.',
-        400,
-      );
+    if (!id || !replyContent) {
+      return jsonError('inquiryId and replyContent are required.', 400);
     }
 
-    if (replyContent.length > MAX_REPLY_CONTENT_LENGTH) {
-      return jsonError(
-        `replyContent must be ${MAX_REPLY_CONTENT_LENGTH} characters or fewer.`,
-        400,
-      );
-    }
-
-    const inquiry = await getInquiry(inquiryId);
-
-    if (!inquiry) {
-      return jsonError('Inquiry was not found.', 404);
-    }
-
-    const to = inquiry.email.trim();
-    const subject = `Re: ${inquiry.subject?.trim() || 'General inquiry'}`;
-
-    if (!to) {
-      return jsonError('Inquiry email is missing.', 400);
-    }
-
-    const repliedBy = await getSessionUserId(session.user?.email);
-
-    const resendApiKey = getRequiredEnv('RESEND_API_KEY');
-    const from =
-      process.env.RESEND_FROM_EMAIL ??
-      'VisionFlow Admin <onboarding@resend.dev>';
-
-    const emailResponse = await fetch(
-      'https://api.resend.com/emails',
+    const response = await fetch(
+      backendUrl(`/api/admin/quick-inquiries/${encodeURIComponent(id)}/reply`),
       {
-        body: JSON.stringify({
-          from,
-          html: toHtml(replyContent),
-          subject,
-          text: replyContent,
-          to,
-        }),
+        body: JSON.stringify({ replyContent }),
         headers: {
-          Authorization: `Bearer ${resendApiKey}`,
+          ...backendAuthHeaders(gate),
           'Content-Type': 'application/json',
         },
         method: 'POST',
       },
     );
 
-    if (!emailResponse.ok) {
-      const detail = await parseProviderError(emailResponse);
-      const providerMessage = getProviderMessage(detail);
+    const body = await readJson(response);
 
-      if (
-        emailResponse.status === 403 &&
-        providerMessage?.includes('domain is not verified')
-      ) {
-        return jsonError(
-          'Reply email sender domain is not verified in Resend.',
-          502,
-          {
-            from,
-            provider: detail,
-            resolution:
-              'Verify the sender domain in Resend or set RESEND_FROM_EMAIL to an address on a verified domain.',
-          },
-        );
-      }
-
-      return jsonError('Failed to send reply email.', 502, detail);
+    if (!response.ok) {
+      return jsonError('Failed to send reply email.', response.status, body);
     }
 
-    const now = new Date().toISOString();
-    const { data: updatedInquiry, error: updateError } =
-      await supabaseAdmin
-        .from('quick_inquiries')
-        .update({
-          replied_at: now,
-          replied_by: repliedBy,
-          reply_content: replyContent,
-          status: 'completed',
-          updated_at: now,
-        })
-        .eq('id', inquiryId)
-        .select('*')
-        .single();
-
-    if (updateError) {
-      return jsonError(
-        'Reply email was sent, but inquiry update failed.',
-        502,
-        updateError,
-      );
-    }
-
-    return NextResponse.json(updatedInquiry);
+    return NextResponse.json(
+      springQuickToIQuickInquiry(body as SpringQuickInquiry),
+    );
   } catch (error) {
     return jsonError(
-      error instanceof Error ? error.message : 'Unexpected error',
-      500,
+      'Failed to reach quick inquiry backend.',
+      502,
+      error instanceof Error ? error.message : error,
     );
   }
 }

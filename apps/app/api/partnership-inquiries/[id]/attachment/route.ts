@@ -1,13 +1,16 @@
-import type { IPartnershipInquiry } from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { auth } from '../../../../../auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { canManageContent } from '@/lib/admin-permissions';
+import {
+  backendAuthHeaders,
+  backendUrl,
+  readJson,
+  type BackendPrincipal,
+} from '@/lib/backend';
 
 export const dynamic = 'force-dynamic';
-
-const ATTACHMENT_BUCKET = 'partnership-attachments';
 
 const jsonError = (
   message: string,
@@ -15,34 +18,34 @@ const jsonError = (
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
 
-const isStoragePath = (value?: string | null): value is string =>
-  typeof value === 'string' &&
-  value.length > 0 &&
-  !/^(?:https?:|data:|\/)/i.test(value);
+/** 콘텐츠 관리 권한 게이트(첨부 다운로드용). Spring 어드민 첨부 엔드포인트 호출에 실을 신원을 돌려준다. */
+const requireManager = async (): Promise<BackendPrincipal | NextResponse> => {
+  const session = await auth();
 
-const encodeContentDispositionFilename = (fileName: string) => {
-  const fallback =
-    fileName
-      .replace(/[^\x20-\x7e]/g, '_')
-      .replace(/["\\]/g, '_')
-      .trim() || 'attachment';
-  const encoded = encodeURIComponent(fileName).replace(
-    /['()*]/g,
-    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
+  if (!session) return jsonError('Unauthorized', 401);
 
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+  const role = session.user?.role;
+  const userId = session.user?.id;
+
+  if (!canManageContent(role) || !role || !userId) {
+    return jsonError('Forbidden', 403);
+  }
+
+  return { role, userId };
 };
 
+/**
+ * 첨부 다운로드 — Spring `GET /api/admin/partnership-inquiries/{id}/attachment`로 위임한다(단일 첨부).
+ * 파일 바이트를 그대로 스트리밍하고, Spring이 만든 Content-Disposition/Content-Type을 전달한다.
+ * (기존 Supabase Storage 직접 다운로드를 대체.)
+ */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
+  const gate = await requireManager();
 
-  if (!session) {
-    return jsonError('Unauthorized', 401);
-  }
+  if (gate instanceof NextResponse) return gate;
 
   const { id } = await params;
 
@@ -51,59 +54,36 @@ export async function GET(
   }
 
   try {
-    const { data: inquiry, error: inquiryError } = await supabaseAdmin
-      .from('partnership_inquiries')
-      .select(
-        'id, attachment_name, attachment_size, attachment_type, attachment_url',
-      )
-      .eq('id', id)
-      .single();
+    const response = await fetch(
+      backendUrl(
+        `/api/admin/partnership-inquiries/${encodeURIComponent(id)}/attachment`,
+      ),
+      { cache: 'no-store', headers: backendAuthHeaders(gate) },
+    );
 
-    if (inquiryError) {
-      return jsonError(
-        'Failed to load partnership inquiry attachment.',
-        502,
-        inquiryError,
-      );
-    }
+    if (!response.ok) {
+      const body = await readJson(response);
 
-    const attachment = inquiry as Pick<
-      IPartnershipInquiry,
-      | 'attachment_name'
-      | 'attachment_size'
-      | 'attachment_type'
-      | 'attachment_url'
-      | 'id'
-    >;
-
-    if (!isStoragePath(attachment.attachment_url)) {
-      return jsonError('Attachment file is not available.', 404);
-    }
-
-    const { data: file, error: downloadError } = await supabaseAdmin.storage
-      .from(ATTACHMENT_BUCKET)
-      .download(attachment.attachment_url);
-
-    if (downloadError || !file) {
       return jsonError(
         'Failed to download attachment file.',
-        502,
-        downloadError,
+        response.status,
+        body,
       );
     }
 
-    const fileName = attachment.attachment_name || 'attachment';
     const headers = new Headers({
       'Cache-Control': 'private, max-age=0, no-store',
-      'Content-Disposition': encodeContentDispositionFilename(fileName),
       'Content-Type':
-        attachment.attachment_type ||
-        file.type ||
-        'application/octet-stream',
+        response.headers.get('content-type') ?? 'application/octet-stream',
       'X-Content-Type-Options': 'nosniff',
     });
+    const disposition = response.headers.get('content-disposition');
 
-    return new NextResponse(file, { headers });
+    if (disposition) {
+      headers.set('Content-Disposition', disposition);
+    }
+
+    return new NextResponse(response.body, { headers });
   } catch (error) {
     return jsonError(
       error instanceof Error ? error.message : 'Unexpected error',

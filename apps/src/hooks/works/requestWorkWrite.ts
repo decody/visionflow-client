@@ -1,6 +1,6 @@
 // works 쓰기(생성/수정/삭제)를 /api/admin/works 로 보낸다.
-// 서버 라우트가 NextAuth 세션·역할을 검증한 뒤 service_role 로 Supabase 에 접근하므로
-// 브라우저에는 anon 키로 works 를 직접 쓰던 경로가 더 이상 존재하지 않는다.
+// 서버 라우트가 NextAuth 세션·역할을 검증한 뒤 서명 JWT로 Spring 백엔드(BFF)에 위임하므로
+// 브라우저에서 works 를 직접 쓰던 경로가 더 이상 존재하지 않는다.
 
 type WorkWriteOptions = {
   method: 'POST' | 'PATCH' | 'DELETE';

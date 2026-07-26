@@ -1,63 +1,18 @@
-import type {
-  IPartnershipInquiry,
-  PartnershipInquiryCompanySize,
-  PartnershipInquiryStatus,
-  PartnershipInquiryType,
-} from '@visionflow/shared';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { randomUUID } from 'node:crypto';
 
 import { auth } from '../../../auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { canManageContent } from '@/lib/admin-permissions';
+import {
+  backendAuthHeaders,
+  backendUrl,
+  readJson,
+  springPartnershipToIPartnershipInquiry,
+  type BackendPrincipal,
+  type SpringPartnershipInquiry,
+} from '@/lib/backend';
 
 export const dynamic = 'force-dynamic';
-
-const STATUS_VALUES: PartnershipInquiryStatus[] = [
-  'pending',
-  'reviewing',
-  'approved',
-  'rejected',
-];
-
-const COMPANY_SIZE_VALUES: PartnershipInquiryCompanySize[] = [
-  '1',
-  '2-10',
-  '11-50',
-  '50+',
-];
-
-const PARTNERSHIP_TYPE_VALUES: PartnershipInquiryType[] = [
-  'outsourcing',
-  'reseller',
-  'tech_partner',
-  'content_partner',
-  'etc',
-];
-
-type PartnershipInquiryPayload = {
-  attachment_name?: string | null;
-  attachment_size?: number | null;
-  attachment_type?: string | null;
-  attachment_url?: string | null;
-  company_name?: string;
-  company_size?: PartnershipInquiryCompanySize;
-  company_url?: string | null;
-  contact_email?: string;
-  contact_name?: string;
-  contact_phone?: string | null;
-  contact_position?: string;
-  partnership_type?: PartnershipInquiryType;
-  proposal_content?: string;
-};
-
-const MAX_SHORT_TEXT_LENGTH = 200;
-const MAX_EMAIL_LENGTH = 254;
-const MAX_URL_LENGTH = 500;
-const MAX_PROPOSAL_LENGTH = 5000;
-const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024;
-const ATTACHMENT_BUCKET = 'partnership-attachments';
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const jsonError = (
   message: string,
@@ -65,297 +20,124 @@ const jsonError = (
   details?: unknown,
 ) => NextResponse.json({ details, message }, { status });
 
-const normalizeOptionalText = (value?: string | null) => {
-  const trimmed = value?.trim();
+// snake_case 필드명은 Spring multipart 컨트롤러(@RequestParam)와 정확히 일치한다. 배열/불리언 없음.
+const SCALAR_FIELDS = [
+  'company_name',
+  'company_size',
+  'contact_name',
+  'contact_position',
+  'contact_email',
+  'contact_phone',
+  'partnership_type',
+  'proposal_content',
+  'company_url',
+];
 
-  return trimmed || null;
-};
-
-const toPayloadFromFormData = (formData: FormData) => {
-  const getText = (key: string) => {
-    const value = formData.get(key);
-
-    return typeof value === 'string' ? value : undefined;
-  };
-
-  return {
-    attachment_name: getText('attachment_name') ?? null,
-    attachment_size: Number(getText('attachment_size')) || null,
-    attachment_type: getText('attachment_type') ?? null,
-    attachment_url: getText('attachment_url') ?? null,
-    company_name: getText('company_name'),
-    company_size: getText(
-      'company_size',
-    ) as PartnershipInquiryCompanySize,
-    company_url: getText('company_url') ?? null,
-    contact_email: getText('contact_email'),
-    contact_name: getText('contact_name'),
-    contact_phone: getText('contact_phone') ?? null,
-    contact_position: getText('contact_position'),
-    partnership_type: getText(
-      'partnership_type',
-    ) as PartnershipInquiryType,
-    proposal_content: getText('proposal_content'),
-  } satisfies PartnershipInquiryPayload;
-};
-
-const ensureAttachmentBucket = async () => {
-  const { error } = await supabaseAdmin.storage.getBucket(
-    ATTACHMENT_BUCKET,
-  );
-
-  if (!error) {
-    return;
-  }
-
-  const { error: createError } = await supabaseAdmin.storage.createBucket(
-    ATTACHMENT_BUCKET,
-    {
-      public: false,
-    },
-  );
-
-  if (createError && createError.message !== 'Bucket already exists') {
-    throw createError;
-  }
-};
-
-const getFileExtension = (fileName: string) => {
-  const extension = fileName.match(/\.[a-z0-9]{1,12}$/i)?.[0];
-
-  return extension?.toLowerCase() ?? '';
-};
-
-const uploadAttachment = async (file: File) => {
-  if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
-    return {
-      error: 'attachment must be 20MB or smaller.',
-    };
-  }
-
-  await ensureAttachmentBucket();
-
-  const today = new Date().toISOString().slice(0, 10);
-  const storagePath = `partnership-inquiries/${today}/${randomUUID()}${getFileExtension(
-    file.name,
-  )}`;
-  const { error } = await supabaseAdmin.storage
-    .from(ATTACHMENT_BUCKET)
-    .upload(storagePath, Buffer.from(await file.arrayBuffer()), {
-      contentType: file.type || 'application/octet-stream',
-      upsert: false,
-    });
-
-  if (error) {
-    throw error;
-  }
-
-  return {
-    attachment_name: file.name,
-    attachment_size: file.size,
-    attachment_type: file.type || null,
-    attachment_url: storagePath,
-  } satisfies Pick<
-    PartnershipInquiryPayload,
-    | 'attachment_name'
-    | 'attachment_size'
-    | 'attachment_type'
-    | 'attachment_url'
-  >;
-};
-
-const getMultipartPayload = async (
-  request: NextRequest,
-): Promise<
-  PartnershipInquiryPayload | {
-    error: string;
-  }
-> => {
-  const formData = await request.formData();
-  const payload = toPayloadFromFormData(formData);
-  const normalizedPayload = normalizePayload(payload);
-  const attachment = formData.get('attachment');
-
-  if ('error' in normalizedPayload) {
-    return normalizedPayload;
-  }
-
-  if (attachment instanceof File && attachment.size > 0) {
-    const uploadResult = await uploadAttachment(attachment);
-
-    if ('error' in uploadResult) {
-      return uploadResult;
-    }
-
-    return {
-      ...payload,
-      ...uploadResult,
-    };
-  }
-
-  return payload;
-};
-
-const normalizePayload = (
-  payload: PartnershipInquiryPayload,
-):
-  | Omit<IPartnershipInquiry, 'id'>
-  | {
-      error: string;
-    } => {
-  const companyName = payload.company_name?.trim();
-  const contactName = payload.contact_name?.trim();
-  const contactEmail = payload.contact_email?.trim();
-  const contactPosition = payload.contact_position?.trim();
-  const proposalContent = payload.proposal_content?.trim();
-  const companySize = payload.company_size;
-  const partnershipType = payload.partnership_type;
-  const companyUrl = normalizeOptionalText(payload.company_url);
-
-  if (
-    !companyName ||
-    !companySize ||
-    !contactName ||
-    !contactEmail ||
-    !contactPosition ||
-    !partnershipType ||
-    !proposalContent
-  ) {
-    return {
-      error:
-        'company_name, company_size, contact_name, contact_email, contact_position, partnership_type, and proposal_content are required.',
-    };
-  }
-
-  if (!COMPANY_SIZE_VALUES.includes(companySize)) {
-    return { error: 'company_size is invalid.' };
-  }
-
-  if (!PARTNERSHIP_TYPE_VALUES.includes(partnershipType)) {
-    return { error: 'partnership_type is invalid.' };
-  }
-
-  if (
-    companyName.length > MAX_SHORT_TEXT_LENGTH ||
-    contactName.length > MAX_SHORT_TEXT_LENGTH ||
-    contactPosition.length > MAX_SHORT_TEXT_LENGTH
-  ) {
-    return {
-      error: `company_name, contact_name, and contact_position must be ${MAX_SHORT_TEXT_LENGTH} characters or fewer.`,
-    };
-  }
-
-  if (
-    contactEmail.length > MAX_EMAIL_LENGTH ||
-    !EMAIL_PATTERN.test(contactEmail)
-  ) {
-    return { error: 'contact_email must be a valid email address.' };
-  }
-
-  if (companyUrl && companyUrl.length > MAX_URL_LENGTH) {
-    return {
-      error: `company_url must be ${MAX_URL_LENGTH} characters or fewer.`,
-    };
-  }
-
-  if (proposalContent.length > MAX_PROPOSAL_LENGTH) {
-    return {
-      error: `proposal_content must be ${MAX_PROPOSAL_LENGTH} characters or fewer.`,
-    };
-  }
-
-  const now = new Date().toISOString();
-
-  return {
-    admin_memo: null,
-    attachment_name: normalizeOptionalText(payload.attachment_name),
-    attachment_size:
-      typeof payload.attachment_size === 'number' &&
-      Number.isFinite(payload.attachment_size)
-        ? payload.attachment_size
-        : null,
-    attachment_type: normalizeOptionalText(payload.attachment_type),
-    attachment_url: normalizeOptionalText(payload.attachment_url),
-    company_name: companyName,
-    company_size: companySize,
-    company_url: companyUrl,
-    contact_email: contactEmail,
-    contact_name: contactName,
-    contact_phone: normalizeOptionalText(payload.contact_phone),
-    contact_position: contactPosition,
-    created_at: now,
-    partnership_type: partnershipType,
-    proposal_content: proposalContent,
-    status: 'pending',
-    updated_at: now,
-  };
-};
-
-export async function GET() {
+/**
+ * 관리자 권한 게이트. NextAuth 세션 검증 후 Spring 호출에 서명해 실을 신원(userId/role)을 돌려준다.
+ * (기존 GET/PATCH은 로그인만 요구했으나, Spring `/api/admin/**`는 ADMIN/SUPERADMIN 전용이라
+ *  다른 이관 도메인과 동일하게 canManageContent로 통일한다.)
+ */
+const requireManager = async (): Promise<BackendPrincipal | NextResponse> => {
   const session = await auth();
 
-  if (!session) {
-    return jsonError('Unauthorized', 401);
+  if (!session) return jsonError('Unauthorized', 401);
+
+  const role = session.user?.role;
+  const userId = session.user?.id;
+
+  if (!canManageContent(role) || !role || !userId) {
+    return jsonError('Forbidden', 403);
   }
 
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('partnership_inquiries')
-      .select('*')
-      .order('created_at', { ascending: false });
+  return { role, userId };
+};
 
-    if (error) {
+/** JSON 본문(snake_case)을 Spring multipart 접수 포맷으로 변환한다(제휴는 스칼라 필드만, 첨부 없음). */
+const buildFormFromJson = (payload: Record<string, unknown>): FormData => {
+  const form = new FormData();
+
+  for (const key of SCALAR_FIELDS) {
+    const value = payload[key];
+
+    if (value !== undefined && value !== null) {
+      form.set(key, String(value));
+    }
+  }
+
+  return form;
+};
+
+/** 관리자 제휴 문의 목록. Spring `GET /api/admin/partnership-inquiries`로 위임(status 필터 전달). */
+export async function GET(request: NextRequest) {
+  const gate = await requireManager();
+
+  if (gate instanceof NextResponse) return gate;
+
+  try {
+    const query = new URL(request.url).searchParams.toString();
+    const response = await fetch(
+      backendUrl(
+        `/api/admin/partnership-inquiries${query ? `?${query}` : ''}`,
+      ),
+      { cache: 'no-store', headers: backendAuthHeaders(gate) },
+    );
+
+    const body = await readJson(response);
+
+    if (!response.ok) {
       return jsonError(
         'Failed to load partnership inquiries.',
-        502,
-        error,
+        response.status,
+        body,
       );
     }
 
-    return NextResponse.json((data ?? []) as IPartnershipInquiry[]);
+    return NextResponse.json(
+      (body as SpringPartnershipInquiry[]).map(
+        springPartnershipToIPartnershipInquiry,
+      ),
+    );
   } catch (error) {
     return jsonError(
-      error instanceof Error ? error.message : 'Unexpected error',
-      500,
+      'Failed to reach partnership inquiry backend.',
+      502,
+      error instanceof Error ? error.message : error,
     );
   }
 }
 
+/**
+ * 공개 제휴 문의 접수 — Spring `POST /api/partnership-inquiries`(multipart)로 위임한다. 인증 불필요.
+ * multipart 요청은 첨부(File) 포함 그대로 포워딩, JSON 요청은 multipart 폼으로 변환해 단일 경로로 위임한다.
+ */
 export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get('content-type') ?? '';
-    const rawPayload =
-      contentType.includes('multipart/form-data')
-        ? await getMultipartPayload(request)
-        : ((await request.json()) as PartnershipInquiryPayload);
+    const body = contentType.includes('multipart/form-data')
+      ? await request.formData()
+      : buildFormFromJson((await request.json()) as Record<string, unknown>);
 
-    if ('error' in rawPayload) {
-      return jsonError(rawPayload.error, 400);
-    }
+    // Content-Type은 fetch가 FormData 경계(boundary)와 함께 자동 설정하므로 지정하지 않는다.
+    const response = await fetch(backendUrl('/api/partnership-inquiries'), {
+      body,
+      method: 'POST',
+    });
 
-    const payload = normalizePayload(rawPayload);
+    const data = await readJson(response);
 
-    if ('error' in payload) {
-      return jsonError(payload.error, 400);
-    }
-
-    const { data: inquiry, error } = await supabaseAdmin
-      .from('partnership_inquiries')
-      .insert(payload)
-      .select('*')
-      .single();
-
-    if (error) {
+    if (!response.ok) {
       return jsonError(
         'Failed to create partnership inquiry.',
-        502,
-        error,
+        response.status,
+        data,
       );
     }
 
-    return NextResponse.json(inquiry as IPartnershipInquiry, {
-      status: 201,
-    });
+    return NextResponse.json(
+      springPartnershipToIPartnershipInquiry(data as SpringPartnershipInquiry),
+      { status: 201 },
+    );
   } catch (error) {
     return jsonError(
       error instanceof Error ? error.message : 'Unexpected error',
@@ -364,61 +146,61 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * 관리자 상태/메모 갱신. Spring `PATCH /api/admin/partnership-inquiries/{id}`로 위임.
+ * 프론트는 `{ id, status?, admin_memo? }`를 보낸다. id(UUID)는 경로로, admin_memo→adminMemo로 옮기고
+ * 없는 필드는 생략한다(Spring은 status=null/adminMemo=null을 '변경 없음'으로 처리).
+ */
 export async function PATCH(request: NextRequest) {
-  const session = await auth();
+  const gate = await requireManager();
 
-  if (!session) {
-    return jsonError('Unauthorized', 401);
-  }
+  if (gate instanceof NextResponse) return gate;
 
   try {
-    const body = (await request.json()) as {
+    const payload = (await request.json()) as {
       admin_memo?: string | null;
       id?: string;
-      status?: PartnershipInquiryStatus;
+      status?: string;
     };
-    const id = body.id?.trim();
+    const id = payload.id?.trim();
 
     if (!id) {
       return jsonError('id is required.', 400);
     }
 
-    const updates: Partial<IPartnershipInquiry> = {
-      updated_at: new Date().toISOString(),
-    };
+    const response = await fetch(
+      backendUrl(`/api/admin/partnership-inquiries/${encodeURIComponent(id)}`),
+      {
+        body: JSON.stringify({
+          adminMemo: payload.admin_memo,
+          status: payload.status,
+        }),
+        headers: {
+          ...backendAuthHeaders(gate),
+          'Content-Type': 'application/json',
+        },
+        method: 'PATCH',
+      },
+    );
 
-    if (body.status !== undefined) {
-      if (!STATUS_VALUES.includes(body.status)) {
-        return jsonError('Invalid status.', 400);
-      }
+    const body = await readJson(response);
 
-      updates.status = body.status;
-    }
-
-    if (body.admin_memo !== undefined) {
-      updates.admin_memo = body.admin_memo?.trim() || null;
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('partnership_inquiries')
-      .update(updates)
-      .eq('id', id)
-      .select('*')
-      .single();
-
-    if (error) {
+    if (!response.ok) {
       return jsonError(
         'Failed to update partnership inquiry.',
-        502,
-        error,
+        response.status,
+        body,
       );
     }
 
-    return NextResponse.json(data as IPartnershipInquiry);
+    return NextResponse.json(
+      springPartnershipToIPartnershipInquiry(body as SpringPartnershipInquiry),
+    );
   } catch (error) {
     return jsonError(
-      error instanceof Error ? error.message : 'Unexpected error',
-      500,
+      'Failed to reach partnership inquiry backend.',
+      502,
+      error instanceof Error ? error.message : error,
     );
   }
 }

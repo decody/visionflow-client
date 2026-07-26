@@ -1,6 +1,19 @@
 import { createHmac } from 'node:crypto';
 
-import type { IFaq, INotice, IQna, UserRole } from '@visionflow/shared';
+import type {
+  IFaq,
+  INotice,
+  IPartnershipInquiry,
+  IQna,
+  IQuickInquiry,
+  IQuoteInquiry,
+  PartnershipInquiryCompanySize,
+  PartnershipInquiryStatus,
+  PartnershipInquiryType,
+  QuickInquiryStatus,
+  QuoteInquiryStatus,
+  UserRole,
+} from '@visionflow/shared';
 
 /**
  * Spring 백엔드(visionflow-server) 호출 헬퍼 — 서버 전용.
@@ -178,6 +191,162 @@ export const springQnaToIQna = (qna: SpringQna): IQna => ({
   view_count: qna.viewCount,
   viewCount: qna.viewCount,
 });
+
+// Spring QuoteInquiryResponse(JSON, camelCase) 원본 형태. OffsetDateTime은 ISO 문자열로 직렬화된다.
+export type SpringQuoteInquiry = {
+  adminMemo: string | null;
+  assignedAdminId: string | null;
+  attachedFiles: string[] | null;
+  companyName: string;
+  completedAt: string | null;
+  contactName: string;
+  contactedAt: string | null;
+  createdAt: string;
+  email: string;
+  id: number;
+  ipAddress: string | null;
+  marketingAgreed: boolean;
+  marketingAgreedAt: string | null;
+  phone: string | null;
+  position: string | null;
+  preferredContactMethods: string[] | null;
+  preferredStartDate: string;
+  privacyAgreed: boolean;
+  privacyAgreedAt: string | null;
+  projectDescription: string;
+  projectScale: string;
+  referenceUrls: string[] | null;
+  serviceCategories: string[] | null;
+  status: string;
+  updatedAt: string;
+  userAgent: string | null;
+};
+
+// Spring 응답을 프론트 IQuoteInquiry(snake_case)로 변환. 훅/컴포넌트가 snake_case로 읽으므로 계약을 그대로 유지한다.
+export const springQuoteInquiryToIQuoteInquiry = (
+  quote: SpringQuoteInquiry,
+): IQuoteInquiry => ({
+  admin_memo: quote.adminMemo,
+  assigned_admin_id: quote.assignedAdminId,
+  attached_files: quote.attachedFiles ?? [],
+  company_name: quote.companyName,
+  completed_at: quote.completedAt,
+  contact_name: quote.contactName,
+  contacted_at: quote.contactedAt,
+  created_at: quote.createdAt,
+  email: quote.email,
+  id: quote.id,
+  ip_address: quote.ipAddress,
+  marketing_agreed: quote.marketingAgreed,
+  marketing_agreed_at: quote.marketingAgreedAt,
+  phone: quote.phone,
+  position: quote.position,
+  preferred_contact_methods: quote.preferredContactMethods ?? [],
+  preferred_start_date: quote.preferredStartDate,
+  privacy_agreed: quote.privacyAgreed,
+  privacy_agreed_at: quote.privacyAgreedAt,
+  project_description: quote.projectDescription,
+  project_scale: quote.projectScale,
+  reference_urls: quote.referenceUrls ?? [],
+  service_categories: quote.serviceCategories ?? [],
+  status: quote.status as QuoteInquiryStatus,
+  updated_at: quote.updatedAt,
+  user_agent: quote.userAgent,
+});
+
+// Spring PartnershipInquiryResponse(JSON, camelCase) 원본 형태. id는 UUID 문자열, 첨부는 단일(4개 스칼라).
+export type SpringPartnershipInquiry = {
+  adminMemo: string | null;
+  attachmentName: string | null;
+  attachmentSize: number | null;
+  attachmentType: string | null;
+  attachmentUrl: string | null;
+  companyName: string;
+  companySize: string;
+  companyUrl: string | null;
+  contactEmail: string;
+  contactName: string;
+  contactPhone: string | null;
+  contactPosition: string;
+  createdAt: string;
+  id: string;
+  partnershipType: string;
+  proposalContent: string;
+  status: string;
+  updatedAt: string;
+};
+
+// Spring 응답을 프론트 IPartnershipInquiry(snake_case)로 변환. 훅/컴포넌트가 snake_case로 읽으므로 계약을 유지한다.
+export const springPartnershipToIPartnershipInquiry = (
+  p: SpringPartnershipInquiry,
+): IPartnershipInquiry => ({
+  admin_memo: p.adminMemo,
+  attachment_name: p.attachmentName,
+  attachment_size: p.attachmentSize,
+  attachment_type: p.attachmentType,
+  attachment_url: p.attachmentUrl,
+  company_name: p.companyName,
+  company_size: p.companySize as PartnershipInquiryCompanySize,
+  company_url: p.companyUrl,
+  contact_email: p.contactEmail,
+  contact_name: p.contactName,
+  contact_phone: p.contactPhone,
+  contact_position: p.contactPosition,
+  created_at: p.createdAt,
+  id: p.id,
+  partnership_type: p.partnershipType as PartnershipInquiryType,
+  proposal_content: p.proposalContent,
+  status: p.status as PartnershipInquiryStatus,
+  updated_at: p.updatedAt,
+});
+
+// Spring QuickInquiryResponse(JSON, camelCase) 원본 형태. id는 UUID 문자열, 첨부 없음(3종 중 가장 단순).
+export type SpringQuickInquiry = {
+  content: string;
+  createdAt: string;
+  email: string;
+  id: string;
+  name: string;
+  repliedAt: string | null;
+  repliedBy: string | null;
+  replyContent: string | null;
+  status: string;
+  subject: string | null;
+  updatedAt: string;
+};
+
+// Spring 응답을 프론트 IQuickInquiry(snake_case)로 변환. 훅/컴포넌트가 snake_case로 읽으므로 계약을 유지한다.
+export const springQuickToIQuickInquiry = (
+  q: SpringQuickInquiry,
+): IQuickInquiry => ({
+  content: q.content,
+  created_at: q.createdAt,
+  email: q.email,
+  id: q.id,
+  name: q.name,
+  replied_at: q.repliedAt,
+  replied_by: q.repliedBy,
+  reply_content: q.replyContent,
+  status: q.status as QuickInquiryStatus,
+  subject: q.subject,
+  updated_at: q.updatedAt,
+});
+
+// Spring WorkResponse(JSON, camelCase). 프론트 apiClient 카멜케이스 출력·admin toWork와 동일 shape이라
+// 별도 변환기 없이 그대로 전달한다(훅의 normalizeWork가 roles 콤마문자열→배열로 변환). updated_at 없음.
+export type SpringWork = {
+  category: string;
+  createdAt: string;
+  id: string;
+  image: string | null;
+  industry: string;
+  isImportant: boolean;
+  linkLabel: string | null;
+  linkUrl: string | null;
+  roles: string;
+  size: string;
+  title: string;
+};
 
 // fetch 응답 body를 안전하게 JSON 파싱(비어 있으면 null).
 export const readJson = async (response: Response): Promise<unknown> => {
