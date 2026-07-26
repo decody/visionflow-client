@@ -30,6 +30,25 @@ export const useUsersListQuery = () => {
   });
 };
 
+const fetchUser = async (id: string): Promise<IUser> => {
+  const response = await fetch(`/api/admin/users/${encodeURIComponent(id)}`);
+
+  if (!response.ok) {
+    throw new Error((await parseError(response)) ?? 'Failed to fetch user.');
+  }
+
+  return (await response.json()) as IUser;
+};
+
+/** 단건 사용자 조회 → BFF `GET /api/admin/users/{id}`(Spring 위임). */
+export const useUserQuery = (id: string) => {
+  return useQuery<IUser>({
+    enabled: Boolean(id),
+    queryKey: ['user', id],
+    queryFn: () => fetchUser(id),
+  });
+};
+
 /** 역할/상태 갱신 → BFF `PATCH /api/admin/users/{id}`(Spring 위임). */
 export const useUpdateUserMutation = () => {
   const queryClient = useQueryClient();

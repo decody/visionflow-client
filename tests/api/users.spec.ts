@@ -20,6 +20,16 @@ test.describe('admin users api requires authentication', () => {
     expect(response.status()).toBe(401);
   });
 
+  test('GET /api/admin/users/:id without a session returns 401', async ({
+    request,
+  }) => {
+    const response = await request.get(
+      '/api/admin/users/11111111-1111-1111-1111-111111111111',
+    );
+
+    expect(response.status()).toBe(401);
+  });
+
   test('PATCH /api/admin/users/:id without a session returns 401', async ({
     request,
   }) => {

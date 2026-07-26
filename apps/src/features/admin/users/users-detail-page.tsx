@@ -3,7 +3,6 @@
 import { ROUTES } from '@visionflow/routes';
 import {
   ArrowLeft,
-  Briefcase,
   Calendar,
   Check,
   CircleDot,
@@ -15,7 +14,6 @@ import {
   LogOut,
   MessageCircle,
   Power,
-  RefreshCcw,
   Save,
   ShieldCheck,
   Trash2,
@@ -23,13 +21,56 @@ import {
   Users as UsersIcon,
   X,
 } from 'lucide-react';
+import type { UserRole, UserStatus } from '@visionflow/shared';
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { useTopbar } from '@/components/layout/topbar-context';
+import {
+  useDeleteUserMutation,
+  useUpdateUserMutation,
+  useUserQuery,
+} from '@/hooks/admin/users/usersQuery';
 import styles from './users-detail-page.module.css';
 
 type RoleKey = 'super_admin' | 'sales' | 'admin' | 'viewer';
+
+// 백엔드 UserRole(SuperAdmin|admin|Viewer) ↔ 화면 RoleKey. 'sales'는 백엔드에 없는 표시용 역할이라 매핑 없음.
+const ROLE_KEY_BY_USER_ROLE: Record<UserRole, RoleKey> = {
+  SuperAdmin: 'super_admin',
+  admin: 'admin',
+  Viewer: 'viewer',
+};
+const USER_ROLE_BY_ROLE_KEY: Record<RoleKey, UserRole | null> = {
+  super_admin: 'SuperAdmin',
+  admin: 'admin',
+  viewer: 'Viewer',
+  sales: null,
+};
+const STATUS_LABEL: Record<UserStatus, string> = {
+  active: '활성',
+  inactive: '비활성',
+  pending_invite: '초대 대기',
+};
+
+const formatDateTime = (iso?: string | null) => {
+  if (!iso) {
+    return '기록 없음';
+  }
+
+  const date = new Date(iso);
+
+  if (Number.isNaN(date.getTime())) {
+    return '기록 없음';
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+};
 
 const ROLE_OPTIONS: ReadonlyArray<{
   count: string;
@@ -205,8 +246,14 @@ const RECENT_ACTIVITY = [
   },
 ];
 
-export function UsersDetailPage({ id: _id }: { id: string }) {
-  const [selectedRole, setSelectedRole] = useState<RoleKey>('admin');
+export function UsersDetailPage({ id }: { id: string }) {
+  const router = useRouter();
+  const { data: user, isLoading, isError } = useUserQuery(id);
+  const updateUser = useUpdateUserMutation();
+  const deleteUser = useDeleteUserMutation();
+  // 화면 선택은 사용자가 카드를 누르기 전까지 서버 값(user.role)에서 파생한다(effect 없이).
+  const [pendingRole, setPendingRole] = useState<RoleKey | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   useTopbar(
     () => ({
@@ -214,11 +261,98 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
         { href: ROUTES.ADMIN.HOME, label: '대시보드' },
         { label: '운영' },
         { href: ROUTES.ADMIN.USERS.ROOT, label: '사용자 관리' },
-        { label: '박서준 (admin)' },
+        { label: user ? `${user.name} (${user.role})` : '사용자 상세' },
       ],
     }),
-    [],
+    [user],
   );
+
+  if (isLoading) {
+    return (
+      <div className={styles.page}>
+        <p className={styles.stateMessage}>사용자 정보를 불러오는 중…</p>
+      </div>
+    );
+  }
+
+  if (isError || !user) {
+    return (
+      <div className={styles.page}>
+        <p className={styles.stateMessage}>사용자를 찾을 수 없습니다.</p>
+        <Link className={styles.backLink} href={ROUTES.ADMIN.USERS.ROOT}>
+          <ArrowLeft aria-hidden="true" size={14} />
+          목록으로
+        </Link>
+      </div>
+    );
+  }
+
+  const isSaving = updateUser.isPending;
+  const isDeactivated = user.status === 'inactive';
+  const avatarInitial = user.name?.trim()?.[0] ?? 'U';
+  const selectedRole: RoleKey =
+    pendingRole ?? ROLE_KEY_BY_USER_ROLE[user.role] ?? 'viewer';
+
+  const handleSaveRole = () => {
+    setMessage(null);
+    const nextRole = USER_ROLE_BY_ROLE_KEY[selectedRole];
+
+    if (!nextRole) {
+      setMessage('지원하지 않는 역할입니다 (SuperAdmin/admin/Viewer만 가능).');
+
+      return;
+    }
+
+    if (nextRole === user.role) {
+      setMessage('현재 역할과 동일합니다.');
+
+      return;
+    }
+
+    updateUser.mutate(
+      { id, role: nextRole },
+      {
+        onError: (error) =>
+          setMessage(error instanceof Error ? error.message : '역할 저장 실패'),
+        onSuccess: () => setMessage(`역할을 ${nextRole}(으)로 저장했습니다.`),
+      },
+    );
+  };
+
+  const handleToggleStatus = () => {
+    setMessage(null);
+    const nextStatus: UserStatus = isDeactivated ? 'active' : 'inactive';
+
+    updateUser.mutate(
+      { id, status: nextStatus },
+      {
+        onError: (error) =>
+          setMessage(error instanceof Error ? error.message : '상태 변경 실패'),
+        onSuccess: () =>
+          setMessage(
+            nextStatus === 'inactive'
+              ? '계정을 비활성화했습니다.'
+              : '계정을 활성화했습니다.',
+          ),
+      },
+    );
+  };
+
+  const handleDelete = () => {
+    if (
+      !window.confirm(
+        `${user.name}(${user.email}) 계정을 삭제할까요? 되돌릴 수 없습니다.`,
+      )
+    ) {
+      return;
+    }
+
+    deleteUser.mutate(id, {
+      onError: (error) =>
+        setMessage(error instanceof Error ? error.message : '삭제 실패'),
+      onSuccess: () => router.push(ROUTES.ADMIN.USERS.ROOT),
+    });
+  };
 
   return (
     <div className={styles.page}>
@@ -229,53 +363,53 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
         </Link>
         <span className={styles.statusOnline}>
           <span aria-hidden="true" className={styles.onlineDot} />
-          온라인 · 4분 전
+          {STATUS_LABEL[user.status]}
         </span>
         <span className={styles.userId}>
           <UserIcon aria-hidden="true" size={12} />
-          ID: usr_park-seojun-7f2a
+          ID: {user.id}
         </span>
         <div className={styles.topbarActions}>
-          <button className={styles.ghostButton} type="button">
+          <button
+            className={`${styles.ghostButton} ${styles.deactivate}`}
+            disabled={isSaving}
+            onClick={handleToggleStatus}
+            type="button"
+          >
             <Power aria-hidden="true" size={13} />
-            강제 로그아웃
+            {isDeactivated ? '활성화' : '비활성화'}
           </button>
-          <button className={styles.ghostButton} type="button">
-            <RefreshCcw aria-hidden="true" size={13} />
-            2FA 재설정
-          </button>
-          <button className={`${styles.ghostButton} ${styles.deactivate}`} type="button">
-            <Power aria-hidden="true" size={13} />
-            비활성화
-          </button>
-          <button className={styles.primaryButton} type="button">
+          <button
+            className={styles.primaryButton}
+            disabled={isSaving}
+            onClick={handleSaveRole}
+            type="button"
+          >
             <Save aria-hidden="true" size={13} />
-            변경사항 저장
+            {isSaving ? '저장 중…' : '역할 저장'}
           </button>
         </div>
       </header>
+
+      {message ? (
+        <p className={styles.stateMessage} role="status">
+          {message}
+        </p>
+      ) : null}
 
       <section className={styles.profileCard}>
         <div className={styles.profileLeft}>
           <div className={styles.avatarWrap}>
             <span aria-hidden="true" className={styles.avatar}>
-              박
+              {avatarInitial}
             </span>
-            <button aria-label="아바타 변경" className={styles.avatarEdit} type="button">
-              ✎
-            </button>
           </div>
           <div className={styles.profileInfo}>
-            <h1 className={styles.userName}>박서준</h1>
-            <p className={styles.userEmail}>park.seojun@visionflow.kr</p>
+            <h1 className={styles.userName}>{user.name}</h1>
+            <p className={styles.userEmail}>{user.email}</p>
             <div className={styles.profileBadges}>
-              <span className={styles.profileRole}>admin</span>
-              <span className={styles.ssoBadge}>
-                <span aria-hidden="true" className={styles.googleG}>
-                  G
-                </span>
-                Google SSO
-              </span>
+              <span className={styles.profileRole}>{user.role}</span>
+              <span className={styles.ssoBadge}>{STATUS_LABEL[user.status]}</span>
             </div>
           </div>
         </div>
@@ -316,12 +450,32 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
             <h2 className={styles.cardTitle}>계정 정보</h2>
           </header>
           <dl className={styles.infoList}>
-            <InfoRow icon={Briefcase} label="직책" value="Senior admin" />
-            <InfoRow icon={UsersIcon} label="팀" value="Content Operations" />
-            <InfoRow icon={Calendar} label="입사일" value="2025년 6월 12일" />
-            <InfoRow icon={IdCard} label="계정 생성" value="2025-06-12 09:30" />
-            <InfoRow icon={CircleDot} label="마지막 로그인" value="오늘 10:15 · 서울 사무실" />
-            <InfoRow icon={Globe} label="마지막 IP" value="203.247.156.42" />
+            <InfoRow icon={IdCard} label="역할" value={user.role} />
+            <InfoRow
+              icon={ShieldCheck}
+              label="상태"
+              value={STATUS_LABEL[user.status]}
+            />
+            <InfoRow
+              icon={Calendar}
+              label="계정 생성"
+              value={formatDateTime(user.created_at)}
+            />
+            <InfoRow
+              icon={CircleDot}
+              label="마지막 로그인"
+              value={formatDateTime(user.last_login_at)}
+            />
+            <InfoRow
+              icon={Globe}
+              label="마지막 IP"
+              value={user.last_login_ip ?? '—'}
+            />
+            <InfoRow
+              icon={UsersIcon}
+              label="마지막 위치"
+              value={user.last_login_location ?? '—'}
+            />
           </dl>
         </article>
 
@@ -379,7 +533,7 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
                 selectedRole === role.key ? styles.roleCardActive : ''
               }`}
               key={role.key}
-              onClick={() => setSelectedRole(role.key)}
+              onClick={() => setPendingRole(role.key)}
               type="button"
             >
               <div className={styles.roleHeader}>
@@ -500,24 +654,36 @@ export function UsersDetailPage({ id: _id }: { id: string }) {
         <div className={styles.dangerList}>
           <div className={styles.dangerRow}>
             <div>
-              <strong>계정 비활성화</strong>
-              <p>로그인 차단 · 데이터는 유지 (감사 로그 추적용) · 언제든 복구 가능</p>
+              <strong>계정 {isDeactivated ? '활성화' : '비활성화'}</strong>
+              <p>
+                {isDeactivated
+                  ? '다시 로그인 가능 상태로 전환합니다.'
+                  : '로그인 차단 · 데이터는 유지 · 언제든 복구 가능'}
+              </p>
             </div>
-            <button className={`${styles.dangerBtn} ${styles.dangerBtnSoft}`} type="button">
+            <button
+              className={`${styles.dangerBtn} ${styles.dangerBtnSoft}`}
+              disabled={isSaving}
+              onClick={handleToggleStatus}
+              type="button"
+            >
               <Power aria-hidden="true" size={13} />
-              비활성화
+              {isDeactivated ? '활성화' : '비활성화'}
             </button>
           </div>
           <div className={styles.dangerRow}>
             <div>
               <strong>계정 삭제</strong>
-              <p>
-                auth.users 영구 삭제 · 작성 콘텐츠는 “deleted user”로 보존 · 되돌릴 수 없음
-              </p>
+              <p>사용자 레코드 영구 삭제 · 되돌릴 수 없음</p>
             </div>
-            <button className={`${styles.dangerBtn} ${styles.dangerBtnHard}`} type="button">
+            <button
+              className={`${styles.dangerBtn} ${styles.dangerBtnHard}`}
+              disabled={deleteUser.isPending}
+              onClick={handleDelete}
+              type="button"
+            >
               <Trash2 aria-hidden="true" size={13} />
-              삭제 요청
+              {deleteUser.isPending ? '삭제 중…' : '삭제'}
             </button>
           </div>
         </div>
@@ -531,7 +697,7 @@ function InfoRow({
   label,
   value,
 }: {
-  icon: typeof Briefcase;
+  icon: LucideIcon;
   label: string;
   value: string;
 }) {

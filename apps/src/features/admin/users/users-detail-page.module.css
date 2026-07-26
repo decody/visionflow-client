@@ -831,3 +831,12 @@
 .dangerBtnHard:hover {
   background: #d93232;
 }
+
+.stateMessage {
+  margin: 4px 0 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #f6f7f9;
+  color: #171a1a;
+  font-size: 13px;
+}
