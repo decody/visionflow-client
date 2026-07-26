@@ -53,4 +53,13 @@ export default tseslint.config(
       'react-refresh/only-export-components': 'off',
     },
   },
+  {
+    // Node ESM 스크립트(예: apps/scripts/*.mjs) — Node 전역 부여.
+    files: ['**/*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
 );
