@@ -1,8 +1,15 @@
 import type { UserRole } from '@visionflow/shared';
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { auth } from '../../../../../auth';
 import { normalizeUserRole } from '@/lib/admin-permissions';
+import {
+  backendAuthHeaders,
+  backendUrl,
+  readJson,
+  type BackendPrincipal,
+} from '@/lib/backend';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -141,6 +148,40 @@ const sendInviteEmail = async ({
   throw new Error(detail || 'Resend failed to send invite email.');
 };
 
+/**
+ * 이중 쓰기 — Supabase 로 초대한 사용자를 Spring users 테이블에도 반영한다(관리 목록의 소스).
+ * Supabase auth 사용자 id 를 그대로 써서 소스 간 식별자를 맞춘다. 실패 시 예외를 던져 해당 초대를 실패 처리한다.
+ */
+const upsertUserToBackend = async (
+  principal: BackendPrincipal,
+  user: { email: string; id: string; name: string; role: UserRole },
+) => {
+  const response = await fetch(backendUrl('/api/admin/users'), {
+    body: JSON.stringify({
+      email: user.email,
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      status: 'pending_invite',
+    }),
+    headers: {
+      ...backendAuthHeaders(principal),
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    const detail = await readJson(response);
+    const message =
+      detail && typeof detail === 'object' && 'message' in detail
+        ? String((detail as { message: unknown }).message)
+        : 'Spring user sync failed.';
+
+    throw new Error(message);
+  }
+};
+
 export async function POST(request: NextRequest) {
   const session = await auth();
 
@@ -151,6 +192,16 @@ export async function POST(request: NextRequest) {
   if (session.user?.role !== 'SuperAdmin') {
     return jsonError('Forbidden', 403);
   }
+
+  if (!session.user?.id) {
+    return jsonError('Unauthorized', 401);
+  }
+
+  // Spring 이중 쓰기 호출에 실을 신원(SuperAdmin). Spring 이 서명·역할을 재검증한다.
+  const backendPrincipal: BackendPrincipal = {
+    role: 'SuperAdmin',
+    userId: session.user.id,
+  };
 
   let payload: InvitePayload;
 
@@ -233,6 +284,25 @@ export async function POST(request: NextRequest) {
 
       if (writeError) {
         return { email, error: writeError.message, ok: false };
+      }
+
+      // 이중 쓰기: Spring users 테이블에도 반영(관리 목록의 소스). 실패 시 이 초대를 실패 처리한다.
+      try {
+        await upsertUserToBackend(backendPrincipal, {
+          email,
+          id: data.user.id,
+          name: email,
+          role,
+        });
+      } catch (syncError) {
+        return {
+          email,
+          error:
+            syncError instanceof Error
+              ? syncError.message
+              : 'Spring user sync failed.',
+          ok: false,
+        };
       }
 
       try {

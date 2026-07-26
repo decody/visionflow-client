@@ -7,12 +7,14 @@ import type {
   IQna,
   IQuickInquiry,
   IQuoteInquiry,
+  IUser,
   PartnershipInquiryCompanySize,
   PartnershipInquiryStatus,
   PartnershipInquiryType,
   QuickInquiryStatus,
   QuoteInquiryStatus,
   UserRole,
+  UserStatus,
 } from '@visionflow/shared';
 
 /**
@@ -347,6 +349,36 @@ export type SpringWork = {
   size: string;
   title: string;
 };
+
+// Spring UserResponse(JSON, camelCase). role은 이미 UI 어휘(SuperAdmin|admin|Viewer)로 변환돼 온다.
+export type SpringUser = {
+  avatarColor: string | null;
+  createdAt: string;
+  email: string;
+  id: string;
+  lastLoginAt: string | null;
+  lastLoginIp: string | null;
+  lastLoginLocation: string | null;
+  name: string;
+  role: string;
+  status: string;
+  updatedAt: string;
+};
+
+// Spring 응답을 프론트 IUser(snake_case)로 변환. 훅/컴포넌트가 snake_case로 읽으므로 계약을 유지한다.
+export const springUserToIUser = (u: SpringUser): IUser => ({
+  avatar_color: u.avatarColor,
+  created_at: u.createdAt,
+  email: u.email,
+  id: u.id,
+  last_login_at: u.lastLoginAt,
+  last_login_ip: u.lastLoginIp,
+  last_login_location: u.lastLoginLocation,
+  name: u.name,
+  role: u.role as UserRole,
+  status: u.status as UserStatus,
+  updated_at: u.updatedAt,
+});
 
 // fetch 응답 body를 안전하게 JSON 파싱(비어 있으면 null).
 export const readJson = async (response: Response): Promise<unknown> => {
