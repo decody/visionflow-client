@@ -1,23 +1,30 @@
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
-
+/**
+ * 초대 수락 후 비밀번호 설정 페이지.
+ *
+ * <p>초대 링크의 원문 토큰(?token=)을 읽어 새 비밀번호와 함께 BFF(/api/auth/complete-invite)로 보내면,
+ * Spring 이 토큰을 검증하고 비번을 설정·계정을 활성화한다. 기존 Supabase updateUser 흐름을 대체.
+ */
 export default function SetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token') ?? '';
 
   const handleSubmit = async () => {
     setError('');
+
+    if (!token) {
+      setError('유효하지 않은 초대 링크입니다.');
+      return;
+    }
 
     if (password !== confirm) {
       setError('비밀번호가 일치하지 않습니다.');
@@ -30,17 +37,29 @@ export default function SetPasswordPage() {
     }
 
     setLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({
-      password,
-    });
 
-    if (updateError) {
-      setError(updateError.message);
+    try {
+      const response = await fetch('/api/auth/complete-invite', {
+        body: JSON.stringify({ password, token }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as {
+          message?: string;
+        } | null;
+
+        setError(body?.message ?? '비밀번호 설정에 실패했습니다.');
+        setLoading(false);
+        return;
+      }
+
+      router.push('/settings/login?mode=partner');
+    } catch {
+      setError('비밀번호 설정에 실패했습니다.');
       setLoading(false);
-      return;
     }
-
-    router.push('/settings/login?mode=partner');
   };
 
   return (

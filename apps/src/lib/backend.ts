@@ -392,6 +392,16 @@ export type SpringAlarm = {
   createdAt: string;
 };
 
+// Spring LoginResponse(JSON, camelCase). role 은 이미 UI 어휘(SuperAdmin|admin|Viewer).
+// 로그인/SSO 프로비저닝은 비인증 서버-서버 호출(BFF JWT 불필요) — backendUrl 만 사용한다.
+export type SpringLoginResponse = {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  status: string;
+};
+
 // fetch 응답 body를 안전하게 JSON 파싱(비어 있으면 null).
 export const readJson = async (response: Response): Promise<unknown> => {
   const text = await response.text();

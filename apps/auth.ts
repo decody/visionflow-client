@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { backendUrl, type SpringLoginResponse } from '@/lib/backend';
 import { providers } from '@visionflow/auth';
 import { ROUTES } from '@visionflow/routes';
 import type { UserRole } from '@visionflow/shared';
@@ -7,7 +7,6 @@ import Credentials from 'next-auth/providers/credentials';
 import { headers } from 'next/headers';
 
 const EIGHT_HOURS_IN_SECONDS = 8 * 60 * 60;
-const DEFAULT_DB_ROLE = 'user';
 
 const isVercelRuntime =
   process.env.VERCEL === '1' || process.env.VERCEL === 'true';
@@ -47,10 +46,7 @@ const normalizeUserRole = (role: unknown): UserRole | null => {
   return null;
 };
 
-const getFirstHeaderValue = (
-  requestHeaders: Headers,
-  names: string[],
-) => {
+const getFirstHeaderValue = (requestHeaders: Headers, names: string[]) => {
   for (const name of names) {
     const value = requestHeaders.get(name);
 
@@ -102,44 +98,24 @@ const getClientLocation = (requestHeaders: Headers) => {
   return [city, region, country].filter(Boolean).join(', ') || null;
 };
 
-const getLoginMetadata = async () => {
+type LoginMetadata = {
+  ip: string | null;
+  location: string | null;
+  userAgent: string | null;
+};
+
+const getLoginMetadata = async (): Promise<LoginMetadata> => {
   try {
     const requestHeaders = await headers();
 
     return {
-      last_login_at: new Date().toISOString(),
-      last_login_ip: getClientIp(requestHeaders),
-      last_login_location: getClientLocation(requestHeaders),
-      user_agent: requestHeaders.get('user-agent'),
+      ip: getClientIp(requestHeaders),
+      location: getClientLocation(requestHeaders),
+      userAgent: requestHeaders.get('user-agent'),
     };
   } catch {
-    return {
-      last_login_at: new Date().toISOString(),
-      last_login_ip: null,
-      last_login_location: null,
-      user_agent: null,
-    };
+    return { ip: null, location: null, userAgent: null };
   }
-};
-
-type LoginAuditStatus = 'success' | 'failure';
-
-type CredentialUserRecord = {
-  email: string;
-  id: string;
-  name: string | null;
-  status: string | null;
-};
-
-type AppAuthUser = {
-  email: string;
-  id: string;
-  name?: string | null;
-  status?: string | null;
-};
-
-type SsoAppUserRecord = CredentialUserRecord & {
-  dbBacked: boolean;
 };
 
 const UUID_PATTERN =
@@ -148,224 +124,53 @@ const UUID_PATTERN =
 const isUuid = (value: unknown): value is string =>
   typeof value === 'string' && UUID_PATTERN.test(value);
 
-const canUseCredentialsLogin = (status: string | null) =>
-  !status || status === 'active' || status === 'pending_invite';
+/**
+ * Spring 자격증명 로그인. 비인증 서버-서버 호출(BFF JWT 불필요) — Spring 이 비번을 검증하고
+ * 감사·last_login 을 기록한다. 실패(401/inactive/오답)면 null 을 돌려 로그인 실패로 이어진다.
+ */
+const springLogin = async (
+  email: string,
+  password: string,
+  metadata: LoginMetadata,
+): Promise<SpringLoginResponse | null> => {
+  try {
+    const response = await fetch(backendUrl('/api/auth/login'), {
+      body: JSON.stringify({ email, password, ...metadata }),
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
 
-const writeLoginAuditLog = async ({
-  email,
-  provider,
-  reason,
-  status,
-  userId,
-}: {
-  email?: string | null;
-  provider: string;
-  reason?: string | null;
-  status: LoginAuditStatus;
-  userId?: string | null;
-}) => {
-  const metadata = await getLoginMetadata();
+    if (!response.ok) {
+      return null;
+    }
 
-  const { error } = await supabaseAdmin.from('auth_audit_logs').insert({
-    email: email ?? null,
-    event_type: 'login',
-    ip: metadata.last_login_ip,
-    location: metadata.last_login_location,
-    provider,
-    reason: reason ?? null,
-    status,
-    user_agent: metadata.user_agent,
-    user_id: userId ?? null,
+    return (await response.json()) as SpringLoginResponse;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * SSO 로그인 프로비저닝. OAuth 인증(NextAuth)은 이미 끝났고, users 레코드는 Spring 이 소유하므로
+ * 이메일로 upsert 후 역할을 받아온다. 실패 시 예외를 던져 signIn 콜백이 오류 리다이렉트하도록 한다.
+ */
+const springSsoLogin = async (
+  email: string,
+  name?: string | null,
+): Promise<SpringLoginResponse> => {
+  const response = await fetch(backendUrl('/api/auth/sso-login'), {
+    body: JSON.stringify({ email, name: name ?? null }),
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
   });
 
-  if (error) {
-    console.error('Failed to write auth audit log.', error);
-  }
-};
-
-const getErrorMessage = (error: unknown, fallback: string) => {
-  if (error instanceof Error) {
-    return error.message;
+  if (!response.ok) {
+    throw new Error('sso_provision_failed');
   }
 
-  if (
-    error &&
-    typeof error === 'object' &&
-    'message' in error &&
-    typeof error.message === 'string'
-  ) {
-    return error.message;
-  }
-
-  return fallback;
-};
-
-const findAuthUserByEmail = async (email: string) => {
-  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return (
-    data.users.find(
-      (user) => user.email?.toLowerCase() === email.toLowerCase(),
-    ) ?? null
-  );
-};
-
-const findProfileByEmail = async (email: string) => {
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .select('email,id,name,status')
-    .eq('email', email.toLowerCase())
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return data as AppAuthUser | null;
-};
-
-const findAppUserByEmail = async (email: string) => {
-  const authUser = await findAuthUserByEmail(email);
-
-  if (authUser?.id && authUser.email) {
-    return {
-      email: authUser.email,
-      id: authUser.id,
-      name:
-        typeof authUser.user_metadata?.name === 'string'
-          ? authUser.user_metadata.name
-          : null,
-      status: null,
-    };
-  }
-
-  return findProfileByEmail(email);
-};
-
-const ensureDefaultRole = async (userId: string) => {
-  const { data, error } = await supabaseAdmin
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  if (data) {
-    return;
-  }
-
-  const { error: insertError } = await supabaseAdmin
-    .from('user_roles')
-    .insert({ role: DEFAULT_DB_ROLE, user_id: userId });
-
-  if (insertError) {
-    throw insertError;
-  }
-};
-
-const getRoleByUserId = async (userId: string) => {
-  const { data, error } = await supabaseAdmin
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return normalizeUserRole(data?.role) ?? 'Viewer';
-};
-
-const upsertAppUser = async ({
-  email,
-  id,
-  name,
-}: {
-  email: string;
-  id: string;
-  name?: string | null;
-}) => {
-  const { user_agent: _userAgent, ...loginMetadata } =
-    await getLoginMetadata();
-
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .upsert(
-      {
-        email,
-        id,
-        ...loginMetadata,
-        name,
-        status: 'active',
-      },
-      { onConflict: 'id' },
-    )
-    .select('id,name,status')
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  await ensureDefaultRole(id);
-
-  return { ...data, email } as CredentialUserRecord;
-};
-
-const getOrCreateSsoAppUser = async ({
-  email,
-  name,
-}: {
-  email: string;
-  name?: string | null;
-}): Promise<SsoAppUserRecord> => {
-  const normalizedEmail = email.toLowerCase();
-  const existingAppUser = await findAppUserByEmail(normalizedEmail);
-
-  if (existingAppUser?.id) {
-    const appUser = await upsertAppUser({
-      email: normalizedEmail,
-      id: existingAppUser.id,
-      name: existingAppUser.name ?? name ?? normalizedEmail,
-    });
-
-    return { ...appUser, dbBacked: true };
-  }
-
-  const { data: createdUser, error: createUserError } =
-    await supabaseAdmin.auth.admin.createUser({
-      email: normalizedEmail,
-      email_confirm: true,
-      password: `${crypto.randomUUID()}Aa1!`,
-      user_metadata: { name },
-    });
-
-  if (createdUser.user?.id) {
-    const appUser = await upsertAppUser({
-      email: normalizedEmail,
-      id: createdUser.user.id,
-      name,
-    });
-
-    return { ...appUser, dbBacked: true };
-  }
-
-  if (createUserError) {
-    throw createUserError;
-  }
-
-  throw new Error('auth_user_sync_failed');
+  return (await response.json()) as SpringLoginResponse;
 };
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -387,128 +192,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             : '';
 
         if (!email || !password) {
-          await writeLoginAuditLog({
-            email,
-            provider: 'credentials',
-            reason: 'missing_credentials',
-            status: 'failure',
-          });
           return null;
         }
 
-        const { data: authData, error } =
-          await supabaseAdmin.auth.signInWithPassword({
-            email,
-            password,
-          });
+        const metadata = await getLoginMetadata();
+        const user = await springLogin(email, password, metadata);
 
-        if (error) {
-          await writeLoginAuditLog({
-            email,
-            provider: 'credentials',
-            reason: error.message,
-            status: 'failure',
-          });
+        if (!user) {
           return null;
         }
 
-        if (!authData.user?.id || !authData.user.email) {
-          await writeLoginAuditLog({
-            email,
-            provider: 'credentials',
-            reason: 'missing_auth_user',
-            status: 'failure',
-          });
-          return null;
-        }
-
-        const { user_agent: _userAgent, ...loginMetadata } =
-          await getLoginMetadata();
-        const { data: existingProfile, error: existingProfileError } =
-          await supabaseAdmin
-            .from('profiles')
-            .select('name,status')
-            .eq('id', authData.user.id)
-            .maybeSingle();
-
-        if (existingProfileError) {
-          await writeLoginAuditLog({
-            email,
-            provider: 'credentials',
-            reason: existingProfileError.message,
-            status: 'failure',
-            userId: authData.user.id,
-          });
-          return null;
-        }
-
-        if (!canUseCredentialsLogin(existingProfile?.status ?? null)) {
-          await writeLoginAuditLog({
-            email,
-            provider: 'credentials',
-            reason: 'inactive_user',
-            status: 'failure',
-            userId: authData.user.id,
-          });
-          return null;
-        }
-
-        const { data: profile, error: profileError } =
-          await supabaseAdmin
-            .from('profiles')
-            .upsert(
-              {
-                email: authData.user.email,
-                id: authData.user.id,
-                ...loginMetadata,
-                name:
-                  existingProfile?.name ??
-                  authData.user.user_metadata?.name ??
-                  authData.user.email,
-                status: existingProfile?.status ?? 'active',
-              },
-              { onConflict: 'id' },
-            )
-            .select('id,name,status')
-            .single();
-
-        if (profileError) {
-          await writeLoginAuditLog({
-            email,
-            provider: 'credentials',
-            reason: profileError.message,
-            status: 'failure',
-            userId: authData.user.id,
-          });
-          return null;
-        }
-
-        const appUser = {
-          email: authData.user.email,
-          id: authData.user.id,
-          name:
-            typeof profile.name === 'string'
-              ? profile.name
-              : authData.user.email,
-          status:
-            typeof profile.status === 'string'
-              ? profile.status
-              : null,
-        };
-
-        await ensureDefaultRole(appUser.id);
-
-        if (appUser.status === 'pending_invite') {
-          await supabaseAdmin
-            .from('profiles')
-            .update({ status: 'active' })
-            .eq('id', appUser.id);
-        }
-
+        // role 은 jwt 콜백이 토큰에 싣도록 반환 객체에 실어 보낸다(Spring 이 UI 어휘로 반환).
         return {
-          email: appUser.email,
-          id: appUser.id,
-          name: appUser.name ?? appUser.email,
+          email: user.email,
+          id: user.id,
+          name: user.name ?? user.email,
+          role: user.role,
         };
       },
     }),
@@ -526,13 +225,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     async signIn({ account, user }) {
-      if (!user.email) {
-        await writeLoginAuditLog({
-          provider: account?.provider ?? 'unknown',
-          reason: 'missing_email',
-          status: 'failure',
-        });
+      // 자격증명 로그인은 authorize 에서 이미 Spring 검증·감사 완료.
+      if (account?.provider === 'credentials') {
+        return true;
+      }
 
+      if (!user.email) {
         const loginUrl = new URL(
           ROUTES.ADMIN.LOGIN,
           process.env.AUTH_URL ?? 'http://localhost:3000',
@@ -544,87 +242,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       try {
-        if (account?.provider === 'credentials') {
-          await writeLoginAuditLog({
-            email: user.email,
-            provider: 'credentials',
-            status: 'success',
-            userId: user.id,
-          });
-          return true;
-        }
+        const appUser = await springSsoLogin(user.email, user.name);
 
-        const appUser = await getOrCreateSsoAppUser({
-          email: user.email,
-          name: user.name,
-        });
-
-        await writeLoginAuditLog({
-          email: user.email,
-          provider: account?.provider ?? 'unknown',
-          status: 'success',
-          userId: appUser.id,
-        });
-
+        // 후속 jwt 콜백이 읽도록 Spring 신원/역할을 user 객체에 실어 둔다.
         user.id = appUser.id;
+        (user as { role?: UserRole }).role = appUser.role;
 
         return true;
-      } catch (error) {
-        const reason = getErrorMessage(
-          error,
-          'user_profile_sync_failed',
-        );
-        await writeLoginAuditLog({
-          email: user.email,
-          provider: account?.provider ?? 'unknown',
-          reason,
-          status: 'failure',
-        });
-
+      } catch {
         const loginUrl = new URL(
           ROUTES.ADMIN.LOGIN,
           process.env.AUTH_URL ?? 'http://localhost:3000',
         );
         loginUrl.searchParams.set('mode', 'sso');
-        loginUrl.searchParams.set(
-          'error',
-          reason
-            .toLowerCase()
-            .includes('database error creating new user')
-            ? 'AuthUserCreateFailed'
-            : 'SsoSyncFailed',
-        );
+        loginUrl.searchParams.set('error', 'SsoSyncFailed');
 
         return `${loginUrl.pathname}${loginUrl.search}`;
       }
     },
 
     async jwt({ token, user }) {
+      // 로그인 시점에만 신원/역할을 토큰에 싣는다(이후 요청은 토큰 값을 그대로 사용).
+      // 역할 변경은 다음 로그인(최대 세션 8시간) 시 반영된다.
       if (user) {
-        token.email = user.email;
+        if (user.email) {
+          token.email = user.email;
+        }
         if (isUuid(user.id)) {
           token.userId = user.id;
         }
-      }
-
-      if (token.email && !token.userId) {
-        const authUser = (await findAppUserByEmail(
-          String(token.email),
-        )) as AppAuthUser | null;
-        token.userId = authUser?.id;
-      }
-
-      if (isUuid(token.userId)) {
-        token.role = await getRoleByUserId(String(token.userId));
-      } else if (token.email) {
-        const authUser = (await findAppUserByEmail(
-          String(token.email),
-        )) as AppAuthUser | null;
-        token.role = authUser
-          ? isUuid(authUser.id)
-            ? await getRoleByUserId(authUser.id)
-            : 'Viewer'
-          : 'Viewer';
+        const role = (user as { role?: unknown }).role;
+        if (role) {
+          token.role = normalizeUserRole(role) ?? 'Viewer';
+        }
       }
 
       return token;
