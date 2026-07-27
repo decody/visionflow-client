@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import type {
   AiProvider,
   ContactRow,
@@ -12,23 +11,14 @@ import type {
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabasePublicKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+import { backendUrl, type SpringSearchSources } from '@/lib/backend';
+
 const geminiApiKey = process.env.GEMINI_API_KEY;
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const geminiModel = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
 const openaiModel = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
 const defaultProvider =
   normalizeProvider(process.env.AI_PROVIDER) ?? 'gemini';
-const supabaseKey = supabasePublicKey ?? supabaseServiceRoleKey;
-
-const supabase =
-  supabaseUrl && supabaseKey
-    ? createClient(supabaseUrl, supabaseKey)
-    : null;
 
 type WorkSearchRow = WorkRow & {
   description: string;
@@ -120,8 +110,55 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
-function buildIlikePattern(query: string) {
-  return `%${query.replaceAll('%', '\\%').replaceAll('_', '\\_')}%`;
+/**
+ * Spring 통합 검색 소스 조회 — `GET /api/search/sources?q=`(공개, BFF JWT 불필요).
+ * FAQ/공지/Q&A 의 DB 매칭만 백엔드가 담당한다(기존 Supabase 직접 조회 대체).
+ * 실패 시 빈 소스를 돌려 AI/정적 인덱스는 계속 동작하게 한다(graceful degrade).
+ */
+async function fetchSearchSources(
+  query: string,
+): Promise<Pick<SearchResponse['sources'], 'faqs' | 'notices' | 'qnas'>> {
+  try {
+    const response = await fetch(
+      backendUrl(`/api/search/sources?q=${encodeURIComponent(query)}`),
+      { cache: 'no-store' },
+    );
+
+    if (!response.ok) {
+      console.error(`Search backend responded ${response.status}.`);
+
+      return { faqs: [], notices: [], qnas: [] };
+    }
+
+    const data = (await response.json()) as SpringSearchSources;
+
+    return {
+      faqs: data.faqs.map((faq) => ({
+        id: String(faq.id),
+        question: faq.question,
+        answer: faq.answer,
+      })) as FaqRow[],
+      notices: data.notices.map((notice) => ({
+        id: String(notice.id),
+        title: notice.title,
+        content: notice.description || stripHtml(notice.contentHtml) || '',
+      })) as NoticeRow[],
+      qnas: data.qnas.map((qna) => ({
+        id: String(qna.id),
+        question: qna.question ?? '',
+        answer: qna.answer ?? '',
+        category: qna.category,
+        isNotice: qna.notice,
+        isSecret: qna.secret,
+        status: qna.status,
+        title: qna.title || qna.question || 'Q&A 문의',
+      })) as QnaRow[],
+    };
+  } catch (error) {
+    console.error('Search backend lookup failed', error);
+
+    return { faqs: [], notices: [], qnas: [] };
+  }
 }
 
 function stripHtml(value: string | null | undefined) {
@@ -153,60 +190,6 @@ function findContactSources(query: string) {
       .toLowerCase()
       .includes(normalizedQuery),
   ).slice(0, 5);
-}
-
-function getStringValue(
-  record: Record<string, unknown>,
-  keys: string[],
-) {
-  for (const key of keys) {
-    const value = record[key];
-
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  return '';
-}
-
-function getBooleanValue(
-  record: Record<string, unknown>,
-  keys: string[],
-) {
-  for (const key of keys) {
-    const value = record[key];
-
-    if (typeof value === 'boolean') {
-      return value;
-    }
-  }
-
-  return null;
-}
-
-function normalizeQnaSource(row: Record<string, unknown>): QnaRow {
-  const question = getStringValue(row, ['content', 'question']);
-  const title =
-    getStringValue(row, ['title', 'subject']) ||
-    question.split('\n')[0]?.trim() ||
-    'Q&A 문의';
-
-  return {
-    id: String(row.id),
-    question,
-    answer: getStringValue(row, ['answer']),
-    category: getStringValue(row, ['category']) || null,
-    isNotice: getBooleanValue(row, ['is_notice', 'isNotice']),
-    isSecret: getBooleanValue(row, [
-      'is_secret',
-      'isSecret',
-      'locked',
-      'isLocked',
-    ]),
-    status: getStringValue(row, ['status']) || null,
-    title,
-  };
 }
 
 function buildPrompt(
@@ -353,77 +336,15 @@ export async function POST(req: NextRequest) {
     }
     fallbackQuery = query;
 
-    const pattern = buildIlikePattern(query);
-    let faqs: FaqRow[] = [];
-    let notices: NoticeRow[] = [];
-    let qnas: QnaRow[] = [];
-
-    if (supabase) {
-      try {
-        const [faqResult, noticeResult, qnaResult] =
-          await Promise.all([
-            supabase
-              .from('faq')
-              .select('id, question, answer')
-              .or(`question.ilike.${pattern},answer.ilike.${pattern}`)
-              .eq('is_visible', true)
-              .limit(5),
-            supabase
-              .from('notices')
-              .select('id, title, description, content_html')
-              .or(
-                `title.ilike.${pattern},description.ilike.${pattern},content_html.ilike.${pattern}`,
-              )
-              .eq('is_published', true)
-              .limit(3),
-            supabase
-              .from('qna')
-              .select('*')
-              .or(
-                `title.ilike.${pattern},content.ilike.${pattern},author_name.ilike.${pattern}`,
-              )
-              .limit(5),
-          ]);
-
-        if (faqResult.error) {
-          console.error(faqResult.error);
-        } else {
-          faqs = (faqResult.data ?? []) as FaqRow[];
-        }
-
-        if (noticeResult.error) {
-          console.error(noticeResult.error);
-        } else {
-          notices = (noticeResult.data ?? []).map((notice) => ({
-            id: String(notice.id),
-            title: notice.title,
-            content:
-              notice.description ||
-              stripHtml(notice.content_html) ||
-              '',
-          })) as NoticeRow[];
-        }
-
-        if (qnaResult.error) {
-          console.error(qnaResult.error);
-        } else {
-          qnas = (
-            (qnaResult.data ?? []) as Record<string, unknown>[]
-          ).map(normalizeQnaSource);
-        }
-      } catch (error) {
-        console.error('Search database lookup failed', error);
-      }
-    } else {
-      console.error('Search service is not configured.');
-    }
+    // FAQ/공지/Q&A 매칭은 Spring 이 담당, works/contacts 는 정적 인덱스.
+    const dbSources = await fetchSearchSources(query);
 
     const sources: SearchResponse['sources'] = {
       contacts: findContactSources(query),
-      faqs,
-      qnas,
+      faqs: dbSources.faqs,
+      qnas: dbSources.qnas,
       works: findWorkSources(query),
-      notices,
+      notices: dbSources.notices,
     };
 
     try {

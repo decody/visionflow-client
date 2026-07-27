@@ -402,6 +402,28 @@ export type SpringLoginResponse = {
   status: string;
 };
 
+// Spring 통합 검색 소스(JSON). 공개 FAQ/공지/Q&A 키워드 매칭 결과.
+// AI 답변 생성·works/contacts 정적 인덱스는 BFF(app/api/search)가 붙인다. 공개 GET(BFF JWT 불필요).
+export type SpringSearchSources = {
+  faqs: { id: number; question: string; answer: string }[];
+  notices: {
+    id: string;
+    title: string;
+    description: string | null;
+    contentHtml: string | null;
+  }[];
+  qnas: {
+    id: string;
+    title: string;
+    question: string | null; // 비밀글이면 null(마스킹)
+    answer: string | null;
+    category: string | null;
+    notice: boolean; // → isNotice
+    secret: boolean; // → isSecret
+    status: string | null;
+  }[];
+};
+
 // fetch 응답 body를 안전하게 JSON 파싱(비어 있으면 null).
 export const readJson = async (response: Response): Promise<unknown> => {
   const text = await response.text();
