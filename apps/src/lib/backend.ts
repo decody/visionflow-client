@@ -380,6 +380,18 @@ export const springUserToIUser = (u: SpringUser): IUser => ({
   updated_at: u.updatedAt,
 });
 
+// Spring AlarmResponse(JSON, camelCase) 원본 형태.
+// 4개 소스(quick/partnership/quote/qna)의 미처리 항목을 동일 projection으로 반환한다.
+// 표현(SLA·severity·제목·링크·카운트)은 BFF(app/api/admin/alarms)가 계산한다.
+export type SpringAlarm = {
+  type: 'general' | 'partnership' | 'qna' | 'quote';
+  entityId: string;
+  primaryLabel: string;
+  secondaryLabel: string;
+  status: string;
+  createdAt: string;
+};
+
 // fetch 응답 body를 안전하게 JSON 파싱(비어 있으면 null).
 export const readJson = async (response: Response): Promise<unknown> => {
   const text = await response.text();

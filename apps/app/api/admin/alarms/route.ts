@@ -3,8 +3,14 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { auth } from '../../../../auth';
-import { ADMIN_PAGE_ROLES, hasAllowedRole } from '@/lib/admin-permissions';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { canManageContent } from '@/lib/admin-permissions';
+import {
+  backendAuthHeaders,
+  backendUrl,
+  readJson,
+  type BackendPrincipal,
+  type SpringAlarm,
+} from '@/lib/backend';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,22 +25,28 @@ type AlarmItem = {
   type: 'general' | 'partnership' | 'qna' | 'quote';
 };
 
-type QnaAlarmRow = {
-  answer?: string | null;
-  author_name?: string | null;
-  created_at?: string | null;
-  id: string | number;
-  is_notice?: boolean | null;
-  question?: string | null;
-  status?: string | null;
-  title?: string | null;
-};
+const jsonError = (message: string, status: number, details?: unknown) =>
+  NextResponse.json({ details, message }, { status });
 
-const jsonError = (
-  message: string,
-  status: number,
-  details?: unknown,
-) => NextResponse.json({ details, message }, { status });
+/**
+ * 알림 조회 권한 게이트 — 콘텐츠 관리자(canManageContent). Spring `/api/admin/**`가 ADMIN/SUPERADMIN
+ * 전용이라 이에 맞춘다(기존 ADMIN_PAGE_ROLES 대비 Viewer 읽기는 제외 — 다른 어드민 API와 동일 정책).
+ * 통과 시 Spring 호출에 서명해 실을 신원(userId/role)을 돌려준다.
+ */
+const requireManager = async (): Promise<BackendPrincipal | NextResponse> => {
+  const session = await auth();
+
+  if (!session) return jsonError('Unauthorized', 401);
+
+  const role = session.user?.role;
+  const userId = session.user?.id;
+
+  if (!canManageContent(role) || !role || !userId) {
+    return jsonError('Forbidden', 403);
+  }
+
+  return { role, userId };
+};
 
 const getCreatedAtTime = (value?: string | null) => {
   const time = value ? new Date(value).getTime() : 0;
@@ -48,174 +60,134 @@ const isOverdue = (createdAt: string | null | undefined, hours: number) => {
   return time > 0 && Date.now() - time >= hours * 60 * 60 * 1000;
 };
 
-const isPendingQna = (row: QnaAlarmRow) => {
-  if (row.is_notice === true || row.answer?.trim()) {
-    return false;
-  }
+/**
+ * Spring AlarmResponse(원시 미처리 행) → 프론트 AlarmItem(표현 포함)으로 변환.
+ * SLA 초과 판정(type별 시간 기준)·severity·제목·상세 링크는 여기서 계산한다.
+ */
+const toAlarmItem = (alarm: SpringAlarm): AlarmItem => {
+  const message = `${alarm.primaryLabel} · ${alarm.secondaryLabel}`;
+  const base = {
+    created_at: alarm.createdAt,
+    entity_id: alarm.entityId,
+    id: `${alarm.type}-${alarm.entityId}`,
+    message,
+  };
 
-  return row.status !== 'done' && row.status !== 'resolved';
-};
+  switch (alarm.type) {
+    case 'general': {
+      const overdue = isOverdue(alarm.createdAt, 48);
 
-export async function GET(_request: NextRequest) {
-  const session = await auth();
-
-  if (!session) {
-    return jsonError('Unauthorized', 401);
-  }
-
-  if (!hasAllowedRole(session.user?.role, ADMIN_PAGE_ROLES)) {
-    return jsonError('Forbidden', 403);
-  }
-
-  try {
-    const [quickResult, partnershipResult, quoteResult, qnaResult] =
-      await Promise.all([
-        supabaseAdmin
-          .from('quick_inquiries')
-          .select('id,name,email,subject,status,created_at')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(20),
-        supabaseAdmin
-          .from('partnership_inquiries')
-          .select('id,company_name,contact_name,status,created_at')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(20),
-        supabaseAdmin
-          .from('quote_inquiries')
-          .select('id,company_name,contact_name,status,created_at')
-          .in('status', ['pending', 'reviewing'])
-          .order('created_at', { ascending: false })
-          .limit(30),
-        supabaseAdmin
-          .from('qna')
-          .select(
-            'id,title,question,author_name,status,answer,is_notice,created_at',
-          )
-          .or('is_notice.is.false,is_notice.is.null')
-          .order('created_at', { ascending: false })
-          .limit(500),
-      ]);
-
-    const firstError =
-      quickResult.error ??
-      partnershipResult.error ??
-      quoteResult.error ??
-      qnaResult.error;
-
-    if (firstError) {
-      return jsonError('Failed to load admin alarms.', 502, firstError);
+      return {
+        ...base,
+        href: ROUTES.ADMIN.GENERAL_INQUIRY.DETAIL(alarm.entityId),
+        severity: overdue ? 'danger' : 'info',
+        title: overdue ? '일반 문의 SLA 초과' : '새 일반 문의',
+        type: 'general',
+      };
     }
+    case 'partnership': {
+      const overdue = isOverdue(alarm.createdAt, 72);
 
-    const quickRows = quickResult.data ?? [];
-    const partnershipRows = partnershipResult.data ?? [];
-    const quoteRows = quoteResult.data ?? [];
-    const pendingQnaRows = ((qnaResult.data ?? []) as QnaAlarmRow[]).filter(
-      isPendingQna,
-    );
-    const qnaAlarmRows = pendingQnaRows.slice(0, 30);
+      return {
+        ...base,
+        href: ROUTES.ADMIN.PARTNERSHIP.DETAIL(alarm.entityId),
+        severity: overdue ? 'danger' : 'info',
+        title: overdue ? '제휴 문의 SLA 초과' : '새 제휴 문의',
+        type: 'partnership',
+      };
+    }
+    case 'quote': {
+      const overdue = isOverdue(alarm.createdAt, 24);
+      const reviewing = alarm.status === 'reviewing';
 
-    const totalCount =
-      quickRows.length +
-      partnershipRows.length +
-      pendingQnaRows.length +
-      quoteRows.length;
-
-    const items: AlarmItem[] = [
-      ...quickRows.map((row) => ({
-        created_at: row.created_at,
-        entity_id: String(row.id),
-        href: ROUTES.ADMIN.GENERAL_INQUIRY.DETAIL(row.id),
-        id: `general-${row.id}`,
-        message: `${row.name} · ${row.subject || row.email}`,
-        severity: (isOverdue(row.created_at, 48)
-          ? 'danger'
-          : 'info') as AlarmItem['severity'],
-        title: isOverdue(row.created_at, 48)
-          ? '일반 문의 SLA 초과'
-          : '새 일반 문의',
-        type: 'general' as const,
-      })),
-      ...partnershipRows.map((row) => ({
-        created_at: row.created_at,
-        entity_id: String(row.id),
-        href: ROUTES.ADMIN.PARTNERSHIP.DETAIL(row.id),
-        id: `partnership-${row.id}`,
-        message: `${row.company_name} · ${row.contact_name}`,
-        severity: (isOverdue(row.created_at, 72)
-          ? 'danger'
-          : 'info') as AlarmItem['severity'],
-        title: isOverdue(row.created_at, 72)
-          ? '제휴 문의 SLA 초과'
-          : '새 제휴 문의',
-        type: 'partnership' as const,
-      })),
-      ...quoteRows.map((row) => ({
-        created_at: row.created_at,
-        entity_id: String(row.id),
-        href: ROUTES.ADMIN.QUOTE_REQUEST.DETAIL(row.id),
-        id: `quote-${row.id}`,
-        message: `${row.company_name} · ${row.contact_name}`,
-        severity: (isOverdue(row.created_at, 24)
-          ? 'danger'
-          : row.status === 'reviewing'
-            ? 'warning'
-            : 'info') as AlarmItem['severity'],
-        title: isOverdue(row.created_at, 24)
+      return {
+        ...base,
+        href: ROUTES.ADMIN.QUOTE_REQUEST.DETAIL(alarm.entityId),
+        severity: overdue ? 'danger' : reviewing ? 'warning' : 'info',
+        title: overdue
           ? '견적 문의 SLA 초과'
-          : row.status === 'reviewing'
+          : reviewing
             ? '견적 검토 진행중'
             : '새 견적 문의',
-        type: 'quote' as const,
-      })),
-      ...qnaAlarmRows.map((row) => {
-        const rowTitle =
-          row.title?.trim() || row.question?.trim() || '제목 없음';
-        const author = row.author_name?.trim() || '익명';
-        const overdue = isOverdue(row.created_at, 48);
+        type: 'quote',
+      };
+    }
+    case 'qna':
+    default: {
+      const overdue = isOverdue(alarm.createdAt, 48);
 
-        return {
-          created_at: row.created_at ?? '',
-          entity_id: String(row.id),
-          href: ROUTES.ADMIN.QNA.DETAIL(row.id),
-          id: `qna-${row.id}`,
-          message: `${author} · ${rowTitle}`,
-          severity: (overdue ? 'danger' : 'info') as AlarmItem['severity'],
-          title: overdue ? 'Q&A 답변 SLA 초과' : '새 Q&A 답변 대기',
-          type: 'qna' as const,
-        };
-      }),
-    ]
+      return {
+        ...base,
+        href: ROUTES.ADMIN.QNA.DETAIL(alarm.entityId),
+        severity: overdue ? 'danger' : 'info',
+        title: overdue ? 'Q&A 답변 SLA 초과' : '새 Q&A 답변 대기',
+        type: 'qna',
+      };
+    }
+  }
+};
+
+/**
+ * 관리자 알림 — Spring `GET /api/admin/alarms`로 위임한다.
+ * 기존엔 Supabase 4개 테이블(quick/partnership/quote/qna)을 직접 병렬 조회했으나, 이제 Spring이
+ * UNION 집계한 원시 행을 반환하고, 여기서 SLA·severity·카운트만 계산한다.
+ */
+export async function GET(_request: NextRequest) {
+  const gate = await requireManager();
+
+  if (gate instanceof NextResponse) return gate;
+
+  try {
+    const response = await fetch(backendUrl('/api/admin/alarms'), {
+      cache: 'no-store',
+      headers: backendAuthHeaders(gate),
+    });
+
+    const body = await readJson(response);
+
+    if (!response.ok) {
+      return jsonError('Failed to load admin alarms.', response.status, body);
+    }
+
+    const alarms = (body as SpringAlarm[]) ?? [];
+
+    const generalPending = alarms.filter((a) => a.type === 'general').length;
+    const partnershipPending = alarms.filter(
+      (a) => a.type === 'partnership',
+    ).length;
+    const qnaPending = alarms.filter((a) => a.type === 'qna').length;
+    const quoteRows = alarms.filter((a) => a.type === 'quote');
+    const quoteOpen = quoteRows.length;
+    const quotePending = quoteRows.filter((a) => a.status === 'pending').length;
+    const quoteOverdue = quoteRows.filter((a) =>
+      isOverdue(a.createdAt, 24),
+    ).length;
+
+    const items = alarms
+      .map(toAlarmItem)
       .sort(
         (a, b) =>
           getCreatedAtTime(b.created_at) - getCreatedAtTime(a.created_at),
       )
       .slice(0, 20);
 
-    const quotePendingCount = quoteRows.filter(
-      (row) => row.status === 'pending',
-    ).length;
-    const quoteOverdueCount = quoteRows.filter((row) =>
-      isOverdue(row.created_at, 24),
-    ).length;
-
     return NextResponse.json({
       counts: {
-        generalPending: quickRows.length,
-        partnershipPending: partnershipRows.length,
-        qnaPending: pendingQnaRows.length,
-        quoteOpen: quoteRows.length,
-        quoteOverdue: quoteOverdueCount,
-        quotePending: quotePendingCount,
-        total: totalCount,
+        generalPending,
+        partnershipPending,
+        qnaPending,
+        quoteOpen,
+        quoteOverdue,
+        quotePending,
+        total: generalPending + partnershipPending + qnaPending + quoteOpen,
       },
       items,
     });
   } catch (error) {
     return jsonError(
-      error instanceof Error ? error.message : 'Unexpected error',
-      500,
+      'Failed to reach alarms backend.',
+      502,
+      error instanceof Error ? error.message : error,
     );
   }
 }
