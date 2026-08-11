@@ -1,4 +1,8 @@
-import { backendUrl, type SpringLoginResponse } from '@/lib/backend';
+import {
+  backendUrl,
+  signBackendToken,
+  type SpringLoginResponse,
+} from '@/lib/backend';
 import { providers } from '@visionflow/auth';
 import { ROUTES } from '@visionflow/routes';
 import type { UserRole } from '@visionflow/shared';
@@ -162,7 +166,13 @@ const springSsoLogin = async (
   const response = await fetch(backendUrl('/api/auth/sso-login'), {
     body: JSON.stringify({ email, name: name ?? null }),
     cache: 'no-store',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${signBackendToken({
+        role: 'Viewer',
+        userId: 'visionflow-bff-sso',
+      })}`,
+      'Content-Type': 'application/json',
+    },
     method: 'POST',
   });
 
