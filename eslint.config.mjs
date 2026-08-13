@@ -47,6 +47,12 @@ export default tseslint.config(
     },
   },
   {
+    files: ['prototypes/*/src/app/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
     files: ['tests/**/*.ts', 'playwright.config.ts'],
     rules: {
       'react-hooks/rules-of-hooks': 'off',

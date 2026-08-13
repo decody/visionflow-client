@@ -9,7 +9,9 @@
   },
   "scripts": {
     "dev": "pnpm --filter @visionflow/web dev",
+    "dev:dior": "pnpm --filter @visionflow/dior-gallery dev",
     "build": "pnpm -r build",
+    "build:dior": "pnpm --filter @visionflow/dior-gallery build",
     "lint": "eslint .",
     "test": "pnpm typecheck && pnpm lint && pnpm test:e2e && pnpm test:api",
     "test:api": "playwright test --project=api",

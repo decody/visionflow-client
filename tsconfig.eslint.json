@@ -5,6 +5,8 @@
     "apps/**/*.tsx",
     "packages/**/*.ts",
     "packages/**/*.tsx",
+    "prototypes/**/*.ts",
+    "prototypes/**/*.tsx",
     "playwright.config.ts",
     "supabase/functions/**/*.ts",
     "tests/**/*.ts"
