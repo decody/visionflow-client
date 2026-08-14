@@ -15,6 +15,7 @@ const GalleryCanvas = dynamic(
 export function GalleryClient() {
   const [supported, setSupported] = useState(true);
   const setProgress = useGalleryStore((state) => state.setProgress);
+  const setEntryProgress = useGalleryStore((state) => state.setEntryProgress);
   const setChapter = useGalleryStore((state) => state.setChapter);
   const setPointerX = useGalleryStore((state) => state.setPointerX);
 
@@ -26,7 +27,11 @@ export function GalleryClient() {
 
     const update = () => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+      const entryDistance = window.innerHeight * 0.6;
+      const entryProgress = Math.min(1, Math.max(0, window.scrollY / entryDistance));
+      const journeyDistance = Math.max(1, max - entryDistance);
+      const progress = Math.min(1, Math.max(0, (window.scrollY - entryDistance) / journeyDistance));
+      setEntryProgress(entryProgress);
       setProgress(progress);
       const index = Math.min(chapters.length - 1, Math.round(progress * (chapters.length - 1)));
       setChapter(chapters[index]?.id ?? 'archive');
@@ -42,7 +47,7 @@ export function GalleryClient() {
       window.removeEventListener('resize', update);
       window.removeEventListener('pointermove', pointer);
     };
-  }, [setChapter, setPointerX, setProgress]);
+  }, [setChapter, setEntryProgress, setPointerX, setProgress]);
 
   if (!supported) {
     return <main className="fallback"><p>이 브라우저에서는 WebGL 2를 사용할 수 없습니다.<br />최신 브라우저에서 전시를 열어주세요.</p></main>;

@@ -26,9 +26,9 @@ export function ChapterLights() {
   return (
     <>
       <pointLight ref={archive} color="#d2b993" distance={18} position={[-2, 3, 5]} />
-      <pointLight ref={atelier} color="#fff4df" distance={20} position={[2, 4, -10]} />
-      <pointLight ref={rouge} color="#d20c43" distance={20} position={[-3, 2, -24]} />
-      <pointLight ref={reverie} color="#8cbcff" distance={22} position={[3, 3, -38]} />
+      <pointLight ref={atelier} color="#fff4df" distance={20} position={[2, 4, -14]} />
+      <pointLight ref={rouge} color="#d20c43" distance={20} position={[-3, 2, -31]} />
+      <pointLight ref={reverie} color="#8cbcff" distance={22} position={[3, 3, -45]} />
     </>
   );
 }

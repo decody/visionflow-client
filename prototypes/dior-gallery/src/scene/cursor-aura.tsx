@@ -47,9 +47,11 @@ export function CursorAura() {
     group.current.position.lerp(hit, 1 - Math.exp(-delta * 8));
     group.current.quaternion.copy(camera.quaternion);
     const pulse = 1 + Math.min(1.5, velocity.current * 0.045);
-    group.current.scale.setScalar(MathUtils.damp(group.current.scale.x, pulse, 5, delta));
+    const chapterScale = chapter === 'rouge' ? 0 : 1;
+    group.current.scale.setScalar(MathUtils.damp(group.current.scale.x, pulse * chapterScale, 5, delta));
     if (light.current) {
-      light.current.intensity = MathUtils.damp(light.current.intensity, 7 + Math.min(18, velocity.current * 0.7), 6, delta);
+      const targetIntensity = chapter === 'rouge' ? 0 : 7 + Math.min(18, velocity.current * .7);
+      light.current.intensity = MathUtils.damp(light.current.intensity, targetIntensity, 6, delta);
       light.current.color.set(chapter === 'rouge' ? '#ff174f' : chapter === 'reverie' ? '#b9d9ff' : '#ffe2a3');
     }
     if (core.current) core.current.rotation.z += delta * 0.35;
