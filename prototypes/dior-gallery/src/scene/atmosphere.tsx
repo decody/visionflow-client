@@ -22,10 +22,11 @@ interface AtmosphereProps {
 }
 
 export function Atmosphere({ count, color, accentColor = '#fff1cf', secondaryColor = '#b7d7ff', position, radius, size, speed }: AtmosphereProps) {
+  const mobile = typeof window !== 'undefined' && window.innerWidth < 700;
   const points = useRef<Points>(null);
   const material = useRef<ShaderMaterial>(null);
   const positions = useMemo(() => {
-    const mobileScale = typeof window !== 'undefined' && window.innerWidth < 700 ? 0.58 : 1;
+    const mobileScale = mobile ? 0.58 : 1;
     const total = Math.max(24, Math.round(count * mobileScale));
     const values = new Float32Array(total * 3);
     for (let index = 0; index < total; index += 1) {
@@ -35,15 +36,15 @@ export function Atmosphere({ count, color, accentColor = '#fff1cf', secondaryCol
       values[offset + 2] = (seeded(index, 3) - 0.5) * radius[2];
     }
     return values;
-  }, [count, radius]);
+  }, [count, mobile, radius]);
   const uniforms = useMemo(() => ({
     uColor: { value: new Color(color) },
     uAccentColor: { value: new Color(accentColor) },
     uSecondaryColor: { value: new Color(secondaryColor) },
-    uSize: { value: size },
+    uSize: { value: size * (mobile ? .64 : 1) },
     uMouse: { value: new Vector2() },
     uTime: { value: 0 },
-  }), [accentColor, color, secondaryColor, size]);
+  }), [accentColor, color, mobile, secondaryColor, size]);
 
   useFrame(({ clock, pointer }, delta) => {
     if (!points.current) return;

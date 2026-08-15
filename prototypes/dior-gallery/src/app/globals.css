@@ -17,7 +17,7 @@ body {
 }
 button { font: inherit; }
 
-.gallery-shell { min-height: 520vh; background: #11100f; }
+.gallery-shell { min-height: 520vh; min-height: 520dvh; background: #11100f; }
 .canvas-stage { position: fixed; inset: 0; z-index: 0; }
 .canvas-stage canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; }
 .canvas-stage::after {
@@ -106,17 +106,19 @@ button { font: inherit; }
 .fallback { min-height: 100vh; display: grid; place-items: center; padding: 32px; text-align: center; }
 
 @media (max-width: 700px) {
-  .overlay { padding: 20px; }
-  .brand { top: 20px; left: 20px; }
-  .prototype { top: 20px; right: 20px; font-size: 9px; }
+  .gallery-shell { min-height: 660vh; min-height: 660dvh; }
+  .overlay { padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+  .brand { top: max(20px, env(safe-area-inset-top)); left: max(20px, env(safe-area-inset-left)); }
+  .prototype { top: max(20px, env(safe-area-inset-top)); right: max(20px, env(safe-area-inset-right)); font-size: 9px; }
   .passage-copy { top: 45%; width: calc(100vw - 40px); }
   .passage-copy span { font-size: clamp(22px,6.8vw,30px); }
   .passage-copy small { max-width: 280px; margin-top: 16px; font-size: 8px; line-height: 1.7; }
-  .chapter-copy { left: 20px; top: 50%; right: 20px; width: auto; }
-  .chapter-copy h1 { margin-bottom: 18px; font-size: clamp(40px, 11.74vw, 63px); line-height: .82; }
-  .chapter-copy p { max-width: 310px; font-size: 10px; line-height: 1.65; }
-  .progress { right: 20px; height: 160px; }
-  .chapter-nav { left: 20px; right: auto; bottom: 24px; gap: 11px; }
+  .chapter-copy { left: max(20px, env(safe-area-inset-left)); top: auto; right: max(20px, env(safe-area-inset-right)); bottom: max(86px, calc(env(safe-area-inset-bottom) + 70px)); width: auto; padding: 46px 18px 14px 0; background: linear-gradient(0deg, rgba(7,7,8,.7), rgba(7,7,8,.22) 62%, transparent); }
+  .chapter-copy h1 { margin: 8px 0 10px; font-size: clamp(38px, 10.7vw, 54px); line-height: .82; }
+  .chapter-copy p { display: -webkit-box; max-width: 330px; overflow: hidden; color: rgba(242,238,231,.78); font-size: 9px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+  .chapter-index { font-size: 9px; }
+  .progress { right: max(20px, env(safe-area-inset-right)); height: 140px; }
+  .chapter-nav { left: max(20px, env(safe-area-inset-left)); right: auto; bottom: max(24px, env(safe-area-inset-bottom)); gap: 11px; }
   .chapter-nav button { min-width: 34px; height: 29px; border-radius: 8px; padding: 0 7px; font-size: 11px; }
   .hint { font-size: 9px; }
   .entrance p { max-width: 280px; line-height: 1.7; }

@@ -8,6 +8,7 @@ import { Artwork } from './artwork';
 
 interface RougeMirrorHallProps {
   images: readonly string[];
+  mobile?: boolean;
   showHero: boolean;
   worldZ: number;
 }
@@ -64,7 +65,7 @@ function createCrystalWall() {
   return geometry;
 }
 
-export function RougeMirrorHall({ images, showHero, worldZ }: RougeMirrorHallProps) {
+export function RougeMirrorHall({ images, mobile = false, showHero, worldZ }: RougeMirrorHallProps) {
   const keyLight = useRef<PointLight>(null);
   const fillLight = useRef<PointLight>(null);
   const shimmerLightA = useRef<PointLight>(null);
@@ -147,13 +148,13 @@ export function RougeMirrorHall({ images, showHero, worldZ }: RougeMirrorHallPro
           alwaysVisible
           backplate={false}
           edgeFeather={.001}
-          height={3.65}
+          height={mobile ? 4.05 : 3.65}
           id="rouge-handbag-hero"
           interactive={false}
           position={[0, 0, -1.72]}
           renderOrder={10}
           url={images[0]!}
-          width={2.62}
+          width={mobile ? 2.9 : 2.62}
           worldZ={worldZ}
         />
       ) : null}

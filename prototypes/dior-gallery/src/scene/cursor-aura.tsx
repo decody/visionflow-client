@@ -34,11 +34,13 @@ export function CursorAura() {
   const core = useRef<Mesh>(null);
   const camera = useThree((state) => state.camera);
   const pointer = useThree((state) => state.pointer);
+  const size = useThree((state) => state.size);
   const chapter = useGalleryStore((state) => state.chapter);
   const velocity = useRef(0);
+  const mobile = size.width < 700 || size.width / Math.max(1, size.height) < .72;
 
   useFrame((_, delta) => {
-    if (!group.current) return;
+    if (!group.current || mobile) return;
     raycaster.setFromCamera(pointer, camera);
     plane.constant = -(camera.position.z - 4.6);
     if (!raycaster.ray.intersectPlane(plane, hit)) return;
@@ -56,6 +58,8 @@ export function CursorAura() {
     }
     if (core.current) core.current.rotation.z += delta * 0.35;
   });
+
+  if (mobile) return null;
 
   return (
     <group ref={group}>

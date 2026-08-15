@@ -12,7 +12,8 @@ const random = (index: number, salt: number) => {
 
 export function CrystalBreath() {
   const material = useRef<ShaderMaterial>(null);
-  const count = typeof window !== 'undefined' && window.innerWidth < 700 ? 680 : 1500;
+  const mobile = typeof window !== 'undefined' && window.innerWidth < 700;
+  const count = mobile ? 680 : 1500;
 
   const particles = useMemo(() => {
     const scattered = new Float32Array(count * 3);
@@ -49,8 +50,10 @@ export function CrystalBreath() {
     uGoldLight: { value: new Color('#fff1b8') },
     uGoldDeep: { value: new Color('#d49a28') },
     uSilver: { value: new Color('#e7f0f5') },
+    uPointScale: { value: mobile ? .7 : 1 },
+    uAlphaScale: { value: mobile ? .68 : 1 },
     uTime: { value: 0 },
-  }), []);
+  }), [mobile]);
 
   useFrame(({ clock }) => {
     if (material.current) {
@@ -76,6 +79,7 @@ export function CrystalBreath() {
           attribute vec3 aGather;
           attribute float aSeed;
           uniform float uTime;
+          uniform float uPointScale;
           varying float vSpark;
           varying float vGather;
           varying float vSeed;
@@ -96,7 +100,7 @@ export function CrystalBreath() {
             vec4 viewPosition = modelViewMatrix * vec4(p, 1.0);
             gl_Position = projectionMatrix * viewPosition;
             float twinkle = 0.68 + 0.32 * sin(uTime * 2.4 + aSeed * 42.0);
-            gl_PointSize = clamp((5.5 + aSeed * 8.5) * (8.0 / -viewPosition.z) * (0.86 + gather * 0.78), 2.4, 20.0);
+            gl_PointSize = clamp((5.5 + aSeed * 8.5) * (8.0 / -viewPosition.z) * (0.86 + gather * 0.78) * uPointScale, 1.8, 20.0 * uPointScale);
             vSpark = twinkle;
             vGather = gather;
             vSeed = aSeed;
@@ -106,6 +110,7 @@ export function CrystalBreath() {
           uniform vec3 uGoldLight;
           uniform vec3 uGoldDeep;
           uniform vec3 uSilver;
+          uniform float uAlphaScale;
           varying float vSpark;
           varying float vGather;
           varying float vSeed;
@@ -123,7 +128,7 @@ export function CrystalBreath() {
             vec3 color = mix(gold, silver, silverParticle);
             color *= 1.32 + core * 2.15 + vSpark * 0.68;
             float transparency = 0.26 + vGather * 0.18 + core * 0.2;
-            gl_FragColor = vec4(color, edge * transparency * vSpark);
+            gl_FragColor = vec4(color, edge * transparency * vSpark * uAlphaScale);
           }
         `}
       />
