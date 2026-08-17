@@ -15,7 +15,7 @@ function AuraDisc({ index }: { index: number }) {
   const material = useRef<ShaderMaterial>(null);
   const uniforms = useMemo(() => ({
     uColor: { value: new Color(index === 0 ? '#fff0bd' : '#d7e8ff') },
-    uStrength: { value: index === 0 ? 0.9 : 0.36 },
+    uStrength: { value: index === 0 ? 0.48 : 0.18 },
   }), [index]);
   return (
     <mesh position={[0, 0, -index * 0.025]} scale={1 + index * 0.5}>
@@ -36,6 +36,7 @@ export function CursorAura() {
   const pointer = useThree((state) => state.pointer);
   const size = useThree((state) => state.size);
   const chapter = useGalleryStore((state) => state.chapter);
+  const reducedMotion = useGalleryStore((state) => state.reducedMotion);
   const velocity = useRef(0);
   const mobile = size.width < 700 || size.width / Math.max(1, size.height) < .72;
 
@@ -48,11 +49,12 @@ export function CursorAura() {
     previous.copy(hit);
     group.current.position.lerp(hit, 1 - Math.exp(-delta * 8));
     group.current.quaternion.copy(camera.quaternion);
-    const pulse = 1 + Math.min(1.5, velocity.current * 0.045);
-    const chapterScale = chapter === 'rouge' ? 0 : 1;
+    const pulse = .62 + Math.min(.55, velocity.current * 0.022);
+    const hasPointerIntent = pointer.length() > .035;
+    const chapterScale = chapter === 'rouge' || reducedMotion || !hasPointerIntent ? 0 : 1;
     group.current.scale.setScalar(MathUtils.damp(group.current.scale.x, pulse * chapterScale, 5, delta));
     if (light.current) {
-      const targetIntensity = chapter === 'rouge' ? 0 : 7 + Math.min(18, velocity.current * .7);
+      const targetIntensity = chapterScale === 0 ? 0 : 2.5 + Math.min(6, velocity.current * .24);
       light.current.intensity = MathUtils.damp(light.current.intensity, targetIntensity, 6, delta);
       light.current.color.set(chapter === 'rouge' ? '#ff174f' : chapter === 'reverie' ? '#b9d9ff' : '#ffe2a3');
     }
@@ -62,10 +64,10 @@ export function CursorAura() {
   if (mobile) return null;
 
   return (
-    <group ref={group}>
+    <group ref={group} scale={0}>
       <AuraDisc index={0} /><AuraDisc index={1} /><AuraDisc index={2} />
-      <mesh ref={core} scale={0.22}><ringGeometry args={[0.28, 0.5, 48]} /><meshBasicMaterial blending={AdditiveBlending} color="#ffffff" depthWrite={false} opacity={0.7} transparent /></mesh>
-      <pointLight ref={light} color="#ffe2a3" distance={8} intensity={8} />
+      <mesh ref={core} scale={0.16}><ringGeometry args={[0.28, 0.5, 48]} /><meshBasicMaterial blending={AdditiveBlending} color="#ffffff" depthWrite={false} opacity={0.38} transparent /></mesh>
+      <pointLight ref={light} color="#ffe2a3" distance={6} intensity={0} />
     </group>
   );
 }

@@ -14,10 +14,10 @@ export function GalleryScene() {
       <ambientLight intensity={1.15} />
       <directionalLight color="#fff5e8" intensity={2.1} position={[3, 7, 8]} />
       <ChapterLights />
-      <Atmosphere accentColor="#8f63ff" color="#ffd85c" count={720} position={[0, 0, -1]} radius={[15, 8, 11]} secondaryColor="#43a8ff" size={18} speed={0.025} />
-      <Atmosphere accentColor="#a66cff" color="#ffe278" count={520} position={[0, 0, -18]} radius={[15, 8, 11]} secondaryColor="#4bbdff" size={14} speed={0.014} />
-      <Atmosphere accentColor="#ffd45f" color="#ff3568" count={640} position={[0, 0, -35]} radius={[16, 8, 12]} secondaryColor="#7b6dff" size={21} speed={0.022} />
-      <Atmosphere accentColor="#ffd45f" color="#68baff" count={520} position={[0, 0, -49]} radius={[18, 9, 14]} secondaryColor="#a86cff" size={20} speed={-0.018} />
+      <Atmosphere accentColor="#d8e5ff" chapterIndex={0} color="#e9c98b" count={420} position={[0, 0, -1]} radius={[15, 8, 11]} secondaryColor="#7695b8" size={15} speed={0.018} />
+      <Atmosphere accentColor="#fffaf0" chapterIndex={1} color="#e5ddd0" count={280} position={[0, 0, -18]} radius={[15, 8, 11]} secondaryColor="#c9a96e" size={11} speed={0.009} />
+      <Atmosphere accentColor="#ff315d" chapterIndex={2} color="#8d0929" count={360} position={[0, 0, -35]} radius={[16, 8, 12]} secondaryColor="#e6a2ad" size={17} speed={0.016} />
+      <Atmosphere accentColor="#f4f0e7" chapterIndex={3} color="#e4bd63" count={340} position={[0, 0, -49]} radius={[18, 9, 14]} secondaryColor="#b7bec9" size={16} speed={-0.012} />
       <ArchiveAtelierTransition />
       {chapters.map((chapter) => <GalleryRoom key={chapter.id} chapter={chapter} />)}
       <CursorAura />

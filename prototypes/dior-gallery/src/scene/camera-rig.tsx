@@ -14,6 +14,7 @@ export function CameraRig() {
   const entryProgress = useGalleryStore((state) => state.entryProgress);
   const progress = useGalleryStore((state) => state.progress);
   const pointerX = useGalleryStore((state) => state.pointerX);
+  const reducedMotion = useGalleryStore((state) => state.reducedMotion);
 
   useFrame((_, delta) => {
     const entryEase = entryProgress * entryProgress * (3 - 2 * entryProgress);
@@ -25,7 +26,7 @@ export function CameraRig() {
     const toZ = chapters[Math.min(3, section + 1)]?.z ?? fromZ;
     const mobileTravel = MathUtils.smoothstep(local, .56, 1);
     const sceneZ = MathUtils.lerp(fromZ, toZ, mobile ? mobileTravel : local);
-    const pointerShift = mobile ? 0 : pointerX * .48;
+    const pointerShift = mobile || reducedMotion ? 0 : pointerX * .48;
     const mobileFocus = MathUtils.smoothstep(local, .14, .5) * (1 - MathUtils.smoothstep(local, .54, .82));
     const desktopX = section === 0 ? Math.sin(local * Math.PI) * 1.4 : section === 1 ? Math.sin(local * Math.PI * 2) * .75 : section === 2 ? Math.cos(local * Math.PI) * 1.1 : Math.sin(local * Math.PI) * .45;
     const desktopY = section === 0 ? .15 : section === 1 ? Math.sin(local * Math.PI) * .6 : section === 2 ? -.1 + local * .5 : .15 + local * 1.25;
@@ -36,7 +37,7 @@ export function CameraRig() {
     const chapterX = mobile ? mobileX : desktopX;
     const chapterY = mobile ? mobileY : desktopY;
     target.set(chapterX + pointerShift, chapterY, 7 + sceneZ + entryDepth + mobileDistance);
-    camera.position.lerp(target, 1 - Math.exp(-delta * 4.2));
+    camera.position.lerp(target, 1 - Math.exp(-delta * (reducedMotion ? 10 : 4.2)));
     const lookX = mobile
       ? section === 0 ? mobileFocus * .55 : section === 1 ? .4 + mobileFocus * .4 : 0
       : section === 2 ? Math.sin(local * Math.PI) * .8 : 0;

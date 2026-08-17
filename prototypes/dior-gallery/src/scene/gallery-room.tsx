@@ -19,6 +19,8 @@ export function GalleryRoom({ chapter }: { chapter: Chapter }) {
   const progress = useGalleryStore((state) => state.progress);
   const showAtelierContents = progress > .025 && progress < .65;
   const showRougeContents = progress > .38 && progress < .9;
+  const showArchiveContents = progress < .43;
+  const showReverieContents = progress > .68;
   const pale = chapter.id === 'atelier';
   const floorColor = chapter.id === 'reverie' ? '#070808' : chapter.id === 'rouge' ? '#090104' : pale ? '#8f8982' : '#151311';
   const placements: Array<{ position: [number, number, number]; rotation: [number, number, number]; scale: number }> = [
@@ -61,14 +63,14 @@ export function GalleryRoom({ chapter }: { chapter: Chapter }) {
       {chapter.id === 'archive' ? <ArchiveTunnel mobile={mobile} /> : null}
       {chapter.id !== 'reverie' && chapter.id !== 'archive' ? <mesh position={[0, -2.8, -1]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[chapter.id === 'rouge' ? 15 : 18, 12]} /><meshStandardMaterial color={floorColor} metalness={chapter.id === 'rouge' ? .62 : .08} roughness={chapter.id === 'rouge' ? .24 : .92} /></mesh> : null}
       {chapter.id !== 'archive' ? <mesh position={[0, 0, -2.55]}><planeGeometry args={chapter.id === 'reverie' ? [28, 17] : chapter.id === 'atelier' || chapter.id === 'rouge' ? [28, 15] : [17, 7]} /><meshBasicMaterial color={chapter.color} /></mesh> : null}
-      {chapter.id === 'reverie' ? (
+      {chapter.id === 'reverie' ? showReverieContents ? (
         <>
           {SHOW_REVERIE_BACKDROP ? <ReverieBackdrop url={chapter.images[0]!} /> : null}
           <Artwork backplate={false} edgeFeather={0.24} height={5.25} id="reverie-2" interactive={false} pointerTiltY position={[0, mobile ? .32 : .45, -0.15]} scale={mobile ? 1.15 : 1.275} url={chapter.images[0]!} width={3.12} worldZ={chapter.z} />
         </>
-      ) : chapter.id === 'atelier' ? showAtelierContents ? chapter.images.map((url, index) => (
+      ) : null : chapter.id === 'atelier' ? showAtelierContents ? chapter.images.map((url, index) => (
         <Artwork alwaysVisible backplate={false} edgeFeather={0.001} frameColor="#d7ccb9" framed frameThickness={mobile ? .085 : .12} id={`${chapter.id}-${index}`} interactive={false} key={url} url={url} worldZ={chapter.z} {...selectedAtelierPlacements[index]!} />
-      )) : null : chapter.id === 'rouge' ? showRougeContents ? <RougeMirrorHall images={chapter.images} mobile={mobile} showHero worldZ={chapter.z} /> : null : chapter.images.map((url, index) => <Artwork archive={chapter.id === 'archive'} framed={chapter.id === 'archive'} id={`${chapter.id}-${index}`} key={url} url={url} worldZ={chapter.z} {...(chapter.id === 'archive' ? selectedArchivePlacements[index]! : placements[index]!)} />)}
+      )) : null : chapter.id === 'rouge' ? showRougeContents ? <RougeMirrorHall images={chapter.images} mobile={mobile} showHero worldZ={chapter.z} /> : null : showArchiveContents ? chapter.images.map((url, index) => <Artwork archive framed id={`${chapter.id}-${index}`} key={url} url={url} worldZ={chapter.z} {...selectedArchivePlacements[index]!} />) : null}
       {chapter.id === 'atelier' && showAtelierContents ? <group position={mobile ? [.55, -.46, .52] : [3, -.49, .3]} scale={mobile ? .64 : .82}><AtelierWorkbench /></group> : null}
       {chapter.id === 'reverie' && activeChapter === 'reverie' ? <CrystalBreath /> : null}
     </group>

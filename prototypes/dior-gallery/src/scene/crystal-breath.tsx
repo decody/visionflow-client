@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import { AdditiveBlending, Color } from 'three';
 import type { ShaderMaterial } from 'three';
+import { useGalleryStore } from '@/store/gallery-store';
 
 const random = (index: number, salt: number) => {
   const value = Math.sin(index * 73.71 + salt * 31.17) * 43758.5453;
@@ -12,8 +13,9 @@ const random = (index: number, salt: number) => {
 
 export function CrystalBreath() {
   const material = useRef<ShaderMaterial>(null);
+  const reducedMotion = useGalleryStore((state) => state.reducedMotion);
   const mobile = typeof window !== 'undefined' && window.innerWidth < 700;
-  const count = mobile ? 680 : 1500;
+  const count = reducedMotion ? (mobile ? 220 : 420) : (mobile ? 680 : 1500);
 
   const particles = useMemo(() => {
     const scattered = new Float32Array(count * 3);
@@ -57,7 +59,7 @@ export function CrystalBreath() {
 
   useFrame(({ clock }) => {
     if (material.current) {
-      material.current.uniforms.uTime!.value = clock.elapsedTime;
+      material.current.uniforms.uTime!.value = clock.elapsedTime * (reducedMotion ? .12 : 1);
     }
   });
 

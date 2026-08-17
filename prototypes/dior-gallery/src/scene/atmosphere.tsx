@@ -2,8 +2,9 @@
 
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { AdditiveBlending, Color, Vector2 } from 'three';
+import { AdditiveBlending, Color, MathUtils, Vector2 } from 'three';
 import type { Points, ShaderMaterial } from 'three';
+import { useGalleryStore } from '@/store/gallery-store';
 
 const seeded = (index: number, salt: number) => {
   const value = Math.sin(index * 91.17 + salt * 17.31) * 43758.5453;
@@ -11,6 +12,7 @@ const seeded = (index: number, salt: number) => {
 };
 
 interface AtmosphereProps {
+  chapterIndex: number;
   count: number;
   color: string;
   accentColor?: string;
@@ -21,8 +23,10 @@ interface AtmosphereProps {
   speed: number;
 }
 
-export function Atmosphere({ count, color, accentColor = '#fff1cf', secondaryColor = '#b7d7ff', position, radius, size, speed }: AtmosphereProps) {
+export function Atmosphere({ chapterIndex, count, color, accentColor = '#fff1cf', secondaryColor = '#b7d7ff', position, radius, size, speed }: AtmosphereProps) {
   const mobile = typeof window !== 'undefined' && window.innerWidth < 700;
+  const progress = useGalleryStore((state) => state.progress);
+  const reducedMotion = useGalleryStore((state) => state.reducedMotion);
   const points = useRef<Points>(null);
   const material = useRef<ShaderMaterial>(null);
   const positions = useMemo(() => {
@@ -43,18 +47,25 @@ export function Atmosphere({ count, color, accentColor = '#fff1cf', secondaryCol
     uSecondaryColor: { value: new Color(secondaryColor) },
     uSize: { value: size * (mobile ? .64 : 1) },
     uMouse: { value: new Vector2() },
+    uOpacity: { value: 0 },
     uTime: { value: 0 },
   }), [accentColor, color, mobile, secondaryColor, size]);
 
   useFrame(({ clock, pointer }, delta) => {
     if (!points.current) return;
-    points.current.rotation.y += delta * speed * 1.35;
-    points.current.rotation.x = Math.cos(clock.elapsedTime * .12 + position[2] * .1) * .045;
-    points.current.rotation.z = Math.sin(clock.elapsedTime * .1 + position[2] * .08) * .06;
-    points.current.position.y = position[1] + Math.sin(clock.elapsedTime * .17 + position[2]) * .18;
+    const motionScale = reducedMotion ? .12 : 1;
+    points.current.rotation.y += delta * speed * 1.35 * motionScale;
+    points.current.rotation.x = Math.cos(clock.elapsedTime * .12 + position[2] * .1) * .045 * motionScale;
+    points.current.rotation.z = Math.sin(clock.elapsedTime * .1 + position[2] * .08) * .06 * motionScale;
+    points.current.position.y = position[1] + Math.sin(clock.elapsedTime * .17 + position[2]) * .18 * motionScale;
     if (material.current) {
-      material.current.uniforms.uMouse!.value.lerp(pointer, 1 - Math.exp(-delta * 7));
-      material.current.uniforms.uTime!.value += delta;
+      const chapterProgress = chapterIndex / 3;
+      const distance = Math.abs(progress - chapterProgress);
+      const presence = 1 - MathUtils.smoothstep(distance, .1, .36);
+      const targetOpacity = Math.max(.025, presence) * (reducedMotion ? .32 : 1);
+      material.current.uniforms.uOpacity!.value = MathUtils.damp(material.current.uniforms.uOpacity!.value as number, targetOpacity, 5, delta);
+      material.current.uniforms.uMouse!.value.lerp(reducedMotion ? new Vector2() : pointer, 1 - Math.exp(-delta * 7));
+      material.current.uniforms.uTime!.value += delta * motionScale;
     }
   });
 
@@ -69,6 +80,7 @@ export function Atmosphere({ count, color, accentColor = '#fff1cf', secondaryCol
           uniform vec3 uColor;
           uniform vec3 uAccentColor;
           uniform vec3 uSecondaryColor;
+          uniform float uOpacity;
           varying float vChromatic;
           varying float vPulse;
           void main() {
@@ -80,7 +92,7 @@ export function Atmosphere({ count, color, accentColor = '#fff1cf', secondaryCol
             vec3 firstBlend = mix(uColor, uAccentColor, smoothstep(0.0, 0.55, vChromatic));
             vec3 palette = mix(firstBlend, uSecondaryColor, smoothstep(0.48, 1.0, vChromatic));
             vec3 glow = palette * (1.14 + core * 2.05 + vPulse * .34);
-            gl_FragColor = vec4(glow, alpha);
+            gl_FragColor = vec4(glow, alpha * uOpacity);
           }
         `}
         transparent
