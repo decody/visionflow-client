@@ -87,6 +87,10 @@ wss.on('connection', (ws: WebSocket) => {
         engine.setPortIncident(cmd.enabled === true);
         broadcast(wire(engine.snapshot()));
         break;
+      case 'setRailClosure':
+        engine.setRailClosure(cmd.enabled === true);
+        broadcast(wire(engine.snapshot()));
+        break;
       case 'start':
         if (
           typeof cmd.count === 'number' &&

@@ -26,6 +26,7 @@ export class SocketClient implements RealtimeSource {
   private rafId = 0;
   private running = false;
   private disposed = false;
+  private outage = false;
   private backoff = 500;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null =
@@ -45,6 +46,7 @@ export class SocketClient implements RealtimeSource {
   private paused = false;
   private rule: DispatchRule = 'priority';
   private portIncident = false;
+  private railClosure = false;
   private lastReceived = 0;
 
   constructor(
@@ -94,6 +96,8 @@ export class SocketClient implements RealtimeSource {
       this.send({ type: 'setDispatch', rule: this.rule });
       if (this.portIncident)
         this.send({ type: 'setPortIncident', enabled: true });
+      if (this.railClosure)
+        this.send({ type: 'setRailClosure', enabled: true });
       this.requestSnapshot();
       if (this.paused) this.send({ type: 'stop' });
       this.startHeartbeat();
@@ -181,6 +185,17 @@ export class SocketClient implements RealtimeSource {
     this.portIncident = enabled;
     this.send({ type: 'setPortIncident', enabled });
   }
+  setRailClosure(enabled: boolean): void {
+    this.railClosure = enabled;
+    this.send({ type: 'setRailClosure', enabled });
+  }
+  setOutage(enabled: boolean): void {
+    // 소켓은 유지한 채 수신을 논리적으로 차단(하트비트는 살아 있음).
+    // 복구 시 스냅샷을 요청해 seq 재동기로 캐치업한다.
+    this.outage = enabled;
+    this.opts.onStatus?.(enabled ? 'reconnecting' : 'open');
+    if (!enabled) this.requestSnapshot();
+  }
   requestSnapshot(): void {
     this.send({ type: 'snapshot' });
   }
@@ -201,6 +216,7 @@ export class SocketClient implements RealtimeSource {
   }
 
   private handleMessage(msg: ServerMessage): void {
+    if (this.outage) return; // 통신 단절 시뮬레이션: 수신 폐기(하트비트는 유지)
     this.lastMsgTs = performance.now();
     this.msgCount += 1;
     const { needResync, updCount } = this.reducer.ingest(msg);

@@ -196,6 +196,51 @@ test('persistent occupied segments trigger an alternate route and keep transport
   assert.ok(engine.snapshot().operations!.completed > 0);
 });
 
+test('rail closure detours traffic around the closed segment and keeps transport running', () => {
+  // 과포화되지 않은 부하에서 폐쇄→우회→반송 지속을 검증한다.
+  const engine = new SimEngine(42, () => 0);
+  engine.spawn(8);
+  for (let i = 0; i < 200; i++) engine.tick(10); // 경로가 형성된 뒤 폐쇄
+  engine.setRailClosure(true);
+  const opsAfter = engine.snapshot().operations!;
+  assert.ok(opsAfter.closure?.active, 'closure is reported active');
+  assert.equal(opsAfter.closure!.segmentIds.length, 1);
+  const startCompleted = opsAfter.completed;
+
+  let closureAlarm = false;
+  let detourAlarm = false;
+  let maxRerouted = 0;
+  for (let i = 0; i < 2500; i++) {
+    for (const a of engine.tick(10).alarms ?? []) {
+      if (a.kind === 'JAM' && a.message.includes('레일 폐쇄'))
+        closureAlarm = true;
+      if (a.message.includes('우회 경로로 전환')) detourAlarm = true;
+    }
+    maxRerouted = Math.max(
+      maxRerouted,
+      engine.snapshot().operations!.traffic?.reroutedVehicles ?? 0,
+    );
+  }
+  const midCompleted = engine.snapshot().operations!.completed;
+  assert.ok(closureAlarm, 'closure emits a JAM alarm');
+  assert.ok(detourAlarm, 'affected vehicles detour around the closure');
+  assert.ok(maxRerouted > 0, 'reroute counter reflects detours');
+  // 폐쇄 중에도 반송이 계속 완료된다(대체 경로가 있어 gridlock이 아님).
+  assert.ok(
+    midCompleted > startCompleted,
+    'transport keeps completing under closure',
+  );
+
+  // 재개통하면 폐쇄가 해제되고 반송이 계속 진행된다.
+  engine.setRailClosure(false);
+  assert.equal(engine.snapshot().operations!.closure, undefined);
+  for (let i = 0; i < 1500; i++) engine.tick(10);
+  assert.ok(
+    engine.snapshot().operations!.completed > midCompleted,
+    'transport keeps completing after reopening',
+  );
+});
+
 test('private snapshots preserve sequence and pausing preserves simulation deadlines', () => {
   let wall = 1000;
   const engine = new SimEngine(42, () => wall);

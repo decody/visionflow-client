@@ -60,6 +60,10 @@ self.onmessage = (ev: MessageEvent) => {
       engine.setPortIncident(cmd.enabled === true);
       post(engine.snapshot());
       break;
+    case 'setRailClosure':
+      engine.setRailClosure(cmd.enabled === true);
+      post(engine.snapshot());
+      break;
     case 'start':
       if (typeof cmd.count === 'number') count = cmd.count;
       if (typeof cmd.rateHz === 'number') rateHz = cmd.rateHz;

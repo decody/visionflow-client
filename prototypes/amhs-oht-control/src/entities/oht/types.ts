@@ -69,6 +69,12 @@ export interface OperationsState {
   completed: number;
   averageTransportSec: number;
   incident?: PortIncident;
+  /** 운영자가 폐쇄한 rail 구간 */
+  closure?: {
+    active: boolean;
+    segmentIds: string[];
+    startedTs: number;
+  };
   traffic?: {
     blockedVehicleIds: string[];
     occupiedSegments: number;
@@ -168,7 +174,8 @@ export interface ClientCommand {
     | 'setCount'
     | 'setRate'
     | 'setDispatch'
-    | 'setPortIncident';
+    | 'setPortIncident'
+    | 'setRailClosure';
   rule?: DispatchRule;
   count?: number;
   rateHz?: number;

@@ -116,6 +116,9 @@ export class SimEngine {
   private totalTransportMs = 0;
   private blockedPortId: string | null = null;
   private incidentStartedTs = 0;
+  // 운영자가 폐쇄한 rail 세그먼트(경로 계산에서 전역 제외)
+  private closedSegments = new Set<number>();
+  private closureStartedTs = 0;
   private pendingAlarms: Alarm[] = [];
   private activeDeadlocks = new Set<string>();
   private resolvedDeadlocks = 0;
@@ -185,15 +188,78 @@ export class SimEngine {
     });
   }
 
+  /**
+   * 운영자 rail 구간 폐쇄/해제.
+   * 폐쇄 시 대체 경로가 존재하는(gridlock을 유발하지 않는) 혼잡 구간을 하나 골라
+   * 경로 계산에서 전역 제외한다. 통과 예정 차량은 접근 시 자동 우회하고, 우회가
+   * 불가능하면 폐쇄 구간 앞에서 대기한다.
+   */
+  setRailClosure(enabled: boolean): void {
+    if (!enabled) {
+      if (!this.closedSegments.size) return;
+      this.closedSegments.clear();
+      this.closureStartedTs = 0;
+      this.pathCache.clear();
+      return;
+    }
+    if (this.closedSegments.size) return;
+    const target = this.pickClosureSegment();
+    if (target === undefined) return;
+    this.closedSegments.add(target);
+    this.closureStartedTs = this.now;
+    this.pathCache.clear();
+    this.pendingAlarms.push({
+      id: 'AL-RAILCLOSE-' + target + '-' + Math.round(this.now),
+      kind: 'JAM',
+      severity: 'critical',
+      ts: this.now,
+      message:
+        this.graph.segments[target]!.id + ' 레일 폐쇄 · 우회 경로 적용',
+    });
+  }
+
+  /** 운행 중인 Job 차량이 가장 많이 통과하며 대체 경로가 있는 구간을 고른다. */
+  private pickClosureSegment(): number | undefined {
+    const usage = new Map<number, number>();
+    for (const v of this.vehicles) {
+      if (!v.job) continue;
+      for (let i = v.leg; i < v.route.length; i++)
+        usage.set(v.route[i]!, (usage.get(v.route[i]!) ?? 0) + 1);
+    }
+    const hasAlternate = (s: number): boolean => {
+      const seg = this.graph.segments[s]!;
+      const alt = this.path(
+        nodeKeyOf(seg.a),
+        nodeKeyOf(seg.b),
+        new Set([s]),
+      );
+      return Number.isFinite(alt.length) && alt.route.length > 0;
+    };
+    const byUsage = [...usage.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map((e) => e[0]);
+    for (const s of byUsage) if (hasAlternate(s)) return s;
+    // fallback: 대체 경로가 있는 임의 구간
+    for (let s = 0; s < this.graph.segments.length; s++)
+      if (hasAlternate(s)) return s;
+    return undefined;
+  }
+
   /** Dijkstra uses physical rail distance and respects directed tracks. */
   private path(
     from: string,
     to: string,
     excluded = new Set<number>(),
   ): { route: number[]; length: number } {
+    // 폐쇄 구간은 항상 전역 제외. 캐시는 제외 집합이 완전히 빌 때만 사용한다.
+    const cacheable = excluded.size === 0 && this.closedSegments.size === 0;
     const key = from + '>' + to;
-    const cached = excluded.size ? undefined : this.pathCache.get(key);
+    const cached = cacheable ? this.pathCache.get(key) : undefined;
     if (cached) return cached;
+    const blocked =
+      this.closedSegments.size === 0
+        ? excluded
+        : new Set<number>([...excluded, ...this.closedSegments]);
     const distances = new Map<string, number>([[from, 0]]);
     const previous = new Map<string, { node: string; seg: number }>();
     const pending = new Set<string>([from]);
@@ -210,7 +276,7 @@ export class SimEngine {
       pending.delete(current);
       if (current === to) break;
       for (const si of this.graph.adjacency.get(current) ?? []) {
-        if (excluded.has(si)) continue;
+        if (blocked.has(si)) continue;
         const seg = this.graph.segments[si]!;
         const next = nodeKeyOf(seg.b);
         const d = shortest + seg.length;
@@ -229,7 +295,7 @@ export class SimEngine {
       cursor = p.node;
     }
     const result = { route, length: distances.get(to) ?? Infinity };
-    if (!excluded.size) this.pathCache.set(key, result);
+    if (cacheable) this.pathCache.set(key, result);
     return result;
   }
   private portNode(id: string): string {
@@ -245,6 +311,9 @@ export class SimEngine {
     this.totalTransportMs = 0;
     this.tickCounter = 0;
     this.blockedPortId = null;
+    this.closedSegments.clear();
+    this.closureStartedTs = 0;
+    this.pathCache.clear();
     this.pendingAlarms = [];
     this.activeDeadlocks.clear();
     this.resolvedDeadlocks = 0;
@@ -519,6 +588,15 @@ export class SimEngine {
               .map((vehicle) => vehicle.state.id),
           }
         : undefined,
+      closure: this.closedSegments.size
+        ? {
+            active: true,
+            segmentIds: [...this.closedSegments].map(
+              (s) => this.graph.segments[s]!.id,
+            ),
+            startedTs: this.closureStartedTs,
+          }
+        : undefined,
       traffic: {
         blockedVehicleIds: this.vehicles
           .filter((vehicle) => vehicle.state.status === 'BLOCKED')
@@ -573,6 +651,12 @@ export class SimEngine {
         const crossesJunction =
           vehicle.distance + vehicle.cruise * dt >= rail.length;
         const nextSegment = vehicle.route[vehicle.leg + 1];
+        if (
+          crossesJunction &&
+          nextSegment !== undefined &&
+          this.closedSegments.has(nextSegment)
+        )
+          return `${this.graph.segments[nextSegment]!.id} 레일 폐쇄`;
         const owner =
           nextSegment === undefined
             ? undefined
@@ -664,9 +748,10 @@ export class SimEngine {
           v.state.status = 'BLOCKED';
           v.state.speed = 0;
           v.state.blockedBy = reason;
+          const isClosure = reason.includes('레일 폐쇄');
           if (
-            v.trafficWait >= 6 &&
-            reason.includes('구간 점유') &&
+            ((v.trafficWait >= 6 && reason.includes('구간 점유')) ||
+              isClosure) &&
             this.tryReroute(v)
           ) {
             alarms.push({
@@ -675,7 +760,11 @@ export class SimEngine {
               severity: 'info',
               ts: this.now,
               vehicleId: v.state.id,
-              message: v.state.id + ' 혼잡 구간 회피 경로로 전환',
+              message:
+                v.state.id +
+                (isClosure
+                  ? ' 폐쇄 구간 우회 경로로 전환'
+                  : ' 혼잡 구간 회피 경로로 전환'),
             });
             v.trafficWait = 0;
             v.blockedFired = false;

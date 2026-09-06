@@ -26,6 +26,7 @@ export class SimulatorClient implements RealtimeSource {
 
   private rafId = 0;
   private running = false;
+  private outage = false;
 
   private msgCount = 0;
   private updCount = 0;
@@ -83,6 +84,17 @@ export class SimulatorClient implements RealtimeSource {
     this.worker.postMessage({ type: 'setPortIncident', enabled });
   }
 
+  setRailClosure(enabled: boolean): void {
+    this.worker.postMessage({ type: 'setRailClosure', enabled });
+  }
+
+  setOutage(enabled: boolean): void {
+    this.outage = enabled;
+    // 단절 중엔 수신 메시지를 버려 UI가 정지한다. 복구 시 스냅샷으로 재동기.
+    this.opts.onStatus?.(enabled ? 'reconnecting' : 'open');
+    if (!enabled) this.requestSnapshot();
+  }
+
   requestSnapshot(): void {
     this.worker.postMessage({ type: 'snapshot' });
   }
@@ -100,6 +112,7 @@ export class SimulatorClient implements RealtimeSource {
   }
 
   private handleMessage(msg: ServerMessage): void {
+    if (this.outage) return; // 통신 단절 시뮬레이션: 수신 폐기
     this.lastMsgTs = performance.now();
     this.msgCount += 1;
     const { needResync, updCount } = this.reducer.ingest(msg);

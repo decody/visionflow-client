@@ -175,7 +175,11 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       features: format.readFeatures(geo.rails, readOpts),
     }),
     style: (f) =>
-      f.get('kind') === 'interbay'
+      f.get('closed')
+        ? new Style({
+            stroke: new Stroke({ color: '#ff5470', width: 4 }),
+          })
+        : f.get('kind') === 'interbay'
         ? new Style({
             stroke: new Stroke({ color: '#48577a', width: 3 }),
           })
@@ -632,8 +636,12 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
             : 'AVAILABLE',
           true,
         );
+      const closedIds = new Set(batch.operations.closure?.segmentIds ?? []);
+      for (const feature of railLayer.getSource()!.getFeatures())
+        feature.set('closed', closedIds.has(feature.get('railId')), true);
       equipmentLayer.changed();
       portLayer.changed();
+      railLayer.changed();
     }
     if (batch.snapshot) {
       // 초기 연결·fleet 변경·재동기 snapshot부터 새 측정 구간으로 본다.

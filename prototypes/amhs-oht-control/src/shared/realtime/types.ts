@@ -37,6 +37,9 @@ export interface RealtimeSource {
   setRate(rateHz: number): void;
   setDispatch(rule: DispatchRule): void;
   setPortIncident(enabled: boolean): void;
+  setRailClosure(enabled: boolean): void;
+  /** 통신 단절 시뮬레이션: 수신 메시지를 버리고, 해제 시 스냅샷으로 재동기 */
+  setOutage(enabled: boolean): void;
   requestSnapshot(): void;
   setPaused(paused: boolean): void;
   dispose(): void;

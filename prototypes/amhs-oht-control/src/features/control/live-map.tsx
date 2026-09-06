@@ -113,6 +113,7 @@ export function LiveMap() {
   const [jammed, setJammed] = useState(0);
   const [srcLabel, setSrcLabel] = useState('');
   const [conn, setConn] = useState<RealtimeStatus>('connecting');
+  const [commsOutage, setCommsOutage] = useState(false);
 
   // 이력 재생 상태 (UI 표시용) + 구동용 ref
   const historyRef = useRef<HistoryFrame[]>([]);
@@ -633,6 +634,60 @@ export function LiveMap() {
                 장애 설비로 이동
               </button>
             )}
+          </div>
+          <div
+            style={{
+              ...styles.scenarioBox,
+              ...(operations?.closure?.active
+                ? styles.scenarioActive
+                : null),
+            }}
+          >
+            <strong>
+              {operations?.closure?.active
+                ? `${operations.closure.segmentIds.join(', ')} 레일 폐쇄`
+                : '레일 구간 폐쇄'}
+            </strong>
+            <span style={styles.hint}>
+              {operations?.closure?.active
+                ? '해당 구간을 경로에서 제외 · 통과 차량 자동 우회'
+                : '혼잡 구간을 폐쇄해 우회 동작을 시연합니다.'}
+            </span>
+            <button
+              style={{ ...styles.chip, ...styles.wideChip }}
+              disabled={replay.mode === 'replay'}
+              onClick={() =>
+                clientRef.current?.setRailClosure(
+                  !operations?.closure?.active,
+                )
+              }
+            >
+              {operations?.closure?.active ? '레일 개통' : '레일 폐쇄'}
+            </button>
+          </div>
+          <div
+            style={{
+              ...styles.scenarioBox,
+              ...(commsOutage ? styles.scenarioActive : null),
+            }}
+          >
+            <strong>{commsOutage ? '통신 단절 중' : '통신 단절'}</strong>
+            <span style={styles.hint}>
+              {commsOutage
+                ? '수신 중단 · 화면 정지 · 복구 시 스냅샷 재동기'
+                : '실시간 수신을 끊어 재연결·재동기 동작을 시연합니다.'}
+            </span>
+            <button
+              style={{ ...styles.chip, ...styles.wideChip }}
+              disabled={replay.mode === 'replay'}
+              onClick={() => {
+                const next = !commsOutage;
+                setCommsOutage(next);
+                clientRef.current?.setOutage(next);
+              }}
+            >
+              {commsOutage ? '통신 복구' : '통신 단절'}
+            </button>
           </div>
           <div style={styles.sectionTitle}>라이브</div>
           <button
