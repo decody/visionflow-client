@@ -475,7 +475,17 @@ export class SimEngine {
     const active = this.jobs.filter((j) => j.phase !== 'DONE');
     return {
       rule: this.rule,
-      jobs: this.jobs.map((j) => ({ ...j })),
+      // UI 표시용 필드만 방출한다(내부 계산용 타임스탬프 제외 → 페이로드 축소).
+      jobs: this.jobs.map((j) => ({
+        id: j.id,
+        carrierId: j.carrierId,
+        lotId: j.lotId,
+        priority: j.priority,
+        from: j.from,
+        to: j.to,
+        phase: j.phase,
+        vehicleId: j.vehicleId,
+      })),
       carriers: this.carriers.map((c) => ({ ...c })),
       ports: this.graph.ports.map((p) => ({
         id: p.id,
@@ -815,14 +825,22 @@ export class SimEngine {
     }
     this.seq++;
     if (this.tickCounter % 600 === 0) this.seq++;
-    return {
+    // operations는 UI가 4Hz로만 읽고 대부분 고정 오버헤드(~9.5KB/틱)라, 매 틱이 아니라
+    // 약 5Hz 주기(또는 알람이 있는 틱)에만 실어 보낸다. 클라이언트 reducer는 마지막
+    // 정의된 operations를 유지하므로 중간 틱에 없어도 최신값이 그대로 표시된다.
+    // 계산 자체(operations())도 이때만 수행해 CPU도 함께 절약한다.
+    const opsInterval = Math.max(1, Math.round(rateHz / 5));
+    const emitOps =
+      this.tickCounter % opsInterval === 0 || alarms.length > 0;
+    const delta: DeltaMessage = {
       type: 'delta',
       seq: this.seq,
       ts: this.now,
       upd,
       alarms,
-      operations: this.operations(),
     };
+    if (emitOps) delta.operations = this.operations();
+    return delta;
   }
 
   private junctionRequests(dt: number): Map<number, SimVehicle[]> {

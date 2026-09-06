@@ -8,6 +8,7 @@ import type {
   RealtimeSource,
   RealtimeSourceOptions,
 } from './types';
+import { decodeWireMessage, type WireMessage } from './wire-codec';
 
 const HEARTBEAT_MS = 10000;
 const MAX_BACKOFF_MS = 8000;
@@ -99,15 +100,22 @@ export class SocketClient implements RealtimeSource {
     };
     ws.onmessage = (ev) => {
       this.lastReceived = Date.now();
-      let msg: ServerMessage;
+      let wire: WireMessage | { type: string };
       try {
-        msg = JSON.parse(ev.data as string) as ServerMessage;
+        wire = JSON.parse(ev.data as string);
       } catch {
         return;
       }
-      if (msg && (msg as { type: string }).type === 'pong') return;
-      if (!msg || (msg.type !== 'snapshot' && msg.type !== 'delta'))
+      if (!wire || typeof wire !== 'object') return;
+      if ((wire as { type: string }).type === 'pong') return;
+      if (wire.type !== 'snapshot' && wire.type !== 'delta') return;
+      // 와이어 id 압축(정수 i)을 도메인 문자열 id로 복원.
+      let msg: ServerMessage;
+      try {
+        msg = decodeWireMessage(wire as WireMessage);
+      } catch {
         return;
+      }
       if (!Number.isSafeInteger(msg.seq) || !Number.isFinite(msg.ts))
         return;
       if (

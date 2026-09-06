@@ -12,6 +12,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 
 import type { DispatchRule } from '@/entities/oht/types';
 import { SimEngine } from '@/shared/sim/engine';
+import { encodeWireMessage } from '@/shared/realtime/wire-codec';
 
 const PORT = Number(process.env.WS_PORT ?? 3012);
 
@@ -30,12 +31,16 @@ function broadcast(json: string): void {
   }
 }
 
+// 전송 직전 id 압축(와이어 인코딩) 후 직렬화.
+const wire = (m: ReturnType<SimEngine['snapshot' | 'tick']>): string =>
+  JSON.stringify(encodeWireMessage(m));
+
 function schedule(): void {
   if (timer) clearInterval(timer);
   timer = setInterval(
     () => {
       if (!running) return;
-      broadcast(JSON.stringify(engine.tick(rateHz)));
+      broadcast(wire(engine.tick(rateHz)));
     },
     Math.max(1000 / rateHz, 16),
   );
@@ -51,7 +56,7 @@ wss.on('connection', (ws: WebSocket) => {
   clients.add(ws);
   // 신규 클라이언트에는 즉시 스냅샷 (초기 동기화)
   engine.ensureSpawned(count);
-  ws.send(JSON.stringify(engine.snapshot()));
+  ws.send(wire(engine.snapshot()));
 
   ws.on('message', (raw: Buffer | string) => {
     let cmd: {
@@ -75,12 +80,12 @@ wss.on('connection', (ws: WebSocket) => {
           cmd.rule === 'priority'
         ) {
           engine.setDispatch(cmd.rule);
-          broadcast(JSON.stringify(engine.snapshot()));
+          broadcast(wire(engine.snapshot()));
         }
         break;
       case 'setPortIncident':
         engine.setPortIncident(cmd.enabled === true);
-        broadcast(JSON.stringify(engine.snapshot()));
+        broadcast(wire(engine.snapshot()));
         break;
       case 'start':
         if (
@@ -90,7 +95,7 @@ wss.on('connection', (ws: WebSocket) => {
           count = Math.min(5000, Math.max(1, Math.floor(cmd.count)));
           if (engine.vehicleCount() !== count) {
             engine.spawn(count);
-            broadcast(JSON.stringify(engine.snapshot()));
+            broadcast(wire(engine.snapshot()));
           }
         }
         if (
@@ -104,7 +109,7 @@ wss.on('connection', (ws: WebSocket) => {
         running = false;
         break;
       case 'snapshot':
-        ws.send(JSON.stringify(engine.snapshot()));
+        ws.send(wire(engine.snapshot()));
         break;
       case 'setCount':
         if (
@@ -113,7 +118,7 @@ wss.on('connection', (ws: WebSocket) => {
         ) {
           count = Math.min(5000, Math.max(1, Math.floor(cmd.count)));
           engine.spawn(count);
-          broadcast(JSON.stringify(engine.snapshot()));
+          broadcast(wire(engine.snapshot()));
         }
         break;
       case 'setRate':

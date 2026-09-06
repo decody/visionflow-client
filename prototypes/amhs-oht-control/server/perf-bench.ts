@@ -21,6 +21,7 @@
  */
 import { writeFileSync } from 'node:fs';
 
+import { encodeWireMessage } from '@/shared/realtime/wire-codec';
 import { SimEngine } from '@/shared/sim/engine';
 
 interface Args {
@@ -117,7 +118,7 @@ function runPreset(
   engine.spawn(count);
 
   // JIT 워밍업 + 정상 상태(잡 배차·운행) 진입.
-  for (let i = 0; i < warmup; i++) JSON.stringify(engine.tick(rate));
+  for (let i = 0; i < warmup; i++) JSON.stringify(encodeWireMessage(engine.tick(rate)));
 
   const tickMs: number[] = [];
   const frameMs: number[] = [];
@@ -130,7 +131,8 @@ function runPreset(
     const t0 = performance.now();
     const delta = engine.tick(rate);
     const t1 = performance.now();
-    const json = JSON.stringify(delta);
+    // ws-server와 동일 경로: 와이어 id 압축 후 직렬화.
+    const json = JSON.stringify(encodeWireMessage(delta));
     const t2 = performance.now();
 
     tickMs.push(t1 - t0);
@@ -193,7 +195,7 @@ function runLong(
 ): LongResult {
   const engine = new SimEngine(20260906, () => 1_000_000);
   engine.spawn(count);
-  for (let i = 0; i < 100; i++) JSON.stringify(engine.tick(rate));
+  for (let i = 0; i < 100; i++) JSON.stringify(encodeWireMessage(engine.tick(rate)));
 
   const samples: { tick: number; heapMb: number }[] = [];
   const sampleEvery = Math.max(1, Math.floor(ticks / 20));
@@ -208,7 +210,7 @@ function runLong(
   let sumXX = 0;
 
   for (let i = 0; i < ticks; i++) {
-    JSON.stringify(engine.tick(rate));
+    JSON.stringify(encodeWireMessage(engine.tick(rate)));
     if (i % sampleEvery === 0) {
       forceGc();
       const heap = process.memoryUsage().heapUsed;

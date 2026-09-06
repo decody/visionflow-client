@@ -251,6 +251,29 @@ test('delta values carry at most 1cm / 0.1deg wire precision', () => {
   }
 });
 
+test('operations rides on ~5Hz cadence (or alarm ticks), not every delta', () => {
+  const engine = new SimEngine(11, () => 0);
+  engine.spawn(64);
+  let total = 0;
+  let withOps = 0;
+  let alarmTicksMissingOps = 0;
+  for (let i = 0; i < 60; i++) {
+    const d = engine.tick(10); // rateHz 10 → opsInterval 2
+    total += 1;
+    if (d.operations) withOps += 1;
+    if ((d.alarms?.length ?? 0) > 0 && !d.operations)
+      alarmTicksMissingOps += 1;
+  }
+  // 매 틱이 아니라 일부 틱에만 실려 페이로드 빈도가 줄어든다.
+  assert.ok(withOps > 0, 'operations must still be delivered periodically');
+  assert.ok(
+    withOps < total,
+    `operations should be throttled, got ${withOps}/${total}`,
+  );
+  // 알람이 있는 틱에는 항상 operations를 함께 싣는다.
+  assert.equal(alarmTicksMissingOps, 0);
+});
+
 test('deltas plus snapshots reproduce vehicle state across reassignment and scale reset', () => {
   const engine = new SimEngine(42, () => 0);
   engine.spawn(8);

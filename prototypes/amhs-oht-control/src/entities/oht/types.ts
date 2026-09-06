@@ -37,6 +37,15 @@ export interface Carrier {
   portId: string | null;
   vehicleId: string | null;
 }
+/**
+ * operations에 실리는 Job의 UI 표시용 축약형.
+ * createdTs·deadlineTs·completedTs는 엔진 내부 계산에만 쓰이고 클라이언트는
+ * 읽지 않으므로 전송 페이로드에서 제외한다.
+ */
+export type JobView = Omit<
+  TransportJob,
+  'createdTs' | 'deadlineTs' | 'completedTs'
+>;
 export interface PortState {
   id: string;
   capacity: number;
@@ -54,7 +63,7 @@ export interface PortIncident {
 }
 export interface OperationsState {
   rule: DispatchRule;
-  jobs: TransportJob[];
+  jobs: JobView[];
   carriers: Carrier[];
   ports: PortState[];
   completed: number;
