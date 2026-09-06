@@ -1,0 +1,33 @@
+{
+  "name": "@visionflow/amhs-oht-control",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --turbopack -p 3011",
+    "build": "next build",
+    "start": "next start -p 3011",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test:unit": "node --import tsx --test \"src/**/*.test.ts\"",
+    "ws:server": "node --import tsx server/ws-server.ts",
+    "perf": "node --import tsx --expose-gc server/perf-bench.ts",
+    "perf:long": "node --import tsx --expose-gc server/perf-bench.ts --long --long-ticks=6000"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.66.0",
+    "next": "16.2.4",
+    "ol": "10.6.1",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "ws": "8.18.0",
+    "zustand": "5.0.13"
+  },
+  "devDependencies": {
+    "@types/node": "25.6.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@types/ws": "8.5.13",
+    "tsx": "4.20.3",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,0 +1,137 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0e14;
+  --panel: #131823;
+  --line: #232a3a;
+  --text: #e6edf6;
+  --muted: #8b97ab;
+  --accent: #4da3ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    ui-sans-serif, system-ui, 'Segoe UI', Roboto, 'Noto Sans KR',
+    sans-serif;
+}
+
+/* 키보드 포커스 가시성(접근성) */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[role='application']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.amhs-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+.amhs-check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.amhs-jobs {
+  max-height: 250px;
+  min-height: 100px;
+  overflow: auto;
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+.amhs-job {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  padding: 9px;
+  margin-bottom: 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+}
+.amhs-job:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.amhs-job:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.amhs-ports {
+  margin: 14px 0;
+  font-size: 12px;
+}
+.amhs-ports summary {
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.amhs-port {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  color: var(--muted);
+}
+.amhs-left {
+  flex-shrink: 0;
+}
+@media (max-width: 1000px) {
+  .amhs-right {
+    width: 260px !important;
+  }
+  .amhs-left {
+    width: 160px !important;
+  }
+}
+@media (max-width: 720px) {
+  .amhs-body {
+    flex-wrap: wrap;
+    overflow: auto;
+  }
+  .amhs-left {
+    width: 100% !important;
+    max-height: 230px;
+  }
+  .amhs-body > div {
+    flex-basis: 100% !important;
+    min-height: 420px;
+  }
+  .amhs-right {
+    width: 100% !important;
+    max-height: 600px;
+  }
+}
+
+@keyframes amhs-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .amhs-spinner {
+    animation-duration: 2s;
+  }
+}
