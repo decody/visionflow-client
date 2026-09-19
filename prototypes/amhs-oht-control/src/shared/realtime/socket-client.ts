@@ -47,6 +47,7 @@ export class SocketClient implements RealtimeSource {
   private rule: DispatchRule = 'priority';
   private portIncident = false;
   private railClosure = false;
+  private storageSaturation = false;
   private lastReceived = 0;
 
   constructor(
@@ -98,6 +99,8 @@ export class SocketClient implements RealtimeSource {
         this.send({ type: 'setPortIncident', enabled: true });
       if (this.railClosure)
         this.send({ type: 'setRailClosure', enabled: true });
+      if (this.storageSaturation)
+        this.send({ type: 'setStorageSaturation', enabled: true });
       this.requestSnapshot();
       if (this.paused) this.send({ type: 'stop' });
       this.startHeartbeat();
@@ -188,6 +191,20 @@ export class SocketClient implements RealtimeSource {
   setRailClosure(enabled: boolean): void {
     this.railClosure = enabled;
     this.send({ type: 'setRailClosure', enabled });
+  }
+  setStorageSaturation(enabled: boolean): void {
+    this.storageSaturation = enabled;
+    this.send({ type: 'setStorageSaturation', enabled });
+  }
+  resetScenario(count: number): void {
+    this.count = count;
+    this.portIncident = false;
+    this.railClosure = false;
+    this.storageSaturation = false;
+    this.send({ type: 'resetScenario', count });
+  }
+  promoteHotLot(jobId?: string): void {
+    this.send({ type: 'promoteHotLot', jobId });
   }
   setOutage(enabled: boolean): void {
     // 소켓은 유지한 채 수신을 논리적으로 차단(하트비트는 살아 있음).

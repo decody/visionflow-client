@@ -7,6 +7,7 @@ import test from 'node:test';
 import {
   compareJunctionPriority,
   detectWaitCycles,
+  dispatchPriorityScore,
   quantizeWireFields,
   SimEngine,
 } from './engine';
@@ -43,6 +44,20 @@ test('junction priority favors hot lots, then longest wait, then stable id', () 
     candidates.map((candidate) => candidate.id),
     ['OHT-0001', 'OHT-0002', 'OHT-0004', 'OHT-0003'],
   );
+});
+
+test('fleet respawn restarts job ids while preserving the stream sequence', () => {
+  const engine = new SimEngine(20260905, () => 1000);
+  engine.spawn(1000);
+  engine.tick(10);
+  const previousSeq = engine.snapshot().seq;
+  assert.equal(engine.snapshot().operations!.jobs[0]!.id, 'J-1');
+
+  engine.spawn(32);
+  const respawned = engine.snapshot();
+  assert.equal(respawned.seq, previousSeq);
+  assert.equal(respawned.vehicles.length, 32);
+  assert.equal(respawned.operations!.jobs[0]!.id, 'J-1');
 });
 
 test('FOUP ownership and destination capacity remain consistent through complete transports', () => {
@@ -175,6 +190,111 @@ test('port incident blocks unloading, emits alarms, and resumes after recovery',
   );
 });
 
+test('dispatch priority keeps hot lots first while aging normal lots', () => {
+  assert.ok(dispatchPriorityScore(1, 45) > dispatchPriorityScore(1, 0));
+  assert.ok(dispatchPriorityScore(3, 0) > dispatchPriorityScore(1, 10_000));
+});
+
+test('operator promotion upgrades a job and its assigned vehicle to hot lot', () => {
+  const engine = new SimEngine(42, () => 0);
+  engine.spawn(8);
+  const normal = engine
+    .snapshot()
+    .operations!.jobs.find((job) => job.phase !== 'DONE' && job.priority < 3)!;
+  assert.ok(normal);
+  assert.equal(engine.promoteHotLot(normal.id), normal.id);
+
+  const snapshot = engine.snapshot();
+  const promoted = snapshot.operations!.jobs.find(
+    (job) => job.id === normal.id,
+  )!;
+  assert.equal(promoted.priority, 3);
+  if (promoted.vehicleId)
+    assert.equal(
+      snapshot.vehicles.find((vehicle) => vehicle.id === promoted.vehicleId)!
+        .priority,
+      3,
+    );
+  assert.ok(
+    engine.tick(10).alarms?.some(
+      (alarm) => alarm.kind === 'HOT_LOT' && alarm.message.includes(normal.id),
+    ),
+  );
+});
+
+test('incident alarms carry structured navigation context', () => {
+  const engine = new SimEngine(42, () => 0);
+  engine.spawn(8);
+  engine.setPortIncident(true);
+  const portAlarm = engine
+    .tick(10)
+    .alarms?.find((alarm) => alarm.kind === 'EQP_DOWN')!;
+  assert.ok(portAlarm.jobId);
+  assert.ok(portAlarm.vehicleId);
+  assert.ok(portAlarm.portId);
+  assert.ok(portAlarm.equipmentId);
+
+  engine.setRailClosure(true);
+  const railAlarm = engine
+    .tick(10)
+    .alarms?.find(
+      (alarm) => alarm.kind === 'JAM' && alarm.segmentId,
+    )!;
+  assert.ok(railAlarm.segmentId);
+});
+
+test('storage saturation fills a buffer or stocker, queues unloading, and recovers', () => {
+  const engine = new SimEngine(42, () => 0);
+  engine.spawn(8);
+  engine.setStorageSaturation(true);
+  const saturated = engine.snapshot().operations!.saturation!;
+  assert.equal(saturated.active, true);
+  assert.ok(
+    saturated.portId.startsWith('BUF-') ||
+      saturated.portId.startsWith('STK-'),
+  );
+  const fullPort = engine
+    .snapshot()
+    .operations!.ports.find((port) => port.id === saturated.portId)!;
+  assert.equal(fullPort.occupied, fullPort.capacity);
+
+  let sawAlarm = false;
+  let sawWaiting = false;
+  for (let i = 0; i < 3000; i++) {
+    const delta = engine.tick(10);
+    sawAlarm ||=
+      delta.alarms?.some((alarm) =>
+        alarm.message.includes('포화'),
+      ) ?? false;
+    sawWaiting ||= engine
+      .snapshot()
+      .vehicles.some(
+        (vehicle) =>
+          vehicle.to === saturated.portId &&
+          vehicle.phase === 'WAITING_PORT',
+      );
+    if (sawAlarm && sawWaiting) break;
+  }
+  assert.equal(sawAlarm, true);
+  assert.equal(sawWaiting, true);
+
+  engine.setStorageSaturation(false);
+  assert.equal(engine.snapshot().operations!.saturation, undefined);
+  for (let i = 0; i < 80; i++) engine.tick(10);
+  assert.equal(
+    engine
+      .snapshot()
+      .vehicles.some(
+        (vehicle) =>
+          vehicle.to === saturated.portId &&
+          vehicle.phase === 'WAITING_PORT',
+      ),
+    false,
+  );
+  for (const port of engine.snapshot().operations!.ports)
+    assert.ok(port.occupied <= port.capacity, port.id);
+});
+
 test('persistent occupied segments trigger an alternate route and keep transport running', () => {
   const engine = new SimEngine(42, () => 0);
   engine.spawn(32);
@@ -252,6 +372,52 @@ test('private snapshots preserve sequence and pausing preserves simulation deadl
   const delta = engine.tick(10);
   assert.equal(delta.seq, first.seq + 1);
   assert.equal(delta.ts, first.ts + 100);
+});
+
+test('capacity-aware admission limits WIP and drains a 32 vehicle fleet', () => {
+  const engine = new SimEngine(42, () => 0);
+  engine.spawn(32);
+  let blockedSamples = 0;
+  let samples = 0;
+  let sawBackpressure = false;
+  let maxWip = 0;
+  for (let i = 0; i < 3000; i++) {
+    engine.tick(10);
+    const traffic = engine.snapshot().operations!.traffic!;
+    maxWip = Math.max(maxWip, traffic.admittedJobs);
+    sawBackpressure ||= traffic.backpressuredJobs > 0;
+    if (i >= 1000) {
+      blockedSamples += traffic.blockedVehicleIds.length;
+      samples++;
+    }
+  }
+  const operations = engine.snapshot().operations!;
+  assert.ok(maxWip <= 12, 'global transport WIP stays within capacity');
+  assert.equal(sawBackpressure, true);
+  assert.ok(operations.completed >= 10, 'backpressure preserves throughput');
+  assert.ok(
+    blockedSamples / samples < 3,
+    'average blocked vehicles remain below three after warm-up',
+  );
+});
+
+test('resetScenario restores the same seeded fleet and job state', () => {
+  const engine = new SimEngine(7, () => 1000);
+  engine.resetScenario(8);
+  const expected = engine.snapshot();
+  for (let i = 0; i < 300; i++) engine.tick(10);
+  engine.setPortIncident(true);
+  engine.setRailClosure(true);
+  engine.setStorageSaturation(true);
+  engine.resetScenario(8);
+  const actual = engine.snapshot();
+
+  assert.deepEqual(actual.vehicles, expected.vehicles);
+  assert.deepEqual(actual.operations, expected.operations);
+  assert.equal(actual.ts, expected.ts);
+  assert.equal(actual.operations!.incident, undefined);
+  assert.equal(actual.operations!.closure, undefined);
+  assert.equal(actual.operations!.saturation, undefined);
 });
 
 test('quantizeWireFields rounds coordinates, heading, speed, and route', () => {

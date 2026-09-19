@@ -76,6 +76,37 @@ const FILTERS: { key: StatusFilter; label: string }[] = [
 const HISTORY_INTERVAL_MS = 500;
 const HISTORY_MAX_FRAMES = 120; // 최근 60초
 const PLAYBACK_TICK_MS = 100;
+type DemoAction =
+  | 'reset'
+  | 'hot-lot'
+  | 'port-on'
+  | 'port-off'
+  | 'rail-on'
+  | 'rail-off'
+  | 'storage-on'
+  | 'storage-off'
+  | 'outage-on'
+  | 'outage-off'
+  | 'complete';
+const DEMO_STEPS: ReadonlyArray<{
+  atMs: number;
+  label: string;
+  hint: string;
+  action: DemoAction;
+}> = [
+  { atMs: 0, label: '정상 운행', hint: '8대 고정 seed 초기 상태', action: 'reset' },
+  { atMs: 3_000, label: 'Hot lot 승격', hint: '긴급 Job 우선권과 강조 확인', action: 'hot-lot' },
+  { atMs: 6_000, label: '포트 장애', hint: '목적지 포트와 영향 Job 확인', action: 'port-on' },
+  { atMs: 14_000, label: '포트 복구', hint: '대기 차량 운행 재개', action: 'port-off' },
+  { atMs: 16_000, label: '레일 폐쇄', hint: '폐쇄 구간과 자동 우회 확인', action: 'rail-on' },
+  { atMs: 24_000, label: '레일 개통', hint: '정상 경로 복귀', action: 'rail-off' },
+  { atMs: 26_000, label: '저장소 포화', hint: 'FULL 위치와 하역 대기 확인', action: 'storage-on' },
+  { atMs: 36_000, label: '공간 확보', hint: '가용 slot과 하역 재개', action: 'storage-off' },
+  { atMs: 38_000, label: '통신 단절', hint: '화면 정지와 재연결 상태 확인', action: 'outage-on' },
+  { atMs: 44_000, label: '통신 복구', hint: '스냅샷 재동기', action: 'outage-off' },
+  { atMs: 48_000, label: '데모 완료', hint: '정상 실시간 운행 유지', action: 'complete' },
+];
+const DEMO_DURATION_MS = DEMO_STEPS.at(-1)!.atMs;
 
 export function LiveMap() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -91,6 +122,7 @@ export function LiveMap() {
     samples: 0,
   });
   const [rendered, setRendered] = useState<[number, number]>([0, 0]);
+  const [heapMb, setHeapMb] = useState<number | null>(null);
   const [lod, setLod] = useState<LodMode>('bay');
   const [activeBay, setActiveBay] = useState<string | null>(null);
   const [activeEquipment, setActiveEquipment] = useState('');
@@ -105,6 +137,7 @@ export function LiveMap() {
   );
   const [hotOnly, setHotOnly] = useState(false);
   const [jobSearch, setJobSearch] = useState('');
+  const [activeAlarmId, setActiveAlarmId] = useState<string | null>(null);
   const [replayAlarms, setReplayAlarms] = useState<Alarm[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
     'loading',
@@ -114,6 +147,12 @@ export function LiveMap() {
   const [srcLabel, setSrcLabel] = useState('');
   const [conn, setConn] = useState<RealtimeStatus>('connecting');
   const [commsOutage, setCommsOutage] = useState(false);
+  const [demo, setDemo] = useState({
+    running: false,
+    startedAt: 0,
+    stepIndex: 0,
+    elapsedMs: 0,
+  });
 
   // 이력 재생 상태 (UI 표시용) + 구동용 ref
   const historyRef = useRef<HistoryFrame[]>([]);
@@ -211,6 +250,16 @@ export function LiveMap() {
       setCounts(indoor.getCounts());
       setRenderStats(indoor.getRenderStats());
       setRendered(indoor.getRenderedCount());
+      const memory = (
+        performance as Performance & {
+          memory?: { usedJSHeapSize: number };
+        }
+      ).memory;
+      setHeapMb(
+        memory
+          ? Math.round((memory.usedJSHeapSize / 1024 / 1024) * 10) / 10
+          : null,
+      );
       setOperations(operationsRef.current);
       setJammed(indoor.updateCongestion());
       const sel = useControlStore.getState().selectedId;
@@ -312,6 +361,87 @@ export function LiveMap() {
   useEffect(() => {
     clientRef.current?.setPaused(paused);
   }, [paused]);
+
+  useEffect(() => {
+    if (!demo.running) return;
+    const timer = setInterval(() => {
+      const elapsedMs = Date.now() - demo.startedAt;
+      let nextIndex = demo.stepIndex;
+      while (
+        nextIndex < DEMO_STEPS.length &&
+        elapsedMs >= DEMO_STEPS[nextIndex]!.atMs
+      ) {
+        executeDemoAction(DEMO_STEPS[nextIndex]!.action);
+        nextIndex++;
+      }
+      setDemo((current) => ({
+        ...current,
+        running: nextIndex < DEMO_STEPS.length,
+        stepIndex: nextIndex,
+        elapsedMs: Math.min(elapsedMs, DEMO_DURATION_MS),
+      }));
+    }, 200);
+    return () => clearInterval(timer);
+    // executeDemoAction only dispatches to stable refs/setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo.running, demo.startedAt, demo.stepIndex]);
+
+  function executeDemoAction(action: DemoAction) {
+    const client = clientRef.current;
+    if (!client) return;
+    switch (action) {
+      case 'reset':
+        client.setOutage(false);
+        setCommsOutage(false);
+        client.resetScenario(8);
+        client.setDispatch('priority');
+        break;
+      case 'hot-lot': client.promoteHotLot(); break;
+      case 'port-on': client.setPortIncident(true); break;
+      case 'port-off': client.setPortIncident(false); break;
+      case 'rail-on': client.setRailClosure(true); break;
+      case 'rail-off': client.setRailClosure(false); break;
+      case 'storage-on': client.setStorageSaturation(true); break;
+      case 'storage-off': client.setStorageSaturation(false); break;
+      case 'outage-on':
+        setCommsOutage(true);
+        client.setOutage(true);
+        break;
+      case 'outage-off':
+        setCommsOutage(false);
+        client.setOutage(false);
+        break;
+      case 'complete':
+        break;
+    }
+  }
+
+  function startDemo() {
+    if (modeRef.current === 'replay') exitReplay();
+    if (paused) togglePaused();
+    useControlStore.getState().clearAlarms();
+    historyRef.current = [];
+    setCount(8);
+    executeDemoAction('reset');
+    setDemo({
+      running: true,
+      startedAt: Date.now(),
+      stepIndex: 1,
+      elapsedMs: 0,
+    });
+  }
+
+  function stopDemo() {
+    const client = clientRef.current;
+    client?.setOutage(false);
+    client?.setPortIncident(false);
+    client?.setRailClosure(false);
+    client?.setStorageSaturation(false);
+    client?.resetScenario(8);
+    setCommsOutage(false);
+    setCount(8);
+    setDemo({ running: false, startedAt: 0, stepIndex: 0, elapsedMs: 0 });
+  }
 
   const onChangeCount = (n: number) => {
     setCount(n);
@@ -425,6 +555,38 @@ export function LiveMap() {
       },
     ];
   }, [counts, jammed, operations]);
+
+  const selectedJob = operations?.jobs.find(
+    (job) => job.id === detail?.jobId && job.phase !== 'DONE',
+  );
+  const promotableJob =
+    selectedJob?.priority === 3
+      ? undefined
+      : selectedJob ??
+        operations?.jobs.find(
+          (job) => job.phase !== 'DONE' && job.priority < 3,
+        );
+  const visibleAlarms = replay.mode === 'replay' ? replayAlarms : alarms;
+  const activeAlarm = visibleAlarms.find(
+    (alarm) => alarm.id === activeAlarmId,
+  );
+
+  function inspectAlarm(alarm: Alarm) {
+    setActiveAlarmId(alarm.id);
+    if (alarm.jobId) setJobSearch(alarm.jobId);
+    if (alarm.equipmentId) {
+      mapRef.current?.focusEquipment(alarm.equipmentId);
+      setActiveEquipment(alarm.equipmentId);
+    } else if (alarm.segmentId) {
+      mapRef.current?.focusRailSegment(alarm.segmentId);
+      setActiveEquipment('');
+    }
+    if (alarm.vehicleId) {
+      if (!alarm.equipmentId && !alarm.segmentId)
+        mapRef.current?.focusVehicle(alarm.vehicleId);
+      else mapRef.current?.setSelected(alarm.vehicleId);
+    }
+  }
 
   const replayTimeLabel = useMemo(() => {
     const buf = historyRef.current;
@@ -591,8 +753,57 @@ export function LiveMap() {
             새 배차부터 적용됩니다. FIFO·우선순위는 작업을 먼저 고른
             뒤 가장 가까운 공차를 배정합니다.
           </div>
+          <button
+            style={{ ...styles.chip, ...styles.wideChip, marginTop: 8 }}
+            disabled={
+              replay.mode === 'replay' || demo.running || !promotableJob
+            }
+            onClick={() =>
+              clientRef.current?.promoteHotLot(promotableJob?.id)
+            }
+          >
+            {promotableJob
+              ? `${promotableJob.id} · ${promotableJob.lotId} 긴급 승격`
+              : '승격 가능한 일반 Job 없음'}
+          </button>
+          <div style={styles.hint}>
+            선택 Job을 우선하며, 선택이 없으면 가장 오래된 일반 Job을
+            Hot lot으로 승격합니다. 일반 Lot은 대기시간 aging을 유지합니다.
+          </div>
 
           <div style={styles.sectionTitle}>운영 시나리오</div>
+          <div
+            style={{
+              ...styles.scenarioBox,
+              ...(demo.running ? styles.demoActive : null),
+            }}
+          >
+            <strong>
+              {demo.running
+                ? `자동 데모 · ${DEMO_STEPS[Math.max(0, demo.stepIndex - 1)]!.label}`
+                : '운영 데모 프리셋'}
+            </strong>
+            <span style={styles.hint}>
+              {demo.running
+                ? `${DEMO_STEPS[Math.max(0, demo.stepIndex - 1)]!.hint} · ${Math.ceil((DEMO_DURATION_MS - demo.elapsedMs) / 1000)}초 남음`
+                : '고정 seed로 장애·우회·포화·통신 복구를 48초 동안 순서대로 재생합니다.'}
+            </span>
+            <div style={styles.demoProgressTrack}>
+              <span
+                style={{
+                  ...styles.demoProgressBar,
+                  width: `${(demo.elapsedMs / DEMO_DURATION_MS) * 100}%`,
+                }}
+              />
+            </div>
+            <button
+              style={{ ...styles.chip, ...styles.wideChip }}
+              disabled={replay.mode === 'replay'}
+              onClick={demo.running ? stopDemo : startDemo}
+            >
+              {demo.running ? '데모 중단·초기화' : '자동 데모 시작'}
+            </button>
+          </div>
           <div
             style={{
               ...styles.scenarioBox,
@@ -613,7 +824,7 @@ export function LiveMap() {
             </span>
             <button
               style={{ ...styles.chip, ...styles.wideChip }}
-              disabled={replay.mode === 'replay'}
+              disabled={replay.mode === 'replay' || demo.running}
               onClick={() =>
                 clientRef.current?.setPortIncident(
                   !operations?.incident?.active,
@@ -638,6 +849,46 @@ export function LiveMap() {
           <div
             style={{
               ...styles.scenarioBox,
+              ...(operations?.saturation?.active
+                ? styles.scenarioActive
+                : null),
+            }}
+          >
+            <strong>
+              {operations?.saturation?.active
+                ? `${operations.saturation.portId} 용량 포화`
+                : 'Stocker / buffer 포화'}
+            </strong>
+            <span style={styles.hint}>
+              {operations?.saturation?.active
+                ? `가용 slot 0 · 하역 대기 OHT ${operations.saturation.queueVehicleIds.length}대`
+                : '저장 위치를 가득 채워 하역 대기와 복구를 시연합니다.'}
+            </span>
+            <button
+              style={{ ...styles.chip, ...styles.wideChip }}
+              disabled={replay.mode === 'replay' || demo.running}
+              onClick={() =>
+                clientRef.current?.setStorageSaturation(
+                  !operations?.saturation?.active,
+                )
+              }
+            >
+              {operations?.saturation?.active ? '공간 확보' : '용량 포화'}
+            </button>
+            {operations?.saturation?.equipmentId && (
+              <button
+                style={{ ...styles.chip, ...styles.wideChip }}
+                onClick={() =>
+                  focusEquipment(operations.saturation!.equipmentId!)
+                }
+              >
+                포화 위치로 이동
+              </button>
+            )}
+          </div>
+          <div
+            style={{
+              ...styles.scenarioBox,
               ...(operations?.closure?.active
                 ? styles.scenarioActive
                 : null),
@@ -655,7 +906,7 @@ export function LiveMap() {
             </span>
             <button
               style={{ ...styles.chip, ...styles.wideChip }}
-              disabled={replay.mode === 'replay'}
+              disabled={replay.mode === 'replay' || demo.running}
               onClick={() =>
                 clientRef.current?.setRailClosure(
                   !operations?.closure?.active,
@@ -679,7 +930,7 @@ export function LiveMap() {
             </span>
             <button
               style={{ ...styles.chip, ...styles.wideChip }}
-              disabled={replay.mode === 'replay'}
+              disabled={replay.mode === 'replay' || demo.running}
               onClick={() => {
                 const next = !commsOutage;
                 setCommsOutage(next);
@@ -757,11 +1008,19 @@ export function LiveMap() {
                 {rendered[0].toLocaleString()} /{' '}
                 {rendered[1].toLocaleString()}
               </strong>
+              <span>JS heap</span>
+              <strong>{heapMb === null ? '미지원' : `${heapMb}MB`}</strong>
               <span>정체 Zone</span>
               <strong>{jammed}</strong>
               <span>점유 구간</span>
               <strong>
                 {operations?.traffic?.occupiedSegments ?? 0}
+              </strong>
+              <span>운행 WIP</span>
+              <strong>{operations?.traffic?.admittedJobs ?? 0}</strong>
+              <span>백프레셔</span>
+              <strong>
+                {operations?.traffic?.backpressuredJobs ?? 0}
               </strong>
               <span>합류 예약</span>
               <strong>
@@ -1003,6 +1262,7 @@ export function LiveMap() {
                 <button
                   key={j.id}
                   className="amhs-job"
+                  style={j.priority === 3 ? styles.hotJob : undefined}
                   disabled={!j.vehicleId || j.phase === 'DONE'}
                   onClick={() =>
                     mapRef.current?.setSelected(j.vehicleId)
@@ -1053,12 +1313,30 @@ export function LiveMap() {
             }
             )
           </div>
+          {activeAlarm && (
+            <div style={styles.alarmContext}>
+              <strong>선택 알람 영향 범위</strong>
+              <span>{activeAlarm.message}</span>
+              <div style={styles.alarmContextGrid}>
+                <span>위치</span>
+                <b>
+                  {activeAlarm.equipmentId ??
+                    activeAlarm.segmentId ??
+                    activeAlarm.portId ??
+                    '차량 위치'}
+                </b>
+                <span>Job</span>
+                <b>{activeAlarm.jobId ?? '—'}</b>
+                <span>OHT</span>
+                <b>{activeAlarm.vehicleId ?? '—'}</b>
+              </div>
+            </div>
+          )}
           <div style={styles.alarmList}>
-            {(replay.mode === 'replay' ? replayAlarms : alarms)
-              .length === 0 && (
+            {visibleAlarms.length === 0 && (
               <div style={styles.placeholder}>알람 없음</div>
             )}
-            {(replay.mode === 'replay' ? replayAlarms : alarms).map(
+            {visibleAlarms.map(
               (a) => (
                 <div
                   key={a.id}
@@ -1071,14 +1349,15 @@ export function LiveMap() {
                         : a.severity === 'warn'
                           ? '#ffd166'
                           : '#4da3ff',
+                    background:
+                      activeAlarmId === a.id
+                        ? 'rgba(77, 163, 255, 0.1)'
+                        : '#0d121c',
                   }}
                 >
                   <button
                     style={styles.alarmMain}
-                    onClick={() =>
-                      a.vehicleId &&
-                      mapRef.current?.setSelected(a.vehicleId)
-                    }
+                    onClick={() => inspectAlarm(a)}
                   >
                     <span style={styles.alarmKind}>
                       {a.kind} · {a.state ?? 'ACTIVE'}
@@ -1263,8 +1542,46 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 12,
   },
   scenarioActive: {
-    borderColor: '#ff5470',
+    border: '1px solid #ff5470',
     background: 'rgba(255, 84, 112, 0.08)',
+  },
+  demoActive: {
+    border: '1px solid #4da3ff',
+    background: 'rgba(77, 163, 255, 0.08)',
+  },
+  demoProgressTrack: {
+    height: 4,
+    overflow: 'hidden',
+    borderRadius: 4,
+    background: '#232a3a',
+  },
+  demoProgressBar: {
+    display: 'block',
+    height: '100%',
+    borderRadius: 4,
+    background: 'var(--accent)',
+    transition: 'width 200ms linear',
+  },
+  hotJob: {
+    border: '1px solid #ff6fae',
+    boxShadow: 'inset 3px 0 #ff6fae',
+  },
+  alarmContext: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 7,
+    marginBottom: 8,
+    padding: 10,
+    border: '1px solid #4da3ff',
+    borderRadius: 7,
+    background: 'rgba(77, 163, 255, 0.08)',
+    fontSize: 11,
+  },
+  alarmContextGrid: {
+    display: 'grid',
+    gridTemplateColumns: '46px 1fr',
+    gap: '3px 8px',
+    color: 'var(--muted)',
   },
   chipActive: {
     background: 'var(--accent)',

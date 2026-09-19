@@ -65,6 +65,7 @@ wss.on('connection', (ws: WebSocket) => {
       rateHz?: number;
       rule?: DispatchRule;
       enabled?: boolean;
+      jobId?: string;
     };
     try {
       cmd = JSON.parse(raw.toString());
@@ -89,6 +90,24 @@ wss.on('connection', (ws: WebSocket) => {
         break;
       case 'setRailClosure':
         engine.setRailClosure(cmd.enabled === true);
+        broadcast(wire(engine.snapshot()));
+        break;
+      case 'setStorageSaturation':
+        engine.setStorageSaturation(cmd.enabled === true);
+        broadcast(wire(engine.snapshot()));
+        break;
+      case 'resetScenario':
+        if (
+          typeof cmd.count === 'number' &&
+          Number.isFinite(cmd.count)
+        ) {
+          count = Math.min(5000, Math.max(1, Math.floor(cmd.count)));
+          engine.resetScenario(count);
+          broadcast(wire(engine.snapshot()));
+        }
+        break;
+      case 'promoteHotLot':
+        engine.promoteHotLot(cmd.jobId);
         broadcast(wire(engine.snapshot()));
         break;
       case 'start':

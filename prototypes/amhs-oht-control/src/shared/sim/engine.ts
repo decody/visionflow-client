@@ -73,6 +73,15 @@ export function compareJunctionPriority(
   );
 }
 
+/** Hot lot은 항상 우선하되 일반 lot은 15초마다 aging 점수를 얻는다. */
+export function dispatchPriorityScore(
+  priority: number,
+  waitSec: number,
+): number {
+  if (priority >= 3) return 10_000 + Math.max(0, waitSec);
+  return priority * 100 + Math.min(99, Math.floor(Math.max(0, waitSec) / 15));
+}
+
 export function detectWaitCycles(
   waitsFor: Map<string, string>,
 ): string[][] {
@@ -103,6 +112,7 @@ export function detectWaitCycles(
 
 /** Synthetic transport model. Simulation time advances only on ticks, including deadlines. */
 export class SimEngine {
+  private static readonly DEFAULT_SEED = 20260905;
   private readonly graph = buildRailGraph();
   private vehicles: SimVehicle[] = [];
   private carriers: Carrier[] = [];
@@ -116,6 +126,9 @@ export class SimEngine {
   private totalTransportMs = 0;
   private blockedPortId: string | null = null;
   private incidentStartedTs = 0;
+  private saturatedPortId: string | null = null;
+  private saturationStartedTs = 0;
+  private saturationCarrierIds = new Set<string>();
   // 운영자가 폐쇄한 rail 세그먼트(경로 계산에서 전역 제외)
   private closedSegments = new Set<number>();
   private closureStartedTs = 0;
@@ -147,6 +160,40 @@ export class SimEngine {
   }
   setDispatch(rule: DispatchRule): void {
     this.rule = rule;
+  }
+  promoteHotLot(jobId?: string): string | null {
+    const candidates = this.jobs
+      .filter((job) => job.phase !== 'DONE' && job.priority < 3)
+      .sort(
+        (a, b) =>
+          a.createdTs - b.createdTs ||
+          Number(a.id.slice(2)) - Number(b.id.slice(2)),
+      );
+    const target = jobId
+      ? candidates.find((job) => job.id === jobId)
+      : candidates[0];
+    if (!target) return null;
+    target.priority = 3;
+    target.deadlineTs = Math.min(target.deadlineTs, this.now + 90_000);
+    const vehicle = this.vehicles.find(
+      (item) => item.state.id === target.vehicleId,
+    );
+    if (vehicle) {
+      vehicle.state.priority = 3;
+      vehicle.state.deadlineTs = target.deadlineTs;
+    }
+    this.pendingAlarms.push({
+      id: `AL-HOT-${target.id}-${Math.round(this.now)}`,
+      kind: 'HOT_LOT',
+      severity: 'info',
+      ts: this.now,
+      vehicleId: target.vehicleId ?? undefined,
+      jobId: target.id,
+      message: `${target.id} · ${target.lotId} 긴급 반송 승격`,
+    });
+    // 공차가 있다면 승격된 queued Job이 다음 dispatch에서 즉시 우선된다.
+    this.dispatch();
+    return target.id;
   }
   setPortIncident(enabled: boolean): void {
     if (!enabled) {
@@ -184,7 +231,66 @@ export class SimEngine {
       severity: 'critical',
       ts: this.now,
       vehicleId: target.vehicleId ?? undefined,
+      jobId: target.id,
+      portId: target.to,
+      equipmentId: this.graph.ports.find((port) => port.id === target.to)
+        ?.equipmentId,
       message: target.to + ' 포트 사용 불가 · 하역 대기 예상',
+    });
+  }
+  resetScenario(count: number, seed = SimEngine.DEFAULT_SEED): void {
+    this.randomState = seed >>> 0;
+    this.jobSeq = 0;
+    this.spawn(count);
+  }
+
+  /** Stocker/buffer를 임시 재고로 채워 도착 OHT의 하역 대기를 재현한다. */
+  setStorageSaturation(enabled: boolean): void {
+    if (!enabled) {
+      if (!this.saturatedPortId) return;
+      this.carriers = this.carriers.filter(
+        (carrier) => !this.saturationCarrierIds.has(carrier.id),
+      );
+      this.saturationCarrierIds.clear();
+      this.saturatedPortId = null;
+      this.saturationStartedTs = 0;
+      return;
+    }
+    if (this.saturatedPortId) return;
+    const storagePorts = this.graph.ports.filter(
+      (port) => port.kind === 'buffer' || port.kind === 'stocker',
+    );
+    const active = this.jobs.filter(
+      (job) => job.phase !== 'DONE' && job.vehicleId,
+    );
+    const target =
+      storagePorts.find((port) =>
+        active.some((job) => job.to === port.id),
+      ) ?? storagePorts[0];
+    if (!target) return;
+    this.saturatedPortId = target.id;
+    this.saturationStartedTs = this.now;
+    const occupied = this.carriers.filter(
+      (carrier) => carrier.portId === target.id,
+    ).length;
+    for (let i = occupied; i < target.capacity; i++) {
+      const id = `SAT-${target.id}-${i + 1}`;
+      this.saturationCarrierIds.add(id);
+      this.carriers.push({
+        id,
+        lotId: `SATURATION-${i + 1}`,
+        portId: target.id,
+        vehicleId: null,
+      });
+    }
+    this.pendingAlarms.push({
+      id: `AL-SATURATION-${target.id}-${Math.round(this.now)}`,
+      kind: 'JAM',
+      severity: 'critical',
+      ts: this.now,
+      portId: target.id,
+      equipmentId: target.equipmentId,
+      message: `${target.id} ${target.kind === 'stocker' ? 'stocker' : 'buffer'} 포화 · 하역 대기 예상`,
     });
   }
 
@@ -213,6 +319,7 @@ export class SimEngine {
       kind: 'JAM',
       severity: 'critical',
       ts: this.now,
+      segmentId: this.graph.segments[target]!.id,
       message:
         this.graph.segments[target]!.id + ' 레일 폐쇄 · 우회 경로 적용',
     });
@@ -304,6 +411,7 @@ export class SimEngine {
 
   spawn(count: number): void {
     this.now = this.clock();
+    this.jobSeq = 0;
     this.jobs = [];
     this.carriers = [];
     this.vehicles = [];
@@ -311,6 +419,9 @@ export class SimEngine {
     this.totalTransportMs = 0;
     this.tickCounter = 0;
     this.blockedPortId = null;
+    this.saturatedPortId = null;
+    this.saturationStartedTs = 0;
+    this.saturationCarrierIds.clear();
     this.closedSegments.clear();
     this.closureStartedTs = 0;
     this.pathCache.clear();
@@ -384,10 +495,16 @@ export class SimEngine {
     let available = 20 - active.length;
     for (const carrier of this.carriers) {
       if (available <= 0) break;
-      if (!carrier.portId || busy.has(carrier.id)) continue;
+      if (
+        !carrier.portId ||
+        busy.has(carrier.id) ||
+        this.saturationCarrierIds.has(carrier.id)
+      )
+        continue;
       const destinations = this.graph.ports.filter(
         (p) =>
           p.id !== carrier.portId &&
+          p.id !== this.saturatedPortId &&
           (occupied.get(p.id) ?? 0) < p.capacity,
       );
       if (!destinations.length) continue;
@@ -423,27 +540,88 @@ export class SimEngine {
     );
     waiting.sort(
       (a, b) =>
-        (this.rule === 'priority' ? b.priority - a.priority : 0) ||
+        (this.rule === 'priority'
+          ? dispatchPriorityScore(
+              b.priority,
+              (this.now - b.createdTs) / 1000,
+            ) -
+            dispatchPriorityScore(
+              a.priority,
+              (this.now - a.createdTs) / 1000,
+            )
+          : 0) ||
         a.createdTs - b.createdTs ||
         Number(a.id.slice(2)) - Number(b.id.slice(2)),
     );
     while (waiting.length && idle.length) {
+      const assigned = this.jobs.filter(
+        (item) => item.phase !== 'DONE' && item.vehicleId,
+      );
+      const maxWip = Math.min(
+        12,
+        Math.max(8, Math.floor(this.vehicles.length / 2)),
+      );
+      if (assigned.length >= maxWip) break;
+      const inboundToPort = new Map<string, number>();
+      const inboundToBay = new Map<string, number>();
+      const pressure = new Map<number, number>();
+      for (const item of assigned) {
+        inboundToPort.set(item.to, (inboundToPort.get(item.to) ?? 0) + 1);
+        const port = this.graph.ports.find(
+          (candidate) => candidate.id === item.to,
+        );
+        if (port?.bayId)
+          inboundToBay.set(
+            port.bayId,
+            (inboundToBay.get(port.bayId) ?? 0) + 1,
+          );
+        const assignedVehicle = this.vehicles.find(
+          (candidate) => candidate.job === item,
+        );
+        for (const segment of
+          assignedVehicle?.route.slice(assignedVehicle.leg) ?? [])
+          pressure.set(segment, (pressure.get(segment) ?? 0) + 1);
+      }
+      const routeMemo = new Map<string, number[]>();
+      const route = (from: string, to: string): number[] => {
+        const key = `${from}>${to}`;
+        const cached = routeMemo.get(key);
+        if (cached) return cached;
+        const value = this.path(from, to).route;
+        routeMemo.set(key, value);
+        return value;
+      };
       let ji = 0,
         vi = 0,
         best = Infinity;
-      const candidates = this.rule === 'nearest' ? waiting.length : 1;
-      for (let j = 0; j < candidates; j++) {
+      let found = false;
+      for (let j = 0; j < waiting.length; j++) {
         const source = this.portNode(waiting[j]!.from);
         for (let v = 0; v < idle.length; v++) {
+          if (
+            !this.canAdmit(waiting[j]!, idle[v]!, {
+              inboundToPort,
+              inboundToBay,
+              pressure,
+              route,
+            })
+          )
+            continue;
           const distance = this.path(idle[v]!.node, source).length;
-          if (distance < best) {
+          if (
+            Number.isFinite(distance) &&
+            (!found || distance < best)
+          ) {
             best = distance;
             ji = j;
             vi = v;
+            found = true;
           }
         }
+        // priority/FIFO는 정렬상 첫 번째 입장 가능한 Job을 유지한다.
+        if (found && this.rule !== 'nearest') break;
       }
-      if (!Number.isFinite(best)) break;
+      if (!found || !Number.isFinite(best)) break;
       const job = waiting.splice(ji, 1)[0]!;
       const vehicle = idle.splice(vi, 1)[0]!;
       vehicle.job = job;
@@ -465,6 +643,38 @@ export class SimEngine {
       this.setRoute(vehicle, this.portNode(job.from));
       this.setPhase(vehicle, 'TO_PICKUP');
     }
+  }
+
+  /**
+   * 목적지/Bay/공유 경로의 처리 용량을 넘는 신규 운행을 queued 상태로 유지한다.
+   * 이미 배정된 Job에는 영향을 주지 않아 운행 중 정책 변경도 안전하다.
+   */
+  private canAdmit(
+    job: TransportJob,
+    vehicle: SimVehicle,
+    context: {
+      inboundToPort: Map<string, number>;
+      inboundToBay: Map<string, number>;
+      pressure: Map<number, number>;
+      route: (from: string, to: string) => number[];
+    },
+  ): boolean {
+    const destination = this.graph.ports.find((port) => port.id === job.to)!;
+    const portIngressLimit = Math.min(4, destination.capacity + 1);
+    if ((context.inboundToPort.get(job.to) ?? 0) >= portIngressLimit)
+      return false;
+
+    if (destination.bayId) {
+      if ((context.inboundToBay.get(destination.bayId) ?? 0) >= 4)
+        return false;
+    }
+    const candidateRoute = [
+      ...context.route(vehicle.node, this.portNode(job.from)),
+      ...context.route(this.portNode(job.from), this.portNode(job.to)),
+    ];
+    return !candidateRoute.some(
+      (segment) => (context.pressure.get(segment) ?? 0) >= 4,
+    );
   }
   private setRoute(v: SimVehicle, to: string): void {
     this.setRouteSegments(v, this.path(v.node, to).route);
@@ -559,8 +769,10 @@ export class SimEngine {
       ports: this.graph.ports.map((p) => ({
         id: p.id,
         capacity: p.capacity,
-        occupied: this.carriers.filter((c) => c.portId === p.id)
-          .length,
+        occupied:
+          p.id === this.saturatedPortId
+            ? p.capacity
+            : this.carriers.filter((c) => c.portId === p.id).length,
         reserved: active.filter((j) => j.to === p.id).length,
         status: p.id === this.blockedPortId ? 'DOWN' : 'AVAILABLE',
       })),
@@ -584,6 +796,26 @@ export class SimEngine {
                 (vehicle) =>
                   vehicle.state.status === 'BLOCKED' ||
                   vehicle.state.phase === 'WAITING_PORT',
+              )
+              .map((vehicle) => vehicle.state.id),
+          }
+        : undefined,
+      saturation: this.saturatedPortId
+        ? {
+            active: true,
+            portId: this.saturatedPortId,
+            equipmentId: this.graph.ports.find(
+              (port) => port.id === this.saturatedPortId,
+            )?.equipmentId,
+            kind: this.graph.ports.find(
+              (port) => port.id === this.saturatedPortId,
+            )!.kind as 'buffer' | 'stocker',
+            startedTs: this.saturationStartedTs,
+            queueVehicleIds: this.vehicles
+              .filter(
+                (vehicle) =>
+                  vehicle.job?.to === this.saturatedPortId &&
+                  vehicle.job.phase === 'WAITING_PORT',
               )
               .map((vehicle) => vehicle.state.id),
           }
@@ -612,6 +844,10 @@ export class SimEngine {
         ).length,
         activeDeadlocks: this.activeDeadlocks.size,
         resolvedDeadlocks: this.resolvedDeadlocks,
+        admittedJobs: active.filter((job) => job.vehicleId).length,
+        backpressuredJobs: active.filter(
+          (job) => job.phase === 'QUEUED' && !job.vehicleId,
+        ).length,
       },
     };
   }
@@ -636,8 +872,34 @@ export class SimEngine {
     this.tickCounter++;
     const alarms: Alarm[] = this.pendingAlarms.splice(0);
     const before = new Map<SimVehicle, VehicleState>();
+    // 포화/장애가 해제되면 가용 slot 수만큼 대기 차량의 하역을 재개한다.
+    const unloadingByPort = new Map<string, number>();
+    for (const vehicle of this.vehicles)
+      if (vehicle.job?.phase === 'UNLOADING')
+        unloadingByPort.set(
+          vehicle.job.to,
+          (unloadingByPort.get(vehicle.job.to) ?? 0) + 1,
+        );
+    for (const vehicle of this.vehicles) {
+      const job = vehicle.job;
+      if (!job || job.phase !== 'WAITING_PORT') continue;
+      if (job.to === this.blockedPortId) continue;
+      const port = this.graph.ports.find((item) => item.id === job.to)!;
+      const occupied = this.carriers.filter(
+        (carrier) => carrier.portId === job.to,
+      ).length;
+      const unloading = unloadingByPort.get(job.to) ?? 0;
+      if (occupied + unloading >= port.capacity) continue;
+      before.set(vehicle, { ...vehicle.state });
+      this.setPhase(vehicle, 'UNLOADING');
+      vehicle.dwell = 2;
+      unloadingByPort.set(job.to, unloading + 1);
+    }
     const segmentOwners = new Map<number, string>();
     for (const vehicle of this.vehicles) {
+      // Job 없는 IDLE OHT는 설비 측 대기 포켓에 정차한 것으로 취급한다.
+      // 주행 rail 예약을 점유시키면 대규모 fleet에서 미배차 차량이 통행을 막는다.
+      if (!vehicle.job && vehicle.state.phase === 'IDLE') continue;
       const segment = vehicle.route[vehicle.leg];
       if (segment !== undefined && !segmentOwners.has(segment))
         segmentOwners.set(segment, vehicle.state.id);
@@ -694,6 +956,7 @@ export class SimEngine {
       this.advance(probe, dt);
       const leader = this.vehicles.find((other) => {
         if (other === vehicle) return false;
+        if (!other.job && other.state.phase === 'IDLE') return false;
         const currentGap = Math.hypot(
           vehicle.state.x - other.state.x,
           vehicle.state.y - other.state.y,
@@ -760,6 +1023,10 @@ export class SimEngine {
               severity: 'info',
               ts: this.now,
               vehicleId: v.state.id,
+              jobId: v.job?.id,
+              segmentId: this.graph.segments.find((segment) =>
+                reason.includes(segment.id),
+              )?.id,
               message:
                 v.state.id +
                 (isClosure
@@ -782,6 +1049,10 @@ export class SimEngine {
               severity: 'warn',
               ts: this.now,
               vehicleId: v.state.id,
+              jobId: v.job?.id,
+              segmentId: this.graph.segments.find((segment) =>
+                reason.includes(segment.id),
+              )?.id,
               message: v.state.id + ' · ' + reason + '로 진입 대기',
             });
           }
@@ -801,13 +1072,25 @@ export class SimEngine {
           v.blockedFired = false;
           v.state.blockedBy = null;
           v.waitingFor = null;
+          const destination = this.graph.ports.find(
+            (port) => port.id === job.to,
+          )!;
+          const destinationOccupied = this.carriers.filter(
+            (carrier) => carrier.portId === job.to,
+          ).length;
           if (
             job.phase === 'DELIVERING' &&
-            job.to === this.blockedPortId
+            (job.to === this.blockedPortId ||
+              job.to === this.saturatedPortId ||
+              destinationOccupied >= destination.capacity)
           ) {
             this.setPhase(v, 'WAITING_PORT');
             v.state.status = 'BLOCKED';
             v.state.speed = 0;
+            v.state.blockedBy =
+              job.to === this.blockedPortId
+                ? `${job.to} 포트 장애`
+                : `${job.to} 저장 용량 포화`;
           } else {
             this.setPhase(
               v,
@@ -873,6 +1156,11 @@ export class SimEngine {
             severity: 'warn',
             ts: this.now,
             vehicleId: v.state.id,
+            jobId: job.id,
+            portId: job.to,
+            equipmentId: this.graph.ports.find(
+              (port) => port.id === job.to,
+            )?.equipmentId,
             message:
               job.id + ' ' + job.from + ' → ' + job.to + ' 반송 지연',
           });
@@ -1000,6 +1288,9 @@ export class SimEngine {
           severity: 'critical',
           ts: this.now,
           vehicleId: cycle[0],
+          jobId: this.vehicles.find(
+            (vehicle) => vehicle.state.id === cycle[0],
+          )?.job?.id,
           message: '교착 감지 · ' + cycle.join(' → '),
         });
       const candidates = cycle
@@ -1030,6 +1321,7 @@ export class SimEngine {
           severity: 'info',
           ts: this.now,
           vehicleId: rerouted.state.id,
+          jobId: rerouted.job?.id,
           message: '교착 자동 해소 · ' + rerouted.state.id + ' 우회',
         });
       } else {

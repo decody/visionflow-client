@@ -88,6 +88,18 @@ export class SimulatorClient implements RealtimeSource {
     this.worker.postMessage({ type: 'setRailClosure', enabled });
   }
 
+  setStorageSaturation(enabled: boolean): void {
+    this.worker.postMessage({ type: 'setStorageSaturation', enabled });
+  }
+
+  resetScenario(count: number): void {
+    this.worker.postMessage({ type: 'resetScenario', count });
+  }
+
+  promoteHotLot(jobId?: string): void {
+    this.worker.postMessage({ type: 'promoteHotLot', jobId });
+  }
+
   setOutage(enabled: boolean): void {
     this.outage = enabled;
     // 단절 중엔 수신 메시지를 버려 UI가 정지한다. 복구 시 스냅샷으로 재동기.

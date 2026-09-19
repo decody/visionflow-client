@@ -1,4 +1,4 @@
-import Feature from 'ol/Feature';
+import Feature, { type FeatureLike } from 'ol/Feature';
 import OLMap from 'ol/Map';
 import type MapBrowserEvent from 'ol/MapBrowserEvent';
 import View from 'ol/View';
@@ -11,7 +11,14 @@ import VectorLayer from 'ol/layer/Vector';
 import WebGLPointsLayer from 'ol/layer/WebGLPoints';
 import Static from 'ol/source/ImageStatic';
 import VectorSource from 'ol/source/Vector';
-import { Circle as CircleStyle, Fill, Stroke, Style, Text } from 'ol/style';
+import {
+  Circle as CircleStyle,
+  Fill,
+  RegularShape,
+  Stroke,
+  Style,
+  Text,
+} from 'ol/style';
 import type { BooleanExpression } from 'ol/style/flat';
 
 import {
@@ -30,6 +37,10 @@ import {
 import type { BatchResult } from '@/shared/realtime/simulator-client';
 import { fabBlueprintDataUrl } from './fab-blueprint';
 import { nearestSegment } from './geometry';
+import {
+  deriveJunctionMarkers,
+  headingToShapeRotation,
+} from './operational-markers';
 import {
   summarizeRenderLatency,
   type RenderStats,
@@ -80,6 +91,8 @@ export interface IndoorMap {
   onLod: (cb: (mode: LodMode) => void) => void;
   focusBay: (bayId: string | null) => void;
   focusEquipment: (equipmentId: string) => void;
+  focusVehicle: (vehicleId: string) => void;
+  focusRailSegment: (segmentId: string) => void;
   /** Zone별 밀도 집계 → 폴리곤 재색상. 정체(jam) 구간 수 반환 */
   updateCongestion: () => number;
   fit: () => void;
@@ -192,6 +205,44 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
           }),
   });
 
+  const junctionSource = new VectorSource({
+    features: deriveJunctionMarkers(graph).map((junction) => {
+      const feature = new Feature({ geometry: new Point(junction.at) });
+      feature.set('kind', junction.kind);
+      feature.set('incoming', junction.incoming);
+      feature.set('outgoing', junction.outgoing);
+      return feature;
+    }),
+  });
+  const junctionLayer = new VectorLayer({
+    source: junctionSource,
+    style: (feature, resolution) => {
+      const kind = feature.get('kind') as 'merge' | 'split' | 'cross';
+      const color =
+        kind === 'merge' ? '#ffd166' : kind === 'split' ? '#b776ff' : '#66d9ef';
+      return new Style({
+        image: new RegularShape({
+          points: 4,
+          radius: resolution < 0.095 ? 5 : 3.5,
+          angle: Math.PI / 4,
+          fill: new Fill({ color: 'rgba(8,12,19,.92)' }),
+          stroke: new Stroke({ color, width: 1.5 }),
+        }),
+        text:
+          resolution < 0.07
+            ? new Text({
+                text: kind === 'cross' ? 'XFER' : kind.toUpperCase(),
+                offsetY: 12,
+                font: '700 9px ui-sans-serif',
+                fill: new Fill({ color }),
+                backgroundFill: new Fill({ color: 'rgba(8,12,19,.82)' }),
+                padding: [1, 3, 1, 3],
+              })
+            : undefined,
+      });
+    },
+  });
+
   const equipmentLayer = new VectorLayer({
     source: new VectorSource({
       features: format.readFeatures(geo.equipment, readOpts),
@@ -254,6 +305,22 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
               padding: [2, 4, 2, 4],
             }),
           })
+        : f.get('storageStatus') === 'SATURATED'
+          ? new Style({
+              image: new CircleStyle({
+                radius: 7,
+                fill: new Fill({ color: '#f4795b' }),
+                stroke: new Stroke({ color: '#ffd166', width: 2 }),
+              }),
+              text: new Text({
+                text: `${f.get('portId')} · FULL`,
+                offsetY: 16,
+                font: '700 10px ui-sans-serif',
+                fill: new Fill({ color: '#ffd166' }),
+                backgroundFill: new Fill({ color: 'rgba(8,12,19,.9)' }),
+                padding: [2, 4, 2, 4],
+              }),
+            })
         : f.get('kind') === 'stocker'
         ? new Style({
             image: new CircleStyle({
@@ -319,7 +386,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
   let filterCode = -1;
   let cargoCode = -1;
   let hotOnly = false;
-  const matches = (f: Feature) =>
+  const matches = (f: FeatureLike) =>
     (filterCode === -1 || f.get('statusCode') === filterCode) &&
     (cargoCode === -1 || f.get('loadedCode') === cargoCode) &&
     (!hotOnly || f.get('priority') === 3);
@@ -380,6 +447,50 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     },
   } as unknown as ConstructorParameters<typeof WebGLPointsLayer>[0]);
 
+  // 설비 확대에서는 원형 점 대신 진행 방향과 적재 상태를 읽을 수 있는 OHT 심벌을 사용한다.
+  const vehicleDetailLayer = new VectorLayer({
+    source: vehicleSource,
+    visible: false,
+    declutter: true,
+    style: (feature, resolution) => {
+      if (!matches(feature)) return undefined;
+      const status = feature.get('status') as OhtStatus;
+      const loaded = feature.get('loadedCode') === 1;
+      const hot = feature.get('priority') === 3;
+      const heading = (feature.get('heading') as number) ?? 0;
+      const vehicle = feature.get('vehicle') as VehicleState;
+      const label = loaded
+        ? `${vehicle.id} · ${vehicle.carrierId ?? 'FOUP'}`
+        : vehicle.id;
+      return new Style({
+        image: new RegularShape({
+          points: 3,
+          radius: loaded ? 8 : 7,
+          rotation: headingToShapeRotation(heading),
+          rotateWithView: true,
+          fill: new Fill({ color: STATUS_COLORS[status] }),
+          stroke: new Stroke({
+            color: hot ? '#ff79c6' : loaded ? '#ffffff' : '#0b111c',
+            width: hot ? 2.5 : loaded ? 2 : 1.2,
+          }),
+        }),
+        text:
+          resolution < 0.055
+            ? new Text({
+                text: label,
+                offsetY: 14,
+                font: hot
+                  ? '700 10px ui-sans-serif'
+                  : '600 9px ui-sans-serif',
+                fill: new Fill({ color: hot ? '#ff9bd4' : '#d7e1ee' }),
+                backgroundFill: new Fill({ color: 'rgba(8,12,19,.84)' }),
+                padding: [2, 3, 2, 3],
+              })
+            : undefined,
+      });
+    },
+  });
+
   const heatmapLayer = new Heatmap({
     source: vehicleSource,
     blur: 14,
@@ -431,9 +542,11 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       zoneLayer,
       equipmentLayer,
       railLayer,
+      junctionLayer,
       portLayer,
       heatmapLayer,
       webglLayer,
+      vehicleDetailLayer,
       overlayLayer,
     ],
     view,
@@ -465,8 +578,10 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     if (next === lod) return;
     lod = next;
     heatmapLayer.setVisible(next === 'overview');
-    webglLayer.setVisible(next !== 'overview');
+    webglLayer.setVisible(next === 'bay');
+    vehicleDetailLayer.setVisible(next === 'equipment');
     overlayLayer.setVisible(next !== 'overview');
+    junctionLayer.setVisible(next !== 'overview');
     portLayer.setVisible(next !== 'overview');
     equipmentLayer.setOpacity(next === 'overview' ? 0.55 : 1);
     for (const cb of lodListeners) cb(next);
@@ -629,13 +744,22 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
           true,
         );
       for (const feature of portLayer.getSource()!.getFeatures())
-        feature.set(
-          'operatingStatus',
-          incident?.portId === feature.get('portId')
-            ? 'DOWN'
-            : 'AVAILABLE',
-          true,
-        );
+        {
+          feature.set(
+            'operatingStatus',
+            incident?.portId === feature.get('portId')
+              ? 'DOWN'
+              : 'AVAILABLE',
+            true,
+          );
+          feature.set(
+            'storageStatus',
+            batch.operations.saturation?.portId === feature.get('portId')
+              ? 'SATURATED'
+              : 'AVAILABLE',
+            true,
+          );
+        }
       const closedIds = new Set(batch.operations.closure?.segmentIds ?? []);
       for (const feature of railLayer.getSource()!.getFeatures())
         feature.set('closed', closedIds.has(feature.get('railId')), true);
@@ -841,6 +965,33 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     });
   };
 
+  const focusVehicle = (vehicleId: string) => {
+    const feature = featureById.get(vehicleId);
+    if (!feature) return;
+    setSelected(vehicleId);
+    view.animate({
+      center: feature.getGeometry()!.getCoordinates(),
+      resolution: Math.min(view.getResolution() ?? 0.08, 0.08),
+      duration: 350,
+    });
+  };
+
+  const focusRailSegment = (segmentId: string) => {
+    const segment = graph.segments.find((item) => item.id === segmentId);
+    const size = map.getSize();
+    if (!segment || !size) return;
+    const pad = 2;
+    view.fit(
+      [
+        Math.min(segment.a[0], segment.b[0]) - pad,
+        Math.min(segment.a[1], segment.b[1]) - pad,
+        Math.max(segment.a[0], segment.b[0]) + pad,
+        Math.max(segment.a[1], segment.b[1]) + pad,
+      ],
+      { size, padding: [150, 150, 150, 150], duration: 350, maxZoom: 11 },
+    );
+  };
+
   const dispose = () => {
     map.un('click', onClick);
     map.un('postrender', onRenderComplete);
@@ -877,6 +1028,8 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     onLod: (cb) => lodListeners.push(cb),
     focusBay,
     focusEquipment,
+    focusVehicle,
+    focusRailSegment,
     updateCongestion,
     fit,
     dispose,

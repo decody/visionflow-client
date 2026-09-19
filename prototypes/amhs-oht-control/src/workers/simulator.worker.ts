@@ -64,6 +64,21 @@ self.onmessage = (ev: MessageEvent) => {
       engine.setRailClosure(cmd.enabled === true);
       post(engine.snapshot());
       break;
+    case 'setStorageSaturation':
+      engine.setStorageSaturation(cmd.enabled === true);
+      post(engine.snapshot());
+      break;
+    case 'resetScenario':
+      if (typeof cmd.count === 'number') {
+        count = Math.min(5000, Math.max(1, Math.floor(cmd.count)));
+        engine.resetScenario(count);
+        post(engine.snapshot());
+      }
+      break;
+    case 'promoteHotLot':
+      engine.promoteHotLot(cmd.jobId);
+      post(engine.snapshot());
+      break;
     case 'start':
       if (typeof cmd.count === 'number') count = cmd.count;
       if (typeof cmd.rateHz === 'number') rateHz = cmd.rateHz;

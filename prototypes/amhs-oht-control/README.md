@@ -2,6 +2,8 @@
 
 반도체 FAB의 OHT·FOUP·Rail을 **실내 좌표계** 위에서 실시간 관제하는 VisionFlow 포트폴리오 프로토타입. 실제 FAB 데이터가 아닌 합성 시뮬레이션이다.
 
+지도는 전체 FAB heatmap, Bay WebGL 차량, 설비 상세의 세 단계 LOD를 사용한다. 설비 확대에서는 heading 기반 방향 삼각형, 적재·Hot lot 외곽선, OHT·FOUP 라벨을 표시하고 rail 합류·분기·transfer 교차점을 별도 운영 마커로 표시한다.
+
 - 세부 설계: [`docs/smart_factory_amhs_oht_prototype_plan_ko.md`](../../../docs/smart_factory_amhs_oht_prototype_plan_ko.md)
 - 상위 기획서: `docs/frontend_portfolio_planning_ko.docx` (10종 중 #02)
 - 스택: Next.js 16 · React 19 · TypeScript · Zustand · OpenLayers(WebGL/Heatmap) · GeoJSON · Web Worker

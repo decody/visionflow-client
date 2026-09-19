@@ -38,6 +38,10 @@ export interface RealtimeSource {
   setDispatch(rule: DispatchRule): void;
   setPortIncident(enabled: boolean): void;
   setRailClosure(enabled: boolean): void;
+  setStorageSaturation(enabled: boolean): void;
+  /** 고정 seed와 지정 대수로 운영 데모 초기 상태를 재생성 */
+  resetScenario(count: number): void;
+  promoteHotLot(jobId?: string): void;
   /** 통신 단절 시뮬레이션: 수신 메시지를 버리고, 해제 시 스냅샷으로 재동기 */
   setOutage(enabled: boolean): void;
   requestSnapshot(): void;

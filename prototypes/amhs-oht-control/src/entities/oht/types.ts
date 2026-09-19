@@ -61,6 +61,14 @@ export interface PortIncident {
   affectedJobIds: string[];
   queueVehicleIds: string[];
 }
+export interface StorageSaturation {
+  active: boolean;
+  portId: string;
+  equipmentId?: string;
+  kind: 'buffer' | 'stocker';
+  startedTs: number;
+  queueVehicleIds: string[];
+}
 export interface OperationsState {
   rule: DispatchRule;
   jobs: JobView[];
@@ -69,6 +77,8 @@ export interface OperationsState {
   completed: number;
   averageTransportSec: number;
   incident?: PortIncident;
+  /** 운영 시나리오로 포화시킨 stocker 또는 staging buffer */
+  saturation?: StorageSaturation;
   /** 운영자가 폐쇄한 rail 구간 */
   closure?: {
     active: boolean;
@@ -82,6 +92,8 @@ export interface OperationsState {
     reroutedVehicles: number;
     activeDeadlocks: number;
     resolvedDeadlocks: number;
+    admittedJobs: number;
+    backpressuredJobs: number;
   };
 }
 
@@ -122,7 +134,12 @@ export interface VehicleState {
   rerouteCount?: number;
 }
 
-export type AlarmKind = 'JAM' | 'DELAY' | 'EQP_DOWN' | 'BLOCKED';
+export type AlarmKind =
+  | 'JAM'
+  | 'DELAY'
+  | 'EQP_DOWN'
+  | 'BLOCKED'
+  | 'HOT_LOT';
 export type AlarmSeverity = 'info' | 'warn' | 'critical';
 
 export interface Alarm {
@@ -132,6 +149,10 @@ export interface Alarm {
   ts: number;
   vehicleId?: string;
   zoneId?: string;
+  jobId?: string;
+  portId?: string;
+  equipmentId?: string;
+  segmentId?: string;
   message: string;
   state?: 'ACTIVE' | 'ACKNOWLEDGED' | 'RECOVERED';
   acknowledgedTs?: number;
@@ -175,11 +196,15 @@ export interface ClientCommand {
     | 'setRate'
     | 'setDispatch'
     | 'setPortIncident'
-    | 'setRailClosure';
+    | 'setRailClosure'
+    | 'setStorageSaturation'
+    | 'resetScenario'
+    | 'promoteHotLot';
   rule?: DispatchRule;
   count?: number;
   rateHz?: number;
   enabled?: boolean;
+  jobId?: string;
 }
 
 export const STATUS_COLORS: Record<OhtStatus, string> = {
