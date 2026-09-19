@@ -1,0 +1,38 @@
+{
+  "$comment": "FAB 정적 레이아웃 스펙(단위: m). buildRailGraph가 이 파일을 해석해 Rail/Bay/Equipment/Port 골격을 생성한다. 좌표·용량·로드포트 수를 여기서 편집하면 Worker/노드/렌더러가 동일한 그래프를 만든다.",
+  "extent": [0, 0, 120, 80],
+  "highway": { "left": 8, "right": 112, "bottom": 8, "top": 72 },
+  "spineX": 60,
+  "bayEntryX": 14,
+  "toolXs": [22, 36, 50, 70, 84, 98],
+  "bufferCapacity": 2,
+  "loadPorts": {
+    "process": 2,
+    "metrology": 1,
+    "spacing": 1.7
+  },
+  "bays": [
+    { "id": "BAY-PHOTO", "name": "PHOTO LITHOGRAPHY", "process": "PHOTO", "y": 22 },
+    { "id": "BAY-ETCH", "name": "DRY ETCH", "process": "ETCH", "y": 36 },
+    { "id": "BAY-CVD", "name": "THIN FILM · CVD", "process": "CVD", "y": 50 },
+    { "id": "BAY-CMP", "name": "CMP · CLEAN", "process": "CMP", "y": 64 }
+  ],
+  "stockers": [
+    {
+      "id": "STK-01",
+      "name": "RETICLE / FOUP STOCKER 01",
+      "at": [60, 8],
+      "capacity": 24,
+      "bayId": "STORAGE-S",
+      "zoneName": "SOUTH STOCKER"
+    },
+    {
+      "id": "STK-02",
+      "name": "FOUP STOCKER 02",
+      "at": [60, 72],
+      "capacity": 24,
+      "bayId": "STORAGE-N",
+      "zoneName": "NORTH STOCKER"
+    }
+  ]
+}

@@ -86,9 +86,11 @@ export function fabBlueprintDataUrl(): string {
   }
 
   // Tool 로드포트(작은 사각) / Stocker 포트(큰 마름모)
+  // 복수 로드포트는 rail 노드를 공유하므로 마커는 renderAt(좌우 오프셋)으로 그린다.
   const portsSvg: string[] = g.ports.map((p) => {
-    const x = sx(p.at[0]);
-    const y = toY(p.at[1]);
+    const at = p.renderAt ?? p.at;
+    const x = sx(at[0]);
+    const y = toY(at[1]);
     if (p.kind === 'stocker') {
       return `<rect x="${x - 5}" y="${y - 5}" width="10" height="10" transform="rotate(45 ${x} ${y})" fill="#16233c" stroke="#4da3ff" stroke-width="1"/>`;
     }
@@ -123,7 +125,7 @@ export function fabBlueprintDataUrl(): string {
     <g>${portsSvg.join('')}</g>
     <g>${labels.join('')}</g>
     <text x="${px - 14}" y="${py - 16}" class="title">FAB 01 · CLEANROOM AMHS OVERVIEW</text>
-    <text x="${px - 14}" y="${py - 34}" class="dim">4 PROCESS BAYS · ${g.equipment.length} EQP · ${g.ports.length} PORTS · 2 STOCKERS</text>
+    <text x="${px - 14}" y="${py - 34}" class="dim">${g.zones.filter((z) => z.type === 'intrabay').length} PROCESS BAYS · ${g.equipment.length} EQP · ${g.ports.length} PORTS · ${g.equipment.filter((e) => e.kind === 'stocker').length} STOCKERS</text>
   </svg>`;
 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;

@@ -69,6 +69,48 @@ test('연결성: 모든 툴이 첫 포트에서 도달 가능', () => {
   }
 });
 
+test('복수 로드포트: 공정 툴은 다중 LP, 계측 툴은 단일 LP', () => {
+  const g = buildRailGraph();
+  const process = g.equipment.filter((e) => e.kind === 'process');
+  const metrology = g.equipment.filter((e) => e.kind === 'metrology');
+  assert.ok(process.length > 0 && metrology.length > 0);
+  assert.ok(
+    process.every((e) => e.portIds.length >= 2),
+    '공정 툴은 로드포트가 2개 이상',
+  );
+  assert.ok(
+    metrology.every((e) => e.portIds.length === 1),
+    '계측 툴은 로드포트가 1개',
+  );
+  // 로드포트 id는 -LP{n} 규약을 따르고 각 포트는 용량 1이다.
+  for (const e of process) {
+    for (let i = 0; i < e.portIds.length; i += 1)
+      assert.equal(e.portIds[i], `${e.id}-LP${i + 1}`);
+    const eqpPorts = g.ports.filter((p) => p.equipmentId === e.id);
+    assert.ok(eqpPorts.every((p) => p.capacity === 1));
+  }
+});
+
+test('복수 로드포트: 같은 툴의 LP는 rail 노드를 공유하고 마커만 오프셋', () => {
+  const g = buildRailGraph();
+  const tool = g.equipment.find((e) => e.kind === 'process')!;
+  const lps = g.ports.filter((p) => p.equipmentId === tool.id);
+  assert.ok(lps.length >= 2);
+  // 경로탐색 노드(at)는 동일해야 라우팅이 성립한다.
+  const nodes = new Set(lps.map((p) => nodeKeyOf(p.at)));
+  assert.equal(nodes.size, 1, 'LP들은 동일 rail 노드를 공유');
+  // 이 노드는 그래프의 실제 노드(나가는 간선 존재)여야 한다.
+  assert.ok((g.adjacency.get([...nodes][0]!) ?? []).length > 0);
+  // 마커(renderAt)는 서로 달라 겹치지 않는다.
+  const marks = new Set(lps.map((p) => (p.renderAt ?? p.at).join(',')));
+  assert.equal(marks.size, lps.length, '마커는 서로 다른 위치');
+});
+
+test('layout: extent가 fab-layout.json과 일치', () => {
+  const g = buildRailGraph();
+  assert.deepEqual(g.extent, [0, 0, 120, 80]);
+});
+
 test('railGraphToGeoJSON: 피처 수가 소스와 일치', () => {
   const g = buildRailGraph();
   const geo = railGraphToGeoJSON(g);

@@ -1,4 +1,5 @@
 import { FAB_EXTENT } from '@/shared/map/fab-constants';
+import fabLayout from './fab-layout.json';
 
 /**
  * FAB 정적 골격(단방향 Rail / Process Bay / Equipment / Port) 생성기.
@@ -7,13 +8,39 @@ import { FAB_EXTENT } from '@/shared/map/fab-constants';
  *  - Interbay 하이웨이: 외곽 단방향 루프(시계방향). 간선.
  *  - Intrabay 코리도: 각 Bay를 가로지르는 단방향(L→R) 지선. 툴 로드포트가 매달림.
  *  - Stocker(STK): 하이웨이에 접한 대용량 보관 노드.
- *  - Tool 로드포트(LP): Bay 코리도 위의 정차 노드(용량 1).
+ *  - Tool 로드포트(LP): Bay 코리도 위의 정차 노드. 공정 툴은 복수 로드포트를 가진다.
  *
- * 모든 세그먼트는 단방향(a→b)이며, 경로탐색은 방향을 준수한다.
- * 결정론적으로 생성되어 Worker/노드/렌더러가 동일 그래프를 만든다. 단위: m.
+ * 레이아웃(좌표·용량·로드포트 수)은 `fab-layout.json`에서 읽는다. 모든 세그먼트는
+ * 단방향(a→b)이며, 경로탐색은 방향을 준수한다. 결정론적으로 생성되어 Worker/노드/
+ * 렌더러가 동일 그래프를 만든다. 단위: m.
  */
 
 export type XY = [number, number];
+
+/** fab-layout.json 스키마 */
+export interface FabLayout {
+  extent: [number, number, number, number];
+  highway: { left: number; right: number; bottom: number; top: number };
+  spineX: number;
+  bayEntryX: number;
+  toolXs: number[];
+  bufferCapacity: number;
+  loadPorts: { process: number; metrology: number; spacing: number };
+  bays: {
+    id: string;
+    name: string;
+    process: Zone['process'];
+    y: number;
+  }[];
+  stockers: {
+    id: string;
+    name: string;
+    at: XY;
+    capacity: number;
+    bayId: string;
+    zoneName: string;
+  }[];
+}
 
 export type SegKind = 'interbay' | 'intrabay' | 'transfer';
 
@@ -38,10 +65,13 @@ export interface Zone {
 export interface Port {
   id: string;
   kind: 'tool' | 'stocker' | 'buffer';
+  /** 경로 탐색용 rail 정차 노드. 같은 툴의 복수 로드포트는 이 노드를 공유한다. */
   at: XY;
+  /** 마커 표시 좌표(복수 로드포트를 겹치지 않게 오프셋). 없으면 at을 쓴다. */
+  renderAt?: XY;
   bayId?: string;
   equipmentId?: string;
-  /** 보관/전송 용량 (tool=1, stocker=N) */
+  /** 보관/전송 용량 (tool 로드포트=1, buffer=N, stocker=N) */
   capacity: number;
 }
 
@@ -69,20 +99,17 @@ export interface RailGraph {
   portByNode: Map<string, Port>;
 }
 
-// ---- 토폴로지 파라미터 ----
-const LEFT_X = 8;
-const RIGHT_X = 112;
-const BOTTOM_Y = 8;
-const TOP_Y = 72;
-const BAY_SPECS = [
-  { id: 'BAY-PHOTO', name: 'PHOTO LITHOGRAPHY', process: 'PHOTO' as const, y: 22 },
-  { id: 'BAY-ETCH', name: 'DRY ETCH', process: 'ETCH' as const, y: 36 },
-  { id: 'BAY-CVD', name: 'THIN FILM · CVD', process: 'CVD' as const, y: 50 },
-  { id: 'BAY-CMP', name: 'CMP · CLEAN', process: 'CMP' as const, y: 64 },
-];
-const TOOL_XS = [22, 36, 50, 70, 84, 98];
-const STK_BOTTOM: XY = [60, BOTTOM_Y];
-const STK_TOP: XY = [60, TOP_Y];
+// ---- 토폴로지 파라미터 (fab-layout.json) ----
+// JSON 리터럴은 number[]/string으로 추론되므로 스펙 타입으로 단언한다.
+const LAYOUT = fabLayout as unknown as FabLayout;
+const LEFT_X = LAYOUT.highway.left;
+const RIGHT_X = LAYOUT.highway.right;
+const BOTTOM_Y = LAYOUT.highway.bottom;
+const TOP_Y = LAYOUT.highway.top;
+const SPINE_X = LAYOUT.spineX;
+const BAY_ENTRY_X = LAYOUT.bayEntryX;
+const BAY_SPECS = LAYOUT.bays;
+const TOOL_XS = LAYOUT.toolXs;
 
 function nodeKey(p: XY): string {
   return `${Math.round(p[0] * 100)}:${Math.round(p[1] * 100)}`;
@@ -113,15 +140,15 @@ export function buildRailGraph(): RailGraph {
   const leftYs = [TOP_Y, ...[...bayYs].reverse(), BOTTOM_Y];
   chain('HW-L', leftYs.map((y) => [LEFT_X, y] as XY), 'interbay');
   // 하변: 좌→우 (중앙 STK-1 경유)
-  chain('HW-B', [[LEFT_X, BOTTOM_Y], STK_BOTTOM, [RIGHT_X, BOTTOM_Y]], 'interbay');
+  chain('HW-B', [[LEFT_X, BOTTOM_Y], [SPINE_X, BOTTOM_Y], [RIGHT_X, BOTTOM_Y]], 'interbay');
   // 우변: 아래→위 (Bay Y에서 합류 노드)
   const rightYs = [BOTTOM_Y, ...bayYs, TOP_Y];
   chain('HW-R', rightYs.map((y) => [RIGHT_X, y] as XY), 'interbay');
   // 상변: 우→좌 (중앙 STK-2 경유)
-  chain('HW-T', [[RIGHT_X, TOP_Y], STK_TOP, [LEFT_X, TOP_Y]], 'interbay');
+  chain('HW-T', [[RIGHT_X, TOP_Y], [SPINE_X, TOP_Y], [LEFT_X, TOP_Y]], 'interbay');
 
   // 중앙 transfer spine은 공정 Bay 사이의 shortcut. 하→상 단방향.
-  chain('XFER', [[60, BOTTOM_Y], ...bayYs.map((y) => [60, y] as XY), [60, TOP_Y]], 'transfer');
+  chain('XFER', [[SPINE_X, BOTTOM_Y], ...bayYs.map((y) => [SPINE_X, y] as XY), [SPINE_X, TOP_Y]], 'transfer');
 
   // Intrabay 코리도 + 공정 장비. 장비는 rail 양쪽에 배치하고 포트는 rail 위에 둔다.
   BAY_SPECS.forEach(({ id: bayId, name, process, y }, bi) => {
@@ -129,10 +156,10 @@ export function buildRailGraph(): RailGraph {
     // 그래프 탐색에서 연결되도록 한다.
     const xs = [
       LEFT_X,
-      14,
-      ...TOOL_XS.filter((x) => x < 60),
-      60,
-      ...TOOL_XS.filter((x) => x > 60),
+      BAY_ENTRY_X,
+      ...TOOL_XS.filter((x) => x < SPINE_X),
+      SPINE_X,
+      ...TOOL_XS.filter((x) => x > SPINE_X),
       RIGHT_X,
     ];
     chain(bayId, xs.map((x) => [x, y] as XY), 'intrabay');
@@ -154,55 +181,77 @@ export function buildRailGraph(): RailGraph {
 
     TOOL_XS.forEach((x, ti) => {
       const equipmentId = `${process}-${String(ti + 1).padStart(2, '0')}`;
-      const portId = `${equipmentId}-LP1`;
+      const isMetrology = ti === TOOL_XS.length - 1;
+      // 공정 툴은 복수 로드포트(예: 2). 계측 툴은 1. 모두 툴 rail 노드[x,y]를
+      // 공유(경로탐색 대상)하되 마커는 renderAt으로 겹치지 않게 좌우로 벌린다.
+      const lpCount = Math.max(
+        1,
+        isMetrology ? LAYOUT.loadPorts.metrology : LAYOUT.loadPorts.process,
+      );
+      const spacing = LAYOUT.loadPorts.spacing;
+      const portIds: string[] = [];
+      for (let lp = 0; lp < lpCount; lp += 1) {
+        const portId = `${equipmentId}-LP${lp + 1}`;
+        portIds.push(portId);
+        const offset = (lp - (lpCount - 1) / 2) * spacing;
+        ports.push({
+          id: portId,
+          kind: 'tool',
+          at: [x, y],
+          renderAt: [x + offset, y],
+          bayId,
+          equipmentId,
+          capacity: 1,
+        });
+      }
       const above = ti % 2 === 0;
-      const bounds: Equipment['bounds'] = [x - 5, above ? y + 1.4 : y - 5.8, x + 5, above ? y + 5.8 : y - 1.4];
-      ports.push({ id: portId, kind: 'tool', at: [x, y], bayId, equipmentId, capacity: 1 });
+      const halfW = Math.max(5, (lpCount * spacing) / 2 + 1.5);
+      const bounds: Equipment['bounds'] = [
+        x - halfW,
+        above ? y + 1.4 : y - 5.8,
+        x + halfW,
+        above ? y + 5.8 : y - 1.4,
+      ];
       equipment.push({ id: equipmentId, name: `${process} TOOL ${ti + 1}`, process, bayId,
-        kind: ti === TOOL_XS.length - 1 ? 'metrology' : 'process', status: 'RUN', bounds, portIds: [portId] });
+        kind: isMetrology ? 'metrology' : 'process', status: 'RUN', bounds, portIds });
     });
 
-    // Bay 입구 staging buffer: 두 FOUP를 임시 보관.
+    // Bay 입구 staging buffer: 여러 FOUP를 임시 보관.
     const bufferId = `BUF-${bi + 1}`;
-    ports.push({ id: `${bufferId}-P1`, kind: 'buffer', at: [14, y], bayId, equipmentId: bufferId, capacity: 2 });
+    ports.push({ id: `${bufferId}-P1`, kind: 'buffer', at: [BAY_ENTRY_X, y], bayId, equipmentId: bufferId, capacity: LAYOUT.bufferCapacity });
     equipment.push({ id: bufferId, name: `${process} STAGING`, process, bayId, kind: 'buffer', status: 'RUN',
-      bounds: [10.5, y + 1.2, 17.5, y + 4.8], portIds: [`${bufferId}-P1`] });
+      bounds: [BAY_ENTRY_X - 3.5, y + 1.2, BAY_ENTRY_X + 3.5, y + 4.8], portIds: [`${bufferId}-P1`] });
   });
 
-  // Stocker (하이웨이 접점) + 존 박스
-  ports.push({ id: 'STK-01-P1', kind: 'stocker', at: STK_BOTTOM, equipmentId: 'STK-01', capacity: 24 });
-  ports.push({ id: 'STK-02-P1', kind: 'stocker', at: STK_TOP, equipmentId: 'STK-02', capacity: 24 });
-  equipment.push(
-    { id: 'STK-01', name: 'RETICLE / FOUP STOCKER 01', process: 'STORAGE', bayId: 'STORAGE-S', kind: 'stocker', status: 'RUN', bounds: [53, 1, 67, 6.5], portIds: ['STK-01-P1'] },
-    { id: 'STK-02', name: 'FOUP STOCKER 02', process: 'STORAGE', bayId: 'STORAGE-N', kind: 'stocker', status: 'RUN', bounds: [53, 73.5, 67, 79], portIds: ['STK-02-P1'] },
-  );
-  zones.push({
-    id: 'Z-STK-1',
-    type: 'stocker',
-    name: 'SOUTH STOCKER',
-    process: 'STORAGE',
-    status: 'normal',
-    ring: [
-      [STK_BOTTOM[0] - 6, STK_BOTTOM[1] - 4],
-      [STK_BOTTOM[0] + 6, STK_BOTTOM[1] - 4],
-      [STK_BOTTOM[0] + 6, STK_BOTTOM[1] + 4],
-      [STK_BOTTOM[0] - 6, STK_BOTTOM[1] + 4],
-      [STK_BOTTOM[0] - 6, STK_BOTTOM[1] - 4],
-    ],
-  });
-  zones.push({
-    id: 'Z-STK-2',
-    type: 'stocker',
-    name: 'NORTH STOCKER',
-    process: 'STORAGE',
-    status: 'normal',
-    ring: [
-      [STK_TOP[0] - 6, STK_TOP[1] - 4],
-      [STK_TOP[0] + 6, STK_TOP[1] - 4],
-      [STK_TOP[0] + 6, STK_TOP[1] + 4],
-      [STK_TOP[0] - 6, STK_TOP[1] + 4],
-      [STK_TOP[0] - 6, STK_TOP[1] - 4],
-    ],
+  // Stocker (하이웨이 접점) + 존 박스 — 레이아웃 스펙에서 생성
+  LAYOUT.stockers.forEach((stk, si) => {
+    const [sxm, sym] = stk.at;
+    ports.push({ id: `${stk.id}-P1`, kind: 'stocker', at: stk.at as XY, equipmentId: stk.id, capacity: stk.capacity });
+    const below = sym < (BOTTOM_Y + TOP_Y) / 2;
+    equipment.push({
+      id: stk.id,
+      name: stk.name,
+      process: 'STORAGE',
+      bayId: stk.bayId,
+      kind: 'stocker',
+      status: 'RUN',
+      bounds: below ? [sxm - 7, 1, sxm + 7, 6.5] : [sxm - 7, 73.5, sxm + 7, 79],
+      portIds: [`${stk.id}-P1`],
+    });
+    zones.push({
+      id: `Z-STK-${si + 1}`,
+      type: 'stocker',
+      name: stk.zoneName,
+      process: 'STORAGE',
+      status: 'normal',
+      ring: [
+        [sxm - 6, sym - 4],
+        [sxm + 6, sym - 4],
+        [sxm + 6, sym + 4],
+        [sxm - 6, sym + 4],
+        [sxm - 6, sym - 4],
+      ],
+    });
   });
 
   // 방향성 인접 리스트 (나가는 간선) + 포트 노드 인덱스
@@ -283,7 +332,8 @@ export function railGraphToGeoJSON(graph: RailGraph) {
       type: 'FeatureCollection' as const,
       features: graph.ports.map((p) => ({
         type: 'Feature' as const,
-        geometry: { type: 'Point' as const, coordinates: p.at },
+        // 마커는 renderAt(복수 로드포트 오프셋)으로 표시. 경로탐색은 at을 직접 쓴다.
+        geometry: { type: 'Point' as const, coordinates: p.renderAt ?? p.at },
         properties: { portId: p.id, kind: p.kind, bayId: p.bayId ?? null, equipmentId: p.equipmentId ?? null, capacity: p.capacity },
       })),
     },

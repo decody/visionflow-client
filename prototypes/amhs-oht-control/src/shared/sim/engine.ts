@@ -536,10 +536,17 @@ export class SimEngine {
         this.saturationCarrierIds.has(carrier.id)
       )
         continue;
+      // 같은 설비(복수 로드포트 포함) 안에서의 반송은 제외 — LP1→LP2 같은
+      // 무의미한 동일 노드 이동을 막는다.
+      const sourceEquipmentId = this.graph.ports.find(
+        (p) => p.id === carrier.portId,
+      )?.equipmentId;
       const destinations = this.graph.ports.filter(
         (p) =>
           p.id !== carrier.portId &&
           p.id !== this.saturatedPortId &&
+          (p.equipmentId === undefined ||
+            p.equipmentId !== sourceEquipmentId) &&
           (occupied.get(p.id) ?? 0) < p.capacity,
       );
       if (!destinations.length) continue;
