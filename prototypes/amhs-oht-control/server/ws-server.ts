@@ -10,7 +10,7 @@
  */
 import { WebSocketServer, type WebSocket } from 'ws';
 
-import type { DispatchRule } from '@/entities/oht/types';
+import type { Actor, ClientCommand, DispatchRule } from '@/entities/oht/types';
 import { SimEngine } from '@/shared/sim/engine';
 import { encodeWireMessage } from '@/shared/realtime/wire-codec';
 
@@ -21,6 +21,7 @@ let count = 1000;
 let rateHz = 10;
 let running = false;
 let timer: ReturnType<typeof setInterval> | null = null;
+let clientSeq = 0;
 
 const wss = new WebSocketServer({ port: PORT });
 const clients = new Set<WebSocket>();
@@ -54,6 +55,8 @@ function start(): void {
 
 wss.on('connection', (ws: WebSocket) => {
   clients.add(ws);
+  // 연결(세션)마다 주체를 부여한다. 실제 시스템에서는 인증 토큰에서 역할을 도출한다.
+  const actor: Actor = { id: `OP-${++clientSeq}`, role: 'supervisor' };
   // 신규 클라이언트에는 즉시 스냅샷 (초기 동기화)
   engine.ensureSpawned(count);
   ws.send(wire(engine.snapshot()));
@@ -73,53 +76,29 @@ wss.on('connection', (ws: WebSocket) => {
       return;
     }
     if (!cmd || typeof cmd !== 'object') return;
+    // 프로토콜 전용(감사 비대상) 명령
+    if (cmd.type === 'ping') {
+      ws.send(JSON.stringify({ type: 'pong' }));
+      return;
+    }
+    if (cmd.type === 'snapshot') {
+      ws.send(wire(engine.snapshot()));
+      return;
+    }
+    // 연동 경계: 인증 + 감사. 엔진 도메인 명령은 여기서 실행된다.
+    const result = engine.applyCommand(cmd as ClientCommand, actor);
+    if (!result.accepted) {
+      ws.send(wire(engine.snapshot())); // 거부도 감사 로그에 남으므로 요청자에 반영
+      return;
+    }
     switch (cmd.type) {
-      case 'setDispatch':
-        if (
-          cmd.rule === 'nearest' ||
-          cmd.rule === 'oldest' ||
-          cmd.rule === 'priority'
-        ) {
-          engine.setDispatch(cmd.rule);
-          broadcast(wire(engine.snapshot()));
-        }
-        break;
-      case 'setPortIncident':
-        engine.setPortIncident(cmd.enabled === true);
-        broadcast(wire(engine.snapshot()));
-        break;
-      case 'setRailClosure':
-        engine.setRailClosure(cmd.enabled === true);
-        broadcast(wire(engine.snapshot()));
-        break;
-      case 'setStorageSaturation':
-        engine.setStorageSaturation(cmd.enabled === true);
-        broadcast(wire(engine.snapshot()));
-        break;
-      case 'resetScenario':
-        if (
-          typeof cmd.count === 'number' &&
-          Number.isFinite(cmd.count)
-        ) {
-          count = Math.min(5000, Math.max(1, Math.floor(cmd.count)));
-          engine.resetScenario(count);
-          broadcast(wire(engine.snapshot()));
-        }
-        break;
-      case 'promoteHotLot':
-        engine.promoteHotLot(cmd.jobId);
-        broadcast(wire(engine.snapshot()));
-        break;
       case 'start':
         if (
           typeof cmd.count === 'number' &&
           Number.isFinite(cmd.count)
         ) {
           count = Math.min(5000, Math.max(1, Math.floor(cmd.count)));
-          if (engine.vehicleCount() !== count) {
-            engine.spawn(count);
-            broadcast(wire(engine.snapshot()));
-          }
+          if (engine.vehicleCount() !== count) engine.spawn(count);
         }
         if (
           typeof cmd.rateHz === 'number' &&
@@ -127,12 +106,11 @@ wss.on('connection', (ws: WebSocket) => {
         )
           rateHz = Math.min(60, Math.max(1, cmd.rateHz));
         if (!running) start();
+        broadcast(wire(engine.snapshot()));
         break;
       case 'stop':
         running = false;
-        break;
-      case 'snapshot':
-        ws.send(wire(engine.snapshot()));
+        broadcast(wire(engine.snapshot()));
         break;
       case 'setCount':
         if (
@@ -141,8 +119,8 @@ wss.on('connection', (ws: WebSocket) => {
         ) {
           count = Math.min(5000, Math.max(1, Math.floor(cmd.count)));
           engine.spawn(count);
-          broadcast(wire(engine.snapshot()));
         }
+        broadcast(wire(engine.snapshot()));
         break;
       case 'setRate':
         if (
@@ -152,11 +130,20 @@ wss.on('connection', (ws: WebSocket) => {
           rateHz = Math.min(60, Math.max(1, cmd.rateHz));
           if (running) schedule();
         }
+        broadcast(wire(engine.snapshot()));
         break;
-      case 'ping':
-        ws.send(JSON.stringify({ type: 'pong' }));
+      case 'resetScenario':
+        // 엔진 리셋은 applyCommand에서 수행됨 — 로컬 count 동기화 후 방출.
+        if (
+          typeof cmd.count === 'number' &&
+          Number.isFinite(cmd.count)
+        )
+          count = Math.min(5000, Math.max(1, Math.floor(cmd.count)));
+        broadcast(wire(engine.snapshot()));
         break;
       default:
+        // setDispatch/incident/closure/saturation/promoteHotLot: applyCommand가 실행
+        broadcast(wire(engine.snapshot()));
         break;
     }
   });

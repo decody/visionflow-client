@@ -97,6 +97,8 @@ export interface OperationsState {
     chargingVehicles: number;
     lowBatteryVehicles: number;
   };
+  /** 운영 명령 감사 로그(최근 항목). 연동 경계에서 기록. */
+  audit?: AuditEntry[];
 }
 
 /** 반송 Job: From→To 설비와 계획 경로(폴리라인) */
@@ -192,24 +194,59 @@ export interface DeltaMessage {
 
 export type ServerMessage = SnapshotMessage | DeltaMessage;
 
+export type CommandType =
+  | 'start'
+  | 'stop'
+  | 'snapshot'
+  | 'setCount'
+  | 'setRate'
+  | 'setDispatch'
+  | 'setPortIncident'
+  | 'setRailClosure'
+  | 'setStorageSaturation'
+  | 'resetScenario'
+  | 'promoteHotLot';
+
 export interface ClientCommand {
-  type:
-    | 'start'
-    | 'stop'
-    | 'snapshot'
-    | 'setCount'
-    | 'setRate'
-    | 'setDispatch'
-    | 'setPortIncident'
-    | 'setRailClosure'
-    | 'setStorageSaturation'
-    | 'resetScenario'
-    | 'promoteHotLot';
+  type: CommandType;
   rule?: DispatchRule;
   count?: number;
   rateHz?: number;
   enabled?: boolean;
   jobId?: string;
+}
+
+// ---- 연동 경계: 인증 + 감사 (integration boundary) ----
+
+/** 명령 실행 권한 등급. viewer=읽기전용 … system=내부. */
+export type Role = 'viewer' | 'operator' | 'supervisor' | 'system';
+
+/** 명령을 낸 주체. 실제 시스템에서는 인증 토큰에서 도출한다. */
+export interface Actor {
+  id: string;
+  role: Role;
+}
+
+export type CommandOutcome = 'accepted' | 'rejected';
+
+/** 게이트웨이가 명령을 인증한 결과. */
+export interface CommandResult {
+  accepted: boolean;
+  code: 'OK' | 'FORBIDDEN' | 'BAD_REQUEST';
+  reason?: string;
+  auditId?: string;
+}
+
+/** 불변 감사 로그 항목: 누가·언제·무엇을·결과. */
+export interface AuditEntry {
+  id: string;
+  ts: number;
+  actor: Actor;
+  action: CommandType;
+  detail: string;
+  outcome: CommandOutcome;
+  code: CommandResult['code'];
+  reason?: string;
 }
 
 export const STATUS_COLORS: Record<OhtStatus, string> = {

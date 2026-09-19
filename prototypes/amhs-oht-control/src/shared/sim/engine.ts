@@ -4,8 +4,12 @@ import {
   type XY,
 } from '@/entities/fab/rail-graph';
 import type {
+  Actor,
   Alarm,
+  AuditEntry,
   Carrier,
+  ClientCommand,
+  CommandResult,
   Coord,
   DeltaMessage,
   DispatchRule,
@@ -15,6 +19,11 @@ import type {
   VehicleDelta,
   VehicleState,
 } from '@/entities/oht/types';
+import {
+  authorizeCommand,
+  buildAuditEntry,
+  isAuditable,
+} from '@/shared/integration/command-contract';
 
 /**
  * 델타·스냅샷의 좌표 정밀도를 낮춰 전송 페이로드를 줄인다.
@@ -160,6 +169,7 @@ export class SimEngine {
   private closedSegments = new Set<number>();
   private closureStartedTs = 0;
   private pendingAlarms: Alarm[] = [];
+  private auditTrail: AuditEntry[] = [];
   private activeDeadlocks = new Set<string>();
   private resolvedDeadlocks = 0;
   private randomState: number;
@@ -187,6 +197,51 @@ export class SimEngine {
   }
   setDispatch(rule: DispatchRule): void {
     this.rule = rule;
+  }
+
+  /**
+   * 연동 경계: 운영 명령의 단일 실행 지점.
+   * 역할 기반 인증 → 감사 기록 → (승인 시) 엔진 도메인 명령 실행.
+   * start/stop/setCount/setRate/snapshot 같은 루프 제어는 여기서 인증·감사만 하고
+   * 실행은 호출측(worker/ws)이 결과(accepted)를 보고 수행한다.
+   */
+  applyCommand(cmd: ClientCommand, actor: Actor): CommandResult {
+    const result = authorizeCommand(actor, cmd.type);
+    if (isAuditable(cmd.type)) {
+      const entry = buildAuditEntry(cmd, actor, result, this.now);
+      this.auditTrail.push(entry);
+      if (this.auditTrail.length > 20)
+        this.auditTrail = this.auditTrail.slice(-20);
+      result.auditId = entry.id;
+    }
+    if (!result.accepted) return result;
+    switch (cmd.type) {
+      case 'setDispatch':
+        if (cmd.rule) this.setDispatch(cmd.rule);
+        break;
+      case 'setPortIncident':
+        this.setPortIncident(cmd.enabled === true);
+        break;
+      case 'setRailClosure':
+        this.setRailClosure(cmd.enabled === true);
+        break;
+      case 'setStorageSaturation':
+        this.setStorageSaturation(cmd.enabled === true);
+        break;
+      case 'resetScenario':
+        if (typeof cmd.count === 'number' && Number.isFinite(cmd.count))
+          this.resetScenario(
+            Math.min(5000, Math.max(1, Math.floor(cmd.count))),
+          );
+        break;
+      case 'promoteHotLot':
+        this.promoteHotLot(cmd.jobId);
+        break;
+      // 루프 제어(start/stop/setCount/setRate/snapshot)는 호출측이 실행
+      default:
+        break;
+    }
+    return result;
   }
   promoteHotLot(jobId?: string): string | null {
     const candidates = this.jobs
@@ -940,6 +995,7 @@ export class SimEngine {
           (vehicle) => (vehicle.state.battery ?? 100) <= SimEngine.BATTERY_LOW,
         ).length,
       },
+      audit: this.auditTrail.slice(-8),
     };
   }
   private vehicleSnapshot(v: SimVehicle): VehicleState {

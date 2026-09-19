@@ -1409,6 +1409,44 @@ export function LiveMap() {
               ),
             )}
           </div>
+
+          <div style={styles.sectionTitle}>운영 감사 로그</div>
+          <div style={styles.hint}>
+            모든 운영 명령은 연동 경계에서 역할 기반으로 인증되고 actor·시각·
+            결과가 기록됩니다.
+          </div>
+          <div style={styles.auditList}>
+            {(operations?.audit?.length ?? 0) === 0 && (
+              <div style={styles.placeholder}>기록 없음</div>
+            )}
+            {[...(operations?.audit ?? [])].reverse().map((entry) => (
+              <div
+                key={entry.id}
+                style={{
+                  ...styles.auditRow,
+                  borderLeftColor:
+                    entry.outcome === 'rejected' ? '#ff5470' : '#27c1a8',
+                }}
+                title={entry.reason ?? ''}
+              >
+                <span style={styles.auditTop}>
+                  <span style={styles.auditActor}>
+                    {entry.actor.id} · {entry.actor.role}
+                  </span>
+                  <span
+                    style={{
+                      ...styles.auditOutcome,
+                      color:
+                        entry.outcome === 'rejected' ? '#ff8a9c' : '#5fd0b8',
+                    }}
+                  >
+                    {entry.outcome === 'rejected' ? '거부' : '승인'}
+                  </span>
+                </span>
+                <span style={styles.auditMsg}>{entry.detail}</span>
+              </div>
+            ))}
+          </div>
         </aside>
       </div>
     </div>
@@ -1833,6 +1871,32 @@ const styles: Record<string, CSSProperties> = {
   },
   alarmMsg: { fontSize: 12 },
   alarmTime: { fontSize: 10, color: 'var(--muted)' },
+  auditList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 5,
+    maxHeight: 150,
+    overflowY: 'auto',
+  },
+  auditRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    padding: '5px 8px',
+    borderRadius: 6,
+    border: '1px solid var(--line)',
+    borderLeft: '3px solid #27c1a8',
+    background: 'rgba(255,255,255,0.02)',
+  },
+  auditTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 8,
+    fontSize: 10,
+  },
+  auditActor: { color: 'var(--muted)', letterSpacing: '0.04em' },
+  auditOutcome: { fontWeight: 700 },
+  auditMsg: { fontSize: 12 },
   selectedBadge: {
     position: 'absolute',
     top: 66,

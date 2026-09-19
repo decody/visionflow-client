@@ -597,6 +597,53 @@ test('battery drains while moving, alarms low, and recovers by charging', () => 
   assert.ok(engine.snapshot().operations!.completed > 0);
 });
 
+test('applyCommand: 감독자 명령은 실행되고 감사 로그에 승인 기록', () => {
+  const engine = new SimEngine(42, () => 1000);
+  engine.spawn(8);
+  const supervisor = { id: 'S', role: 'supervisor' as const };
+  const result = engine.applyCommand(
+    { type: 'setPortIncident', enabled: true },
+    supervisor,
+  );
+  assert.equal(result.accepted, true);
+  assert.ok(result.auditId);
+  // 실제로 실행됐다(장애 활성).
+  assert.ok(engine.snapshot().operations!.incident?.active);
+  // 감사 로그 마지막 항목이 승인으로 남는다.
+  const audit = engine.snapshot().operations!.audit!;
+  const last = audit[audit.length - 1]!;
+  assert.equal(last.action, 'setPortIncident');
+  assert.equal(last.outcome, 'accepted');
+  assert.equal(last.actor.role, 'supervisor');
+});
+
+test('applyCommand: 권한 없는 명령은 거부되고 실행되지 않으며 거부로 기록', () => {
+  const engine = new SimEngine(42, () => 1000);
+  engine.spawn(8);
+  const operator = { id: 'O', role: 'operator' as const };
+  const result = engine.applyCommand(
+    { type: 'setPortIncident', enabled: true },
+    operator,
+  );
+  assert.equal(result.accepted, false);
+  assert.equal(result.code, 'FORBIDDEN');
+  // 장애가 주입되지 않았다.
+  assert.equal(engine.snapshot().operations!.incident, undefined);
+  // 감사 로그에 거부로 남는다.
+  const audit = engine.snapshot().operations!.audit!;
+  const last = audit[audit.length - 1]!;
+  assert.equal(last.action, 'setPortIncident');
+  assert.equal(last.outcome, 'rejected');
+
+  // operator도 배차 규칙 변경은 허용된다.
+  const ok = engine.applyCommand(
+    { type: 'setDispatch', rule: 'nearest' },
+    operator,
+  );
+  assert.equal(ok.accepted, true);
+  assert.equal(engine.snapshot().operations!.rule, 'nearest');
+});
+
 test('deadlock breaker keeps a heavy fleet draining without permanent gridlock', () => {
   // 가·감속으로 낮아진 유효 용량에서도 재경로 없는 교착을 우선통과로 끊어
   // 반송이 정체 없이 계속 완료된다(교착 취약 seed 회귀 가드).

@@ -101,6 +101,14 @@ WebGL 정점 버퍼 비용이 "전체 대수"가 아니라 "보이는 대수"에
 - **용량 인지 배차 + 교착 완화**: 가·감속으로 낮아진 유효 도로 용량에 맞춰 전역 WIP·목적지/Bay/공유 경로 압력을 제한한다(backpressure). 재경로가 없는 교착 사이클은 가장 오래 기다린 차량에 **우선통과**를 부여해(점유·안전간격 대기를 수 틱 건너뜀) 링을 끊어 영구 정체를 방지한다.
 - 진단 패널에 운행 WIP·백프레셔·충전 중·저배터리 대수를, 차량 상세에 배터리·충전 상태를 노출한다.
 
+### 연동 경계 (인증 · 감사, 2026-09-19 후속 구현)
+
+실제 MES/AMHS 백엔드와 이어질 지점을 형식화했다. 상세 계약: [`docs/amhs_integration_contract_ko.md`](../../../docs/amhs_integration_contract_ko.md).
+
+- **단일 실행 지점** `SimEngine.applyCommand(cmd, actor)`: 모든 상태 변경 명령이 여기서 역할 기반 인증 → 감사 기록 → (승인 시) 실행된다. worker(방식 A)·ws(방식 B) 어댑터가 세션 주체를 주입한다(주체는 클라이언트가 주장하지 않음).
+- **역할 정책**(`command-contract.ts`): viewer<operator<supervisor. 배차·Hot lot은 operator+, 장애 주입·시나리오 리셋은 supervisor 전용. 권한 부족은 `FORBIDDEN`으로 거부.
+- **감사 로그**: 승인·거부 모두 actor·시각·상세로 기록되어 `operations.audit`로 방출, UI "운영 감사 로그" 패널에 표시.
+
 ### 실시간 보완
 
 - 중복 seq 무시, gap 이후 스냅샷까지 델타 수용 중단, 추가·삭제 반영.
