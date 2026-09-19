@@ -94,6 +94,8 @@ export interface OperationsState {
     resolvedDeadlocks: number;
     admittedJobs: number;
     backpressuredJobs: number;
+    chargingVehicles: number;
+    lowBatteryVehicles: number;
   };
 }
 
@@ -122,7 +124,7 @@ export interface VehicleState {
   speed: number;
   /** 현재 Job의 계획 경로(스냅샷에 포함) */
   route?: Coord[];
-  phase?: TransportPhase | 'IDLE' | 'REPOSITIONING';
+  phase?: TransportPhase | 'IDLE' | 'REPOSITIONING' | 'CHARGING';
   loaded?: boolean;
   carrierId?: string | null;
   lotId?: string | null;
@@ -132,6 +134,8 @@ export interface VehicleState {
   deadlineTs?: number;
   blockedBy?: string | null;
   rerouteCount?: number;
+  /** 잔여 배터리(%) — 주행 시 방전, 충전소·도킹 시 충전 */
+  battery?: number;
 }
 
 export type AlarmKind =
@@ -139,7 +143,8 @@ export type AlarmKind =
   | 'DELAY'
   | 'EQP_DOWN'
   | 'BLOCKED'
-  | 'HOT_LOT';
+  | 'HOT_LOT'
+  | 'BATTERY';
 export type AlarmSeverity = 'info' | 'warn' | 'critical';
 
 export interface Alarm {

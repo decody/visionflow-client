@@ -529,3 +529,84 @@ test('large fleets circulate empty vehicles and keep movement continuous across 
       .vehicles.some((v) => v.phase === 'REPOSITIONING'),
   );
 });
+
+test('a vehicle accelerates from a stop and decelerates before arriving', () => {
+  const engine = new SimEngine(42, () => 0);
+  engine.spawn(1);
+  const moving: number[] = [];
+  let arrivalApproach: number | null = null;
+  let peak = 0;
+  for (let i = 0; i < 400; i++) {
+    engine.tick(10);
+    const v = engine.snapshot().vehicles[0]!;
+    if (v.status === 'MOVING') {
+      moving.push(v.speed);
+      peak = Math.max(peak, v.speed);
+    }
+    // 정지(로딩/언로딩) 직전의 마지막 주행 속도를 잡아 감속을 확인한다.
+    if (
+      (v.status === 'LOADING' || v.status === 'UNLOADING') &&
+      arrivalApproach === null &&
+      moving.length
+    )
+      arrivalApproach = moving[moving.length - 1]!;
+    if (arrivalApproach !== null) break;
+  }
+  // 출발은 정지 상태(0)에서 서서히 오른다: 첫 주행 속도가 작다.
+  assert.ok(moving[0]! <= 0.4, `first moving speed ${moving[0]}`);
+  // 속도는 순간 점프하지 않는다: 틱당 증가가 가속도 예산(2.0 m/s² · 0.1s) 이내.
+  for (let i = 1; i < moving.length; i++) {
+    const delta = moving[i]! - moving[i - 1]!;
+    if (delta > 0) assert.ok(delta <= 0.21, `accel step ${delta}`);
+  }
+  // cruise 상한(1.5+1.8)을 넘지 않는다.
+  assert.ok(peak <= 3.31, `peak ${peak}`);
+  // 도착 직전 속도는 cruise plateau보다 낮다(정지거리만큼 감속).
+  assert.ok(arrivalApproach !== null, 'vehicle reached a stop');
+  assert.ok(
+    arrivalApproach! > 0 && arrivalApproach! < peak,
+    `approach ${arrivalApproach} vs peak ${peak}`,
+  );
+});
+
+test('battery drains while moving, alarms low, and recovers by charging', () => {
+  const engine = new SimEngine(42, () => 0);
+  engine.spawn(8);
+  let minBattery = 100;
+  let sawCharging = false;
+  let sawBatteryAlarm = false;
+  let outOfRange = false;
+  for (let i = 0; i < 4000; i++) {
+    const delta = engine.tick(10);
+    for (const alarm of delta.alarms ?? [])
+      if (alarm.kind === 'BATTERY') sawBatteryAlarm = true;
+    const snapshot = engine.snapshot();
+    if ((snapshot.operations!.traffic!.chargingVehicles ?? 0) > 0)
+      sawCharging = true;
+    for (const v of snapshot.vehicles) {
+      const battery = v.battery ?? 100;
+      minBattery = Math.min(minBattery, battery);
+      if (battery < 0 || battery > 100) outOfRange = true;
+    }
+  }
+  assert.equal(outOfRange, false, 'battery stays within 0..100');
+  assert.ok(minBattery < 100, 'batteries drain while moving');
+  assert.equal(sawBatteryAlarm, true, 'low battery raises an alarm');
+  assert.equal(sawCharging, true, 'depleted vehicles divert to a charger');
+  // 배터리 관리에도 반송 처리량은 유지된다.
+  assert.ok(engine.snapshot().operations!.completed > 0);
+});
+
+test('deadlock breaker keeps a heavy fleet draining without permanent gridlock', () => {
+  // 가·감속으로 낮아진 유효 용량에서도 재경로 없는 교착을 우선통과로 끊어
+  // 반송이 정체 없이 계속 완료된다(교착 취약 seed 회귀 가드).
+  for (const seed of [42, 100, 2026]) {
+    const engine = new SimEngine(seed, () => 0);
+    engine.spawn(64);
+    for (let i = 0; i < 3000; i++) engine.tick(10);
+    assert.ok(
+      engine.snapshot().operations!.completed >= 10,
+      `seed ${seed} kept draining`,
+    );
+  }
+});

@@ -54,6 +54,17 @@ interface SimVehicle {
   trafficWait: number;
   blockedFired: boolean;
   waitingFor: string | null;
+  /** 잔여 배터리(%, full precision) — state.battery는 정수 반올림 */
+  battery: number;
+  /** 충전 미션 진행 중(충전소 이동 또는 충전 중) */
+  charging: boolean;
+  batteryWarned: boolean;
+  batteryCritical: boolean;
+  /**
+   * 교착 우선통과 유효 틱. 재경로가 없는 교착 사이클에서 한 대에 부여해,
+   * 이 틱까지는 다음 세그먼트 점유 대기를 건너뛰고 진입시켜 링을 끊는다.
+   */
+  forceProceedUntilTick: number;
 }
 
 export interface JunctionCandidate {
@@ -113,6 +124,22 @@ export function detectWaitCycles(
 /** Synthetic transport model. Simulation time advances only on ticks, including deadlines. */
 export class SimEngine {
   private static readonly DEFAULT_SEED = 20260905;
+  // OHT 동작 현실성: 순간 가·감속 대신 물리적 가속도/정지거리 프로파일을 사용한다.
+  private static readonly ACCEL = 2.0; // m/s² 가속
+  private static readonly DECEL = 1.6; // m/s² 감속(정지거리 산정에도 사용)
+  private static readonly CRAWL = 0.2; // 최종 접근 최소 속도(정지 asymptote 방지)
+  private static readonly WIP_CAP = 10; // 전역 운행 WIP 상한(용량 인지 backpressure)
+  private static readonly WIP_DIV = 3; // fleet 대비 WIP 비율(vehicles/WIP_DIV)
+  private static readonly PRESSURE_LIMIT = 3; // 공유 세그먼트 진입 압력 상한
+  // 배터리 모델(%). 주행 시 거리 비례 방전, 충전소·도킹 시 충전.
+  private static readonly DRAIN_PER_M = 0.09; // 주행 1m당 방전
+  private static readonly IDLE_DRAIN_PER_S = 0.02; // 대기 자가방전
+  private static readonly CHARGE_PER_S = 3.2; // 충전소 충전 속도
+  private static readonly DOCK_CHARGE_PER_S = 0.7; // 로딩/언로딩 중 소폭 충전
+  private static readonly NEEDS_CHARGE = 22; // 이 값 미만이면 공차가 충전소로 이동
+  private static readonly CHARGE_TARGET = 85; // 이 값 이상이면 충전 종료
+  private static readonly BATTERY_LOW = 20; // 경고 알람 임계
+  private static readonly BATTERY_CRITICAL = 10; // 위험 알람 임계
   private readonly graph = buildRailGraph();
   private vehicles: SimVehicle[] = [];
   private carriers: Carrier[] = [];
@@ -465,6 +492,9 @@ export class SimEngine {
           route: [],
           blockedBy: null,
           rerouteCount: 0,
+          // 배터리 초기값은 RNG를 소비하지 않도록 인덱스 해시로 결정한다
+          // (this.random() 시퀀스를 건드리면 cruise·Job 생성 재현이 깨진다).
+          battery: 55 + ((i * 17) % 46),
         },
         node: nodeKeyOf(seg.a),
         route: [],
@@ -477,6 +507,11 @@ export class SimEngine {
         trafficWait: 0,
         blockedFired: false,
         waitingFor: null,
+        battery: 55 + ((i * 17) % 46),
+        charging: false,
+        batteryWarned: false,
+        batteryCritical: false,
+        forceProceedUntilTick: -1,
       });
     }
     this.generateJobs();
@@ -558,8 +593,8 @@ export class SimEngine {
         (item) => item.phase !== 'DONE' && item.vehicleId,
       );
       const maxWip = Math.min(
-        12,
-        Math.max(8, Math.floor(this.vehicles.length / 2)),
+        SimEngine.WIP_CAP,
+        Math.max(6, Math.floor(this.vehicles.length / SimEngine.WIP_DIV)),
       );
       if (assigned.length >= maxWip) break;
       const inboundToPort = new Map<string, number>();
@@ -673,7 +708,8 @@ export class SimEngine {
       ...context.route(this.portNode(job.from), this.portNode(job.to)),
     ];
     return !candidateRoute.some(
-      (segment) => (context.pressure.get(segment) ?? 0) >= 4,
+      (segment) =>
+        (context.pressure.get(segment) ?? 0) >= SimEngine.PRESSURE_LIMIT,
     );
   }
   private setRoute(v: SimVehicle, to: string): void {
@@ -723,32 +759,74 @@ export class SimEngine {
     v.state.phase = phase;
     v.state.status =
       phase === 'LOADING' || phase === 'UNLOADING' ? phase : 'MOVING';
-    v.state.speed =
-      phase === 'LOADING' || phase === 'UNLOADING' ? 0 : v.cruise;
+    // 정지 상태(로딩/언로딩)만 속도 0으로 강제하고, 주행 상태는 advance가
+    // 가속 프로파일에 따라 0에서부터 서서히 올린다(순간 가속 금지).
+    if (phase === 'LOADING' || phase === 'UNLOADING') v.state.speed = 0;
   }
+  /**
+   * 물리적 가·감속 프로파일로 한 틱 전진한다.
+   * 남은 총 주행거리에서 정지거리(√(2·decel·거리))로 목표속도를 제한해, 목적지에
+   * 도착할 즈음 감속하고 출발 직후에는 가속한다. 속도는 항상 cruise 이하라
+   * 틱당 이동거리 상한(teleport 방지)이 유지된다.
+   */
   private advance(v: SimVehicle, dt: number): boolean {
-    let travel = v.cruise * dt;
+    if (v.leg >= v.route.length) {
+      v.state.speed = 0;
+      return true;
+    }
+    let remaining =
+      this.graph.segments[v.route[v.leg]!]!.length - v.distance;
+    for (let i = v.leg + 1; i < v.route.length; i++)
+      remaining += this.graph.segments[v.route[i]!]!.length;
+    const stopCap = Math.sqrt(2 * SimEngine.DECEL * Math.max(0, remaining));
+    const target = Math.min(v.cruise, stopCap);
+    let speed = v.state.speed;
+    if (speed < target)
+      speed = Math.min(target, speed + SimEngine.ACCEL * dt);
+    else if (speed > target)
+      speed = Math.max(target, speed - SimEngine.DECEL * dt);
+    // 최종 접근에서 속도가 0으로 수렴해 멈추지 않도록 최소 크롤 속도를 보장한다.
+    speed = Math.max(speed, SimEngine.CRAWL);
+    v.state.speed = speed;
+
+    let travel = speed * dt;
     while (v.leg < v.route.length) {
       const seg = this.graph.segments[v.route[v.leg]!]!;
-      const remaining = seg.length - v.distance;
+      const rem = seg.length - v.distance;
       v.state.heading =
         (Math.atan2(seg.b[1] - seg.a[1], seg.b[0] - seg.a[0]) * 180) /
         Math.PI;
-      if (travel < remaining) {
+      if (travel < rem) {
         v.distance += travel;
         const t = v.distance / seg.length;
         v.state.x = seg.a[0] + (seg.b[0] - seg.a[0]) * t;
         v.state.y = seg.a[1] + (seg.b[1] - seg.a[1]) * t;
         return false;
       }
-      travel -= remaining;
+      travel -= rem;
       v.state.x = seg.b[0];
       v.state.y = seg.b[1];
       v.node = nodeKeyOf(seg.b);
       v.leg++;
       v.distance = 0;
     }
+    v.state.speed = 0;
     return true;
+  }
+  /** 현재 노드에서 가장 가까운 stocker(충전소) 노드를 경로 길이로 고른다. */
+  private nearestChargerNode(from: string): string | null {
+    let best: string | null = null;
+    let bestLen = Infinity;
+    for (const port of this.graph.ports) {
+      if (port.kind !== 'stocker') continue;
+      const node = nodeKeyOf(port.at);
+      const len = node === from ? 0 : this.path(from, node).length;
+      if (Number.isFinite(len) && len < bestLen) {
+        bestLen = len;
+        best = node;
+      }
+    }
+    return best;
   }
   private operations(): OperationsState {
     const active = this.jobs.filter((j) => j.phase !== 'DONE');
@@ -848,6 +926,12 @@ export class SimEngine {
         backpressuredJobs: active.filter(
           (job) => job.phase === 'QUEUED' && !job.vehicleId,
         ).length,
+        chargingVehicles: this.vehicles.filter(
+          (vehicle) => vehicle.charging,
+        ).length,
+        lowBatteryVehicles: this.vehicles.filter(
+          (vehicle) => (vehicle.state.battery ?? 100) <= SimEngine.BATTERY_LOW,
+        ).length,
       },
     };
   }
@@ -907,6 +991,8 @@ export class SimEngine {
     const junctionWinners = this.junctionWinners(dt);
     const blockReason = (vehicle: SimVehicle): string | null => {
       vehicle.waitingFor = null;
+      // 교착 우선통과 부여 차량은 이 틱 동안 점유·안전간격 대기를 건너뛴다.
+      const forced = this.tickCounter <= vehicle.forceProceedUntilTick;
       const segment = vehicle.route[vehicle.leg];
       if (segment !== undefined) {
         const rail = this.graph.segments[segment]!;
@@ -927,7 +1013,8 @@ export class SimEngine {
           crossesJunction &&
           nextSegment !== undefined &&
           owner &&
-          owner !== vehicle.state.id
+          owner !== vehicle.state.id &&
+          !forced
         )
           {
             vehicle.waitingFor = owner;
@@ -948,6 +1035,7 @@ export class SimEngine {
             return `${this.graph.segments[nextSegment]!.id} 합류 예약 · ${winner} 우선`;
           }
       }
+      if (forced) return null;
       const probe: SimVehicle = {
         ...vehicle,
         state: { ...vehicle.state },
@@ -976,6 +1064,41 @@ export class SimEngine {
     for (const v of this.vehicles) {
       const job = v.job;
       if (!job) {
+        // 충전 미션(배터리 부족)이 유휴 순환·대기보다 우선한다.
+        if (v.charging) {
+          if (v.state.phase === 'CHARGING') continue; // 충전소 정차 — 배터리 루프가 충전
+          // 충전소로 이동 중
+          before.set(v, { ...v.state });
+          if (this.advance(v, dt))
+            Object.assign(v.state, {
+              phase: 'CHARGING',
+              status: 'IDLE',
+              speed: 0,
+              route: [],
+            });
+          continue;
+        }
+        if (v.battery <= SimEngine.NEEDS_CHARGE) {
+          const charger = this.nearestChargerNode(v.node);
+          if (charger) {
+            before.set(v, { ...v.state });
+            v.charging = true;
+            this.setRoute(v, charger);
+            if (this.advance(v, dt))
+              Object.assign(v.state, {
+                phase: 'CHARGING',
+                status: 'IDLE',
+                speed: 0,
+                route: [],
+              });
+            else
+              Object.assign(v.state, {
+                phase: 'REPOSITIONING',
+                status: 'MOVING',
+              });
+            continue;
+          }
+        }
         // Large fleets retain a real high-frequency movement workload through empty circulation.
         // Dispatch may take a circulating vehicle only after it reaches a junction.
         if (this.vehicles.length >= 500) {
@@ -989,7 +1112,7 @@ export class SimEngine {
               Object.assign(v.state, {
                 phase: 'REPOSITIONING',
                 status: 'MOVING',
-                speed: v.cruise,
+                speed: 0,
               });
             }
           }
@@ -1036,7 +1159,7 @@ export class SimEngine {
             v.trafficWait = 0;
             v.blockedFired = false;
             v.state.status = 'MOVING';
-            v.state.speed = v.cruise;
+            // 정지 상태에서 우회 재개 — 다음 틱 advance가 0에서 가속한다.
             v.state.blockedBy = null;
             v.waitingFor = null;
             continue;
@@ -1104,7 +1227,7 @@ export class SimEngine {
           v.state.blockedBy = null;
           v.waitingFor = null;
           v.state.status = 'MOVING';
-          v.state.speed = v.cruise;
+          // 속도는 advance의 가·감속 프로파일이 이미 설정했다.
           }
         }
       } else if (job.phase !== 'WAITING_PORT') {
@@ -1188,6 +1311,7 @@ export class SimEngine {
     this.dispatch();
     for (const v of idleBefore)
       if (v.job && !before.has(v)) before.set(v, idleStates.get(v)!);
+    this.updateBatteries(dt, alarms, before);
     const upd: VehicleDelta[] = [];
     for (const [v, previous] of before) {
       const delta: VehicleDelta = { id: v.state.id };
@@ -1218,6 +1342,83 @@ export class SimEngine {
     };
     if (emitOps) delta.operations = this.operations();
     return delta;
+  }
+
+  /**
+   * 배터리 모델: 주행 시 거리 비례 방전, 충전소 정차·도킹 시 충전, 임계 알람.
+   * 상태(state.battery)는 정수로 저장하고, 값이 바뀐 차량은 델타로 방출되도록
+   * before에 이전 상태를 채워 준다(재현 불변식 유지).
+   */
+  private updateBatteries(
+    dt: number,
+    alarms: Alarm[],
+    before: Map<SimVehicle, VehicleState>,
+  ): void {
+    for (const v of this.vehicles) {
+      const prev = { ...v.state };
+      if (v.state.phase === 'CHARGING') {
+        v.battery = Math.min(100, v.battery + SimEngine.CHARGE_PER_S * dt);
+        if (v.battery >= SimEngine.CHARGE_TARGET) {
+          v.charging = false;
+          v.state.phase = 'IDLE';
+          v.state.status = 'IDLE';
+        }
+      } else if (v.state.speed > 0) {
+        v.battery = Math.max(
+          0,
+          v.battery - v.state.speed * dt * SimEngine.DRAIN_PER_M,
+        );
+      } else if (
+        v.state.phase === 'LOADING' ||
+        v.state.phase === 'UNLOADING'
+      ) {
+        v.battery = Math.min(
+          100,
+          v.battery + SimEngine.DOCK_CHARGE_PER_S * dt,
+        );
+      } else {
+        v.battery = Math.max(
+          0,
+          v.battery - SimEngine.IDLE_DRAIN_PER_S * dt,
+        );
+      }
+      if (v.battery <= SimEngine.BATTERY_CRITICAL && !v.batteryCritical) {
+        v.batteryCritical = true;
+        alarms.push({
+          id: `AL-BAT-CRIT-${v.state.id}-${Math.round(this.now)}`,
+          kind: 'BATTERY',
+          severity: 'critical',
+          ts: this.now,
+          vehicleId: v.state.id,
+          jobId: v.job?.id,
+          message: `${v.state.id} 배터리 ${Math.round(v.battery)}% · 충전 긴급`,
+        });
+      } else if (v.battery <= SimEngine.BATTERY_LOW && !v.batteryWarned) {
+        v.batteryWarned = true;
+        alarms.push({
+          id: `AL-BAT-LOW-${v.state.id}-${Math.round(this.now)}`,
+          kind: 'BATTERY',
+          severity: 'warn',
+          ts: this.now,
+          vehicleId: v.state.id,
+          jobId: v.job?.id,
+          message: `${v.state.id} 배터리 ${Math.round(v.battery)}% · 충전 필요`,
+        });
+      }
+      // 임계 위로 충분히 회복하면 다음 방전 사이클에서 다시 알람할 수 있게 재무장한다.
+      if (v.battery > SimEngine.BATTERY_LOW + 5) v.batteryWarned = false;
+      if (v.battery > SimEngine.BATTERY_CRITICAL + 5)
+        v.batteryCritical = false;
+
+      v.state.battery = Math.round(v.battery);
+      if (!before.has(v)) {
+        for (const key of Object.keys(v.state) as (keyof VehicleState)[])
+          if (v.state[key] !== prev[key]) {
+            before.set(v, prev);
+            break;
+          }
+      }
+    }
   }
 
   private junctionRequests(dt: number): Map<number, SimVehicle[]> {
@@ -1312,7 +1513,7 @@ export class SimEngine {
         rerouted.blockedFired = false;
         rerouted.waitingFor = null;
         rerouted.state.status = 'MOVING';
-        rerouted.state.speed = rerouted.cruise;
+        // 정지 상태에서 우회 재개 — 다음 틱 advance가 0에서 가속한다.
         rerouted.state.blockedBy = null;
         this.resolvedDeadlocks++;
         alarms.push({
@@ -1325,6 +1526,25 @@ export class SimEngine {
           message: '교착 자동 해소 · ' + rerouted.state.id + ' 우회',
         });
       } else {
+        // 재경로가 없는 교착: 가장 오래 기다린 차량에 우선통과를 부여해 링을 끊는다.
+        // (한 대가 점유 세그먼트로 진입하면 이후 차량이 순차로 풀린다.)
+        const forced = candidates.reduce((longest, vehicle) =>
+          vehicle.trafficWait > longest.trafficWait ? vehicle : longest,
+        );
+        if (forced.forceProceedUntilTick < this.tickCounter) {
+          forced.forceProceedUntilTick = this.tickCounter + 3;
+          this.resolvedDeadlocks++;
+          alarms.push({
+            id:
+              'AL-DEADLOCK-YIELD-' + signature + '-' + Math.round(this.now),
+            kind: 'JAM',
+            severity: 'info',
+            ts: this.now,
+            vehicleId: forced.state.id,
+            jobId: forced.job?.id,
+            message: '교착 완화 · ' + forced.state.id + ' 우선 통과',
+          });
+        }
         unresolved.add(signature);
       }
     }

@@ -62,6 +62,7 @@ const PHASE_LABELS: Record<string, string> = {
   DONE: '완료',
   IDLE: '대기',
   REPOSITIONING: '공차 순환',
+  CHARGING: '충전',
 };
 
 const FILTERS: { key: StatusFilter; label: string }[] = [
@@ -1038,6 +1039,20 @@ export function LiveMap() {
               <strong>
                 {operations?.traffic?.resolvedDeadlocks ?? 0}
               </strong>
+              <span>충전 중</span>
+              <strong>
+                {operations?.traffic?.chargingVehicles ?? 0}
+              </strong>
+              <span>저배터리</span>
+              <strong
+                style={
+                  (operations?.traffic?.lowBatteryVehicles ?? 0) > 0
+                    ? { color: '#ffd166' }
+                    : undefined
+                }
+              >
+                {operations?.traffic?.lowBatteryVehicles ?? 0}
+              </strong>
             </div>
             <div style={styles.diagnosticLabel}>부하 설정</div>
             <div style={styles.filterRow}>
@@ -1214,6 +1229,20 @@ export function LiveMap() {
               <DetailRow
                 k="속도"
                 v={`${detail.speed.toFixed(2)} m/s`}
+              />
+              <DetailRow
+                k="배터리"
+                v={
+                  detail.battery === undefined
+                    ? '—'
+                    : `${detail.battery}%${
+                        detail.phase === 'CHARGING'
+                          ? ' · 충전 중'
+                          : detail.battery <= 20
+                            ? ' · 충전 필요'
+                            : ''
+                      }`
+                }
               />
               <DetailRow
                 k="위치"
