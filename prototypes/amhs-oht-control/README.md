@@ -4,7 +4,7 @@
 
 지도는 전체 FAB heatmap, Bay WebGL 차량, 설비 상세의 세 단계 LOD를 사용한다. 설비 확대에서는 heading 기반 방향 삼각형, 적재·Hot lot 외곽선, OHT·FOUP 라벨을 표시하고 rail 합류·분기·transfer 교차점을 별도 운영 마커로 표시한다.
 
-FAB 정적 레이아웃(Bay·툴 위치·Stocker·용량·툴별 로드포트 수)은 [`src/entities/fab/fab-layout.json`](src/entities/fab/fab-layout.json)에서 읽어 `buildRailGraph()`가 해석한다. 공정 툴은 복수 로드포트(기본 2), 계측 툴은 1개를 가진다. 같은 툴의 로드포트는 경로탐색 rail 노드를 공유하되(각 용량 1) 마커는 겹치지 않게 오프셋한다.
+FAB 정적 레이아웃(Bay·툴 위치·Stocker·용량·툴별 로드포트 수)은 [`src/entities/fab/fab-layout.json`](src/entities/fab/fab-layout.json)에서 읽어 `buildRailGraph()`가 해석한다. 공정 툴은 복수 로드포트(기본 2), 계측 툴은 1개를 가진다. 각 로드포트는 rail을 따라 벌어진 **개별 정차 노드**(각 용량 1)를 가져, 복수 LP 툴에서 OHT가 LP마다 위치를 미세 조정해 정차한다.
 
 - 세부 설계: [`docs/smart_factory_amhs_oht_prototype_plan_ko.md`](../../../docs/smart_factory_amhs_oht_prototype_plan_ko.md)
 - 상위 기획서: `docs/frontend_portfolio_planning_ko.docx` (10종 중 #02)

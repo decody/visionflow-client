@@ -151,15 +151,32 @@ export function buildRailGraph(): RailGraph {
   chain('XFER', [[SPINE_X, BOTTOM_Y], ...bayYs.map((y) => [SPINE_X, y] as XY), [SPINE_X, TOP_Y]], 'transfer');
 
   // Intrabay 코리도 + 공정 장비. 장비는 rail 양쪽에 배치하고 포트는 rail 위에 둔다.
+  const spacing = LAYOUT.loadPorts.spacing;
   BAY_SPECS.forEach(({ id: bayId, name, process, y }, bi) => {
+    // 각 툴의 로드포트를 rail을 따라 벌어진 **개별 정차 노드**로 배치한다.
+    // 복수 로드포트 툴에서는 OHT가 LP마다 위치를 미세 조정해 정차한다.
+    const toolLps = TOOL_XS.map((x, ti) => {
+      const isMetrology = ti === TOOL_XS.length - 1;
+      const lpCount = Math.max(
+        1,
+        isMetrology ? LAYOUT.loadPorts.metrology : LAYOUT.loadPorts.process,
+      );
+      const xsOfTool = Array.from(
+        { length: lpCount },
+        (_, lp) => x + (lp - (lpCount - 1) / 2) * spacing,
+      );
+      return { x, ti, isMetrology, xs: xsOfTool };
+    });
+    const lpXs = toolLps.flatMap((tool) => tool.xs);
+
     // 중앙 transfer spine의 교차점도 실제 노드로 포함해 Bay 간 우회 경로가
-    // 그래프 탐색에서 연결되도록 한다.
+    // 그래프 탐색에서 연결되도록 한다. LP 노드는 이미 오름차순이다.
     const xs = [
       LEFT_X,
       BAY_ENTRY_X,
-      ...TOOL_XS.filter((x) => x < SPINE_X),
+      ...lpXs.filter((x) => x < SPINE_X),
       SPINE_X,
-      ...TOOL_XS.filter((x) => x > SPINE_X),
+      ...lpXs.filter((x) => x > SPINE_X),
       RIGHT_X,
     ];
     chain(bayId, xs.map((x) => [x, y] as XY), 'intrabay');
@@ -179,33 +196,24 @@ export function buildRailGraph(): RailGraph {
       ],
     });
 
-    TOOL_XS.forEach((x, ti) => {
+    toolLps.forEach(({ x, ti, isMetrology, xs: lpXsOfTool }) => {
       const equipmentId = `${process}-${String(ti + 1).padStart(2, '0')}`;
-      const isMetrology = ti === TOOL_XS.length - 1;
-      // 공정 툴은 복수 로드포트(예: 2). 계측 툴은 1. 모두 툴 rail 노드[x,y]를
-      // 공유(경로탐색 대상)하되 마커는 renderAt으로 겹치지 않게 좌우로 벌린다.
-      const lpCount = Math.max(
-        1,
-        isMetrology ? LAYOUT.loadPorts.metrology : LAYOUT.loadPorts.process,
-      );
-      const spacing = LAYOUT.loadPorts.spacing;
       const portIds: string[] = [];
-      for (let lp = 0; lp < lpCount; lp += 1) {
+      lpXsOfTool.forEach((lpX, lp) => {
         const portId = `${equipmentId}-LP${lp + 1}`;
         portIds.push(portId);
-        const offset = (lp - (lpCount - 1) / 2) * spacing;
+        // 각 로드포트는 자신의 rail 정차 노드를 가진다(경로탐색 대상).
         ports.push({
           id: portId,
           kind: 'tool',
-          at: [x, y],
-          renderAt: [x + offset, y],
+          at: [lpX, y],
           bayId,
           equipmentId,
           capacity: 1,
         });
-      }
+      });
       const above = ti % 2 === 0;
-      const halfW = Math.max(5, (lpCount * spacing) / 2 + 1.5);
+      const halfW = Math.max(5, (lpXsOfTool.length * spacing) / 2 + 1.5);
       const bounds: Equipment['bounds'] = [
         x - halfW,
         above ? y + 1.4 : y - 5.8,

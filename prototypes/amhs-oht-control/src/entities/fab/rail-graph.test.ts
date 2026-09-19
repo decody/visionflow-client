@@ -91,19 +91,20 @@ test('복수 로드포트: 공정 툴은 다중 LP, 계측 툴은 단일 LP', ()
   }
 });
 
-test('복수 로드포트: 같은 툴의 LP는 rail 노드를 공유하고 마커만 오프셋', () => {
+test('복수 로드포트: 각 LP는 개별 rail 정차 노드를 가진다', () => {
   const g = buildRailGraph();
   const tool = g.equipment.find((e) => e.kind === 'process')!;
   const lps = g.ports.filter((p) => p.equipmentId === tool.id);
   assert.ok(lps.length >= 2);
-  // 경로탐색 노드(at)는 동일해야 라우팅이 성립한다.
+  // 각 LP의 정차 노드(at)는 서로 다르다.
   const nodes = new Set(lps.map((p) => nodeKeyOf(p.at)));
-  assert.equal(nodes.size, 1, 'LP들은 동일 rail 노드를 공유');
-  // 이 노드는 그래프의 실제 노드(나가는 간선 존재)여야 한다.
-  assert.ok((g.adjacency.get([...nodes][0]!) ?? []).length > 0);
-  // 마커(renderAt)는 서로 달라 겹치지 않는다.
-  const marks = new Set(lps.map((p) => (p.renderAt ?? p.at).join(',')));
-  assert.equal(marks.size, lps.length, '마커는 서로 다른 위치');
+  assert.equal(nodes.size, lps.length, 'LP마다 개별 정차 노드');
+  // 각 정차 노드는 그래프의 실제 노드(나가는 간선 존재)여야 라우팅이 성립한다.
+  for (const p of lps)
+    assert.ok(
+      (g.adjacency.get(nodeKeyOf(p.at)) ?? []).length > 0,
+      `${p.id} 정차 노드가 그래프에 연결됨`,
+    );
 });
 
 test('layout: extent가 fab-layout.json과 일치', () => {
