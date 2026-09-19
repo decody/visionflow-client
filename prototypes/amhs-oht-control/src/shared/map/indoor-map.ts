@@ -491,6 +491,30 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     },
   });
 
+  // 저배터리·충전 OHT를 링으로 강조(overview 제외 차량 LOD). 대상이 소수라 비용이 작다.
+  const batteryLayer = new VectorLayer({
+    source: vehicleSource,
+    style: (feature) => {
+      if (!matches(feature)) return undefined;
+      const charging = feature.get('chargingCode') === 1;
+      const battery = feature.get('battery') as number | undefined;
+      const low = typeof battery === 'number' && battery <= 20;
+      if (!charging && !low) return undefined;
+      const color = charging
+        ? '#27c1a8'
+        : (battery ?? 100) <= 10
+          ? '#ff5470'
+          : '#ffd166';
+      return new Style({
+        image: new CircleStyle({
+          radius: 9,
+          fill: new Fill({ color: 'rgba(0,0,0,0)' }),
+          stroke: new Stroke({ color, width: 2 }),
+        }),
+      });
+    },
+  });
+
   const heatmapLayer = new Heatmap({
     source: vehicleSource,
     blur: 14,
@@ -547,6 +571,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       heatmapLayer,
       webglLayer,
       vehicleDetailLayer,
+      batteryLayer,
       overlayLayer,
     ],
     view,
@@ -580,6 +605,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     heatmapLayer.setVisible(next === 'overview');
     webglLayer.setVisible(next === 'bay');
     vehicleDetailLayer.setVisible(next === 'equipment');
+    batteryLayer.setVisible(next !== 'overview');
     overlayLayer.setVisible(next !== 'overview');
     junctionLayer.setVisible(next !== 'overview');
     portLayer.setVisible(next !== 'overview');
@@ -684,6 +710,8 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     f.set('vehicle', { ...v }, true);
     f.set('loadedCode', v.loaded ? 1 : 0, true);
     f.set('priority', v.priority ?? 0, true);
+    f.set('battery', v.battery ?? 100, true);
+    f.set('chargingCode', v.phase === 'CHARGING' ? 1 : 0, true);
     return f;
   };
 
@@ -833,6 +861,9 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       if (typeof u.speed === 'number') f.set('speed', u.speed, true);
       if (typeof u.heading === 'number')
         f.set('heading', u.heading, true);
+      if (typeof u.battery === 'number') f.set('battery', u.battery, true);
+      if (u.phase !== undefined)
+        f.set('chargingCode', u.phase === 'CHARGING' ? 1 : 0, true);
     }
     syncRenderSource();
     if (selectedId && !featureById.has(selectedId)) setSelected(null);
