@@ -69,6 +69,19 @@ WebGL 정점 버퍼 비용이 "전체 대수"가 아니라 "보이는 대수"에
 상단 배지에 소스(`worker` / `ws · localhost:3012`)와 연결 상태(connecting/open/reconnecting)가 표시된다.
 `ws:server`를 껐다 켜면 프론트가 **exponential backoff로 재연결 → 스냅샷 재동기**하는 것을 확인할 수 있다.
 
+## SMAT2022 실측 레일망 임포트 (`/smat2022`, 뷰 전용)
+
+라이브 관제(`/`)는 합성 FAB이지만, 별도 라우트 `/smat2022`는 **공개 실측 데이터셋의 실제 팹 AMHS 레일망**을 임포트해 그대로 렌더한다(팬/줌, 시뮬레이션 미구동).
+
+- **소스**: SMAT2022 `.rail` (노드 2,858 · 링크 3,424[곡선 951] · 섹션 1,698 · 툴그룹 108 · 약 300×153 m).
+- **파이프라인**: `src/entities/fab/smat2022-rail.ts` 파서가 `.rail`(NODE/RAILLIST/EQTONODEMAP/TEXT)을 구조화 → 파싱 산출을 `src/entities/fab/smat2022-layout.json`(런타임 입력, 좌표 mm)으로 커밋 → `src/shared/map/smat2022-blueprint.ts`가 mm→m 변환·Y 뒤집기 후 LINE/CURVE를 색으로 구분한 SVG로 렌더 → `src/features/import/smat2022-view.tsx`(라우트 `app/smat2022`)가 팬/줌으로 표시.
+- **범위**: 뷰 전용이다. 실측 그래프(2,858 노드) 위에서 `SimEngine`(경로탐색·배차·교착)을 구동하는 것은 별도의 큰 작업으로 남겨 둔다. 포트/장비 상세는 별도 CSV라 여기서는 레일망·툴그룹만 그린다.
+- **재생성**: `parseSmat2022Rail(readFile('SMAT2022.rail'))` 결과를 `smat2022-layout.json`으로 저장. 원본 `.rail`은 리포에 포함하지 않는다(파싱 산출 JSON만 포함).
+
+### 데이터 출처 · 라이선스
+
+실측 레일망(`SMAT2022.rail`)은 **U-FAST**(<https://github.com/DaeeunLim/ufast>, MIT)로 배포되는 **SMAT2022 레이아웃**(LogiFabSim — S. Rank, V. Betker, *IFAC-PapersOnLine*, 2025)에서 가져왔다. SMT2020 테스트베드(D. Kopp, M. Hassoun, A. Kalir, L. Mönch, *IEEE Trans. Semiconductor Manufacturing*, 2020) 계열이다. 본 프로토타입은 이 데이터를 파싱해 시각화에만 사용하며, 특정 기업의 실제 팹 도면이 아니다. 원저작권·라이선스는 각 출처를 따른다.
+
 ## 구현 현황
 
 | 단계(계획서 §12) | 상태 | 내용 |
@@ -139,10 +152,11 @@ WebGL 정점 버퍼 비용이 "전체 대수"가 아니라 "보이는 대수"에
 
 ```
 src/
-  app/                       # Next.js routes/layouts (page → LiveMap)
+  app/                       # Next.js routes/layouts (/ → LiveMap, /smat2022 → 실측 임포트 뷰)
   features/control/          # LiveMap: KPI·지도·필터·이력재생·알람 UI
+  features/import/           # SMAT2022 실측 레일망 뷰어(팬/줌, 뷰 전용)
   entities/oht/              # 타입, status 코드/필터(순수) — + *.test.ts
-  entities/fab/              # Rail 그래프 생성/경로/GeoJSON(순수) — + *.test.ts
+  entities/fab/              # Rail 그래프 생성/경로/GeoJSON(순수) + SMAT2022 .rail 파서 — + *.test.ts
   shared/sim/                # SimEngine (Worker·ws 서버 공용 시뮬레이션)
   shared/realtime/           # DeltaReducer·SimulatorClient·SocketClient·팩토리 — + *.test.ts
   shared/map/                # 실내 투영, IndoorMap 어댑터, geometry(순수), FAB 도면 — + *.test.ts
