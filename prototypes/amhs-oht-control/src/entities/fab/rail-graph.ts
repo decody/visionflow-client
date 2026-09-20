@@ -139,13 +139,19 @@ export function buildRailGraph(): RailGraph {
   const bayYs = BAY_SPECS.map((b) => b.y);
   const leftYs = [TOP_Y, ...[...bayYs].reverse(), BOTTOM_Y];
   chain('HW-L', leftYs.map((y) => [LEFT_X, y] as XY), 'interbay');
-  // 하변: 좌→우 (중앙 STK-1 경유)
-  chain('HW-B', [[LEFT_X, BOTTOM_Y], [SPINE_X, BOTTOM_Y], [RIGHT_X, BOTTOM_Y]], 'interbay');
+  // 하변/상변은 스토커가 하이웨이 라인 위에 매달리므로, 각 스토커 x를 실제 노드로
+  // 삽입해 스토커 정차 노드가 그래프에 연결되게 한다(경로탐색·충전소 도달 성립).
+  const stockerXsOn = (y: number) =>
+    LAYOUT.stockers.filter((s) => s.at[1] === y).map((s) => s.at[0]);
+  // 하변: 좌→우 (스토커·중앙 스파인 경유)
+  const bottomXs = Array.from(new Set([LEFT_X, SPINE_X, ...stockerXsOn(BOTTOM_Y), RIGHT_X])).sort((a, b) => a - b);
+  chain('HW-B', bottomXs.map((x) => [x, BOTTOM_Y] as XY), 'interbay');
   // 우변: 아래→위 (Bay Y에서 합류 노드)
   const rightYs = [BOTTOM_Y, ...bayYs, TOP_Y];
   chain('HW-R', rightYs.map((y) => [RIGHT_X, y] as XY), 'interbay');
-  // 상변: 우→좌 (중앙 STK-2 경유)
-  chain('HW-T', [[RIGHT_X, TOP_Y], [SPINE_X, TOP_Y], [LEFT_X, TOP_Y]], 'interbay');
+  // 상변: 우→좌 (스토커·중앙 스파인 경유)
+  const topXs = Array.from(new Set([LEFT_X, SPINE_X, ...stockerXsOn(TOP_Y), RIGHT_X])).sort((a, b) => b - a);
+  chain('HW-T', topXs.map((x) => [x, TOP_Y] as XY), 'interbay');
 
   // 중앙 transfer spine은 공정 Bay 사이의 shortcut. 하→상 단방향.
   chain('XFER', [[SPINE_X, BOTTOM_Y], ...bayYs.map((y) => [SPINE_X, y] as XY), [SPINE_X, TOP_Y]], 'transfer');
@@ -153,6 +159,11 @@ export function buildRailGraph(): RailGraph {
   // Intrabay 코리도 + 공정 장비. 장비는 rail 양쪽에 배치하고 포트는 rail 위에 둔다.
   const spacing = LAYOUT.loadPorts.spacing;
   BAY_SPECS.forEach(({ id: bayId, name, process, y }, bi) => {
+    // 같은 공정의 Bay가 복수(A/B)면 process만으로는 장비 id가 충돌하므로,
+    // bayId의 공정 뒤 접미사(예: BAY-PHOTO-A → "A")를 붙여 유일하게 만든다.
+    // 단일 Bay 레이아웃(BAY-PHOTO)에서는 접미사가 없어 기존 id(PHOTO-01)를 유지한다.
+    const baySuffix = bayId.slice(`BAY-${process}`.length).replace(/^-/, '');
+    const eqpPrefix = baySuffix ? `${process}-${baySuffix}` : process;
     // 각 툴의 로드포트를 rail을 따라 벌어진 **개별 정차 노드**로 배치한다.
     // 복수 로드포트 툴에서는 OHT가 LP마다 위치를 미세 조정해 정차한다.
     const toolLps = TOOL_XS.map((x, ti) => {
@@ -197,7 +208,7 @@ export function buildRailGraph(): RailGraph {
     });
 
     toolLps.forEach(({ x, ti, isMetrology, xs: lpXsOfTool }) => {
-      const equipmentId = `${process}-${String(ti + 1).padStart(2, '0')}`;
+      const equipmentId = `${eqpPrefix}-${String(ti + 1).padStart(2, '0')}`;
       const portIds: string[] = [];
       lpXsOfTool.forEach((lpX, lp) => {
         const portId = `${equipmentId}-LP${lp + 1}`;
@@ -243,7 +254,8 @@ export function buildRailGraph(): RailGraph {
       bayId: stk.bayId,
       kind: 'stocker',
       status: 'RUN',
-      bounds: below ? [sxm - 7, 1, sxm + 7, 6.5] : [sxm - 7, 73.5, sxm + 7, 79],
+      // 스토커 박스는 하이웨이 바깥쪽(도면 가장자리 방향)으로 자기 y에 붙여 그린다.
+      bounds: below ? [sxm - 7, sym - 7, sxm + 7, sym - 1.5] : [sxm - 7, sym + 1.5, sxm + 7, sym + 7],
       portIds: [`${stk.id}-P1`],
     });
     zones.push({

@@ -4,8 +4,8 @@
  */
 export const FAB_CODE = 'FAB:LOCAL';
 
-/** [minX, minY, maxX, maxY] — 도면 크기(미터) */
-export const FAB_EXTENT: [number, number, number, number] = [0, 0, 120, 80];
+/** [minX, minY, maxX, maxY] — 도면 크기(미터). 실제 팹 규모의 밀집 플로어. */
+export const FAB_EXTENT: [number, number, number, number] = [0, 0, 200, 140];
 
 export const FAB_CENTER: [number, number] = [
   (FAB_EXTENT[0] + FAB_EXTENT[2]) / 2,

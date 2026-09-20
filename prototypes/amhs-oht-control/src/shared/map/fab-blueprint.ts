@@ -10,7 +10,7 @@ import { FAB_EXTENT } from './fab-constants';
  */
 export function fabBlueprintDataUrl(): string {
   const g = buildRailGraph();
-  const [, , W, H] = FAB_EXTENT; // 120 x 80 (m)
+  const [, , W, H] = FAB_EXTENT; // 도면 크기(m) — FAB_EXTENT에서 도출
   const S = 10; // px per meter
   const px = W * S;
   const py = H * S;
@@ -117,7 +117,7 @@ export function fabBlueprintDataUrl(): string {
     <rect x="0" y="0" width="${px}" height="${py}" fill="#090e17"/>
     <rect x="6" y="6" width="${px - 12}" height="${py - 12}" fill="none" stroke="#2b3a57" stroke-width="2"/>
     <g stroke="#1a2740" stroke-width="0.6">${grid.join('')}</g>
-    <g opacity=".7"><rect x="${sx(1)}" y="${toY(16)}" width="${sx(118)}" height="${sx(5)}" fill="#101826"/><rect x="${sx(1)}" y="${toY(77)}" width="${sx(118)}" height="${sx(4)}" fill="#101826"/></g>
+    <g opacity=".7"><rect x="${sx(1)}" y="${toY(H * 0.2)}" width="${sx(W - 2)}" height="${sx(H * 0.06)}" fill="#101826"/><rect x="${sx(1)}" y="${toY(H * 0.96)}" width="${sx(W - 2)}" height="${sx(H * 0.05)}" fill="#101826"/></g>
     <g>${zones.join('')}</g>
     <g>${equipmentSvg.join('')}</g>
     <g>${rails.join('')}</g>

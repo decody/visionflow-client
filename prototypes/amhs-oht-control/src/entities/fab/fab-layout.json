@@ -1,10 +1,10 @@
 {
-  "$comment": "FAB 정적 레이아웃 스펙(단위: m). buildRailGraph가 이 파일을 해석해 Rail/Bay/Equipment/Port 골격을 생성한다. 좌표·용량·로드포트 수를 여기서 편집하면 Worker/노드/렌더러가 동일한 그래프를 만든다.",
-  "extent": [0, 0, 120, 80],
-  "highway": { "left": 8, "right": 112, "bottom": 8, "top": 72 },
-  "spineX": 60,
-  "bayEntryX": 14,
-  "toolXs": [22, 36, 50, 70, 84, 98],
+  "$comment": "FAB 정적 레이아웃 스펙(단위: m). buildRailGraph가 이 파일을 해석해 Rail/Bay/Equipment/Port 골격을 생성한다. 실제 팹처럼 밀집한 다중 베이 플로어. 좌표·용량·로드포트 수를 여기서 편집하면 Worker/노드/렌더러가 동일한 그래프를 만든다.",
+  "extent": [0, 0, 200, 140],
+  "highway": { "left": 14, "right": 186, "bottom": 14, "top": 126 },
+  "spineX": 100,
+  "bayEntryX": 24,
+  "toolXs": [34, 46, 58, 70, 82, 118, 130, 142, 154, 166],
   "bufferCapacity": 2,
   "loadPorts": {
     "process": 2,
@@ -12,27 +12,19 @@
     "spacing": 1.7
   },
   "bays": [
-    { "id": "BAY-PHOTO", "name": "PHOTO LITHOGRAPHY", "process": "PHOTO", "y": 22 },
-    { "id": "BAY-ETCH", "name": "DRY ETCH", "process": "ETCH", "y": 36 },
-    { "id": "BAY-CVD", "name": "THIN FILM · CVD", "process": "CVD", "y": 50 },
-    { "id": "BAY-CMP", "name": "CMP · CLEAN", "process": "CMP", "y": 64 }
+    { "id": "BAY-PHOTO-A", "name": "PHOTO LITHOGRAPHY A", "process": "PHOTO", "y": 24 },
+    { "id": "BAY-ETCH-A", "name": "DRY ETCH A", "process": "ETCH", "y": 37 },
+    { "id": "BAY-CVD-A", "name": "THIN FILM · CVD A", "process": "CVD", "y": 50 },
+    { "id": "BAY-CMP-A", "name": "CMP · CLEAN A", "process": "CMP", "y": 63 },
+    { "id": "BAY-PHOTO-B", "name": "PHOTO LITHOGRAPHY B", "process": "PHOTO", "y": 76 },
+    { "id": "BAY-ETCH-B", "name": "DRY ETCH B", "process": "ETCH", "y": 89 },
+    { "id": "BAY-CVD-B", "name": "THIN FILM · CVD B", "process": "CVD", "y": 102 },
+    { "id": "BAY-CMP-B", "name": "CMP · CLEAN B", "process": "CMP", "y": 115 }
   ],
   "stockers": [
-    {
-      "id": "STK-01",
-      "name": "RETICLE / FOUP STOCKER 01",
-      "at": [60, 8],
-      "capacity": 24,
-      "bayId": "STORAGE-S",
-      "zoneName": "SOUTH STOCKER"
-    },
-    {
-      "id": "STK-02",
-      "name": "FOUP STOCKER 02",
-      "at": [60, 72],
-      "capacity": 24,
-      "bayId": "STORAGE-N",
-      "zoneName": "NORTH STOCKER"
-    }
+    { "id": "STK-01", "name": "FOUP STOCKER 01", "at": [60, 14], "capacity": 24, "bayId": "STORAGE-SW", "zoneName": "SOUTH-WEST STOCKER" },
+    { "id": "STK-02", "name": "FOUP STOCKER 02", "at": [140, 14], "capacity": 24, "bayId": "STORAGE-SE", "zoneName": "SOUTH-EAST STOCKER" },
+    { "id": "STK-03", "name": "RETICLE STOCKER 03", "at": [60, 126], "capacity": 24, "bayId": "STORAGE-NW", "zoneName": "NORTH-WEST STOCKER" },
+    { "id": "STK-04", "name": "FOUP STOCKER 04", "at": [140, 126], "capacity": 24, "bayId": "STORAGE-NE", "zoneName": "NORTH-EAST STOCKER" }
   ]
 }

@@ -245,7 +245,9 @@ test('incident alarms carry structured navigation context', () => {
 
 test('storage saturation fills a buffer or stocker, queues unloading, and recovers', () => {
   const engine = new SimEngine(42, () => 0);
-  engine.spawn(8);
+  // 확장된 플로어(8 Bay·스토커 다수)는 스테이징 버퍼가 많아 대체 목적지가 넉넉하다.
+  // 포화 포트로 실제 하역 대기가 발생하려면 플로어 규모에 맞는 밀집 선단이 필요하다.
+  engine.spawn(32);
   engine.setStorageSaturation(true);
   const saturated = engine.snapshot().operations!.saturation!;
   assert.equal(saturated.active, true);
@@ -260,7 +262,7 @@ test('storage saturation fills a buffer or stocker, queues unloading, and recove
 
   let sawAlarm = false;
   let sawWaiting = false;
-  for (let i = 0; i < 3000; i++) {
+  for (let i = 0; i < 4500; i++) {
     const delta = engine.tick(10);
     sawAlarm ||=
       delta.alarms?.some((alarm) =>
@@ -319,7 +321,9 @@ test('persistent occupied segments trigger an alternate route and keep transport
 test('rail closure detours traffic around the closed segment and keeps transport running', () => {
   // 과포화되지 않은 부하에서 폐쇄→우회→반송 지속을 검증한다.
   const engine = new SimEngine(42, () => 0);
-  engine.spawn(8);
+  // 확장된 플로어에서는 선단이 충분히 밀집해야 폐쇄 구간을 실제로 통과하는 차량이 생겨
+  // 우회가 관측된다(8대는 넓은 도면에 흩어져 폐쇄 구간 통과 차량이 없을 수 있음).
+  engine.spawn(16);
   for (let i = 0; i < 200; i++) engine.tick(10); // 경로가 형성된 뒤 폐쇄
   engine.setRailClosure(true);
   const opsAfter = engine.snapshot().operations!;
@@ -536,7 +540,8 @@ test('a vehicle accelerates from a stop and decelerates before arriving', () => 
   const moving: number[] = [];
   let arrivalApproach: number | null = null;
   let peak = 0;
-  for (let i = 0; i < 400; i++) {
+  // 확장된 플로어에서는 첫 목적지까지 경로가 길어 정차까지 더 많은 틱이 필요하다.
+  for (let i = 0; i < 800; i++) {
     engine.tick(10);
     const v = engine.snapshot().vehicles[0]!;
     if (v.status === 'MOVING') {

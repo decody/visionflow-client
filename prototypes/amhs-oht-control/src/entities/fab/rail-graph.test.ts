@@ -109,7 +109,7 @@ test('복수 로드포트: 각 LP는 개별 rail 정차 노드를 가진다', ()
 
 test('layout: extent가 fab-layout.json과 일치', () => {
   const g = buildRailGraph();
-  assert.deepEqual(g.extent, [0, 0, 120, 80]);
+  assert.deepEqual(g.extent, [0, 0, 200, 140]);
 });
 
 test('railGraphToGeoJSON: 피처 수가 소스와 일치', () => {
