@@ -243,6 +243,40 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     },
   });
 
+  const turntableSource = new VectorSource({
+    features: graph.turntables.map((tt) => {
+      const feature = new Feature({ geometry: new Point(tt.at) });
+      feature.set('ttKind', tt.kind);
+      return feature;
+    }),
+  });
+  const turntableLayer = new VectorLayer({
+    source: turntableSource,
+    style: (feature, resolution) => {
+      const kind = feature.get('ttKind') as 'transfer' | 'corner';
+      const color = kind === 'corner' ? '#7f93b3' : '#ffcf6b';
+      return new Style({
+        image: new RegularShape({
+          points: 8,
+          radius: resolution < 0.095 ? 5.5 : 4,
+          fill: new Fill({ color: 'rgba(13,21,38,.95)' }),
+          stroke: new Stroke({ color, width: 1.4 }),
+        }),
+        text:
+          resolution < 0.06
+            ? new Text({
+                text: 'TT',
+                offsetY: -12,
+                font: '700 8px ui-sans-serif',
+                fill: new Fill({ color }),
+                backgroundFill: new Fill({ color: 'rgba(8,12,19,.82)' }),
+                padding: [1, 3, 1, 3],
+              })
+            : undefined,
+      });
+    },
+  });
+
   const equipmentLayer = new VectorLayer({
     source: new VectorSource({
       features: format.readFeatures(geo.equipment, readOpts),
@@ -567,6 +601,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       equipmentLayer,
       railLayer,
       junctionLayer,
+      turntableLayer,
       portLayer,
       heatmapLayer,
       webglLayer,
@@ -608,6 +643,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     batteryLayer.setVisible(next !== 'overview');
     overlayLayer.setVisible(next !== 'overview');
     junctionLayer.setVisible(next !== 'overview');
+    turntableLayer.setVisible(next !== 'overview');
     portLayer.setVisible(next !== 'overview');
     equipmentLayer.setOpacity(next === 'overview' ? 0.55 : 1);
     for (const cb of lodListeners) cb(next);

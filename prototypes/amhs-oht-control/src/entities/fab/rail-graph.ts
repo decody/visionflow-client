@@ -23,6 +23,10 @@ export interface FabLayout {
   highway: { left: number; right: number; bottom: number; top: number };
   spineX: number;
   bayEntryX: number;
+  /** A/B 베이 클러스터 사이 interbay 교차 코리도의 중심 y */
+  midCorridorY: number;
+  /** 교차 코리도 두 단방향 레인의 y 간격 */
+  midLaneGap: number;
   toolXs: number[];
   bufferCapacity: number;
   loadPorts: { process: number; metrology: number; spacing: number };
@@ -75,6 +79,18 @@ export interface Port {
   capacity: number;
 }
 
+/**
+ * Turntable — OHT가 교차하는 트랙 사이를 전환(90° 회전)하거나 서로 다른
+ * interbay 루프/스파인 익스프레스로 갈아타는 전환 노드. 실제 팹의 트랙
+ * 분기·합류·방향전환 지점을 모델링한다.
+ */
+export interface Turntable {
+  id: string;
+  at: XY;
+  /** transfer=루프↔스파인/코리도 갈아탐, corner=외곽 루프 90° 방향전환 */
+  kind: 'transfer' | 'corner';
+}
+
 export interface Equipment {
   id: string;
   name: string;
@@ -93,6 +109,8 @@ export interface RailGraph {
   zones: Zone[];
   ports: Port[];
   equipment: Equipment[];
+  /** 트랙 전환/방향전환 노드 (다중 interbay 루프 간 이동 지점) */
+  turntables: Turntable[];
   /** nodeKey → 그 노드에서 나가는 세그먼트 인덱스(seg.a === node) */
   adjacency: Map<string, number[]>;
   /** nodeKey → 그 노드에 있는 Port */
@@ -110,6 +128,9 @@ const SPINE_X = LAYOUT.spineX;
 const BAY_ENTRY_X = LAYOUT.bayEntryX;
 const BAY_SPECS = LAYOUT.bays;
 const TOOL_XS = LAYOUT.toolXs;
+// interbay 교차 코리도 두 레인의 y. HI(북루프 하단변, L→R) / LO(남루프 상단변, R→L).
+const MID_HI = LAYOUT.midCorridorY + LAYOUT.midLaneGap / 2;
+const MID_LO = LAYOUT.midCorridorY - LAYOUT.midLaneGap / 2;
 
 function nodeKey(p: XY): string {
   return `${Math.round(p[0] * 100)}:${Math.round(p[1] * 100)}`;
@@ -134,10 +155,13 @@ export function buildRailGraph(): RailGraph {
     for (let i = 0; i < pts.length - 1; i += 1) pushSeg(`${prefix}-${i}`, pts[i]!, pts[i + 1]!, kind);
   };
 
-  // Interbay 하이웨이 루프 (시계방향, 단방향)
-  // 좌변: 위→아래 (Bay Y에서 분기 노드)
+  // Interbay 하이웨이: 외곽 시계방향 루프 + A/B 클러스터 사이 교차 코리도(다중 루프).
+  // 좌변/우변/스파인에는 교차 코리도 접점(MID_HI/MID_LO)을 노드로 삽입한다. 이는
+  // 하강/상승 세그먼트를 같은 방향으로 쪼갤 뿐이라 기존 흐름을 바꾸지 않는다(가산적).
   const bayYs = BAY_SPECS.map((b) => b.y);
-  const leftYs = [TOP_Y, ...[...bayYs].reverse(), BOTTOM_Y];
+  const railYs = [...bayYs, MID_HI, MID_LO];
+  // 좌변: 위→아래 (Bay·교차 코리도 접점에서 분기)
+  const leftYs = [TOP_Y, ...[...railYs].sort((a, b) => b - a), BOTTOM_Y];
   chain('HW-L', leftYs.map((y) => [LEFT_X, y] as XY), 'interbay');
   // 하변/상변은 스토커가 하이웨이 라인 위에 매달리므로, 각 스토커 x를 실제 노드로
   // 삽입해 스토커 정차 노드가 그래프에 연결되게 한다(경로탐색·충전소 도달 성립).
@@ -146,15 +170,37 @@ export function buildRailGraph(): RailGraph {
   // 하변: 좌→우 (스토커·중앙 스파인 경유)
   const bottomXs = Array.from(new Set([LEFT_X, SPINE_X, ...stockerXsOn(BOTTOM_Y), RIGHT_X])).sort((a, b) => a - b);
   chain('HW-B', bottomXs.map((x) => [x, BOTTOM_Y] as XY), 'interbay');
-  // 우변: 아래→위 (Bay Y에서 합류 노드)
-  const rightYs = [BOTTOM_Y, ...bayYs, TOP_Y];
+  // 우변: 아래→위 (Bay·교차 코리도 접점에서 합류)
+  const rightYs = [BOTTOM_Y, ...[...railYs].sort((a, b) => a - b), TOP_Y];
   chain('HW-R', rightYs.map((y) => [RIGHT_X, y] as XY), 'interbay');
   // 상변: 우→좌 (스토커·중앙 스파인 경유)
   const topXs = Array.from(new Set([LEFT_X, SPINE_X, ...stockerXsOn(TOP_Y), RIGHT_X])).sort((a, b) => b - a);
   chain('HW-T', topXs.map((x) => [x, TOP_Y] as XY), 'interbay');
 
-  // 중앙 transfer spine은 공정 Bay 사이의 shortcut. 하→상 단방향.
-  chain('XFER', [[SPINE_X, BOTTOM_Y], ...bayYs.map((y) => [SPINE_X, y] as XY), [SPINE_X, TOP_Y]], 'transfer');
+  // 교차 코리도(interbay) 2개 레인 — 외곽 루프 안에 북/남 interbay 루프를 닫는다.
+  //  · 북루프 하단변: 좌→우 @MID_HI (좌변 하강 → 우변 상승을 이어 북쪽 순환 완성)
+  chain('MID-HI', [[LEFT_X, MID_HI], [SPINE_X, MID_HI], [RIGHT_X, MID_HI]], 'interbay');
+  //  · 남루프 상단변: 우→좌 @MID_LO (우변 상승 → 좌변 하강을 이어 남쪽 순환 완성)
+  chain('MID-LO', [[RIGHT_X, MID_LO], [SPINE_X, MID_LO], [LEFT_X, MID_LO]], 'interbay');
+
+  // 중앙 transfer spine은 공정 Bay 사이의 shortcut. 하→상 단방향. 교차 코리도 접점 포함.
+  const spineYs = [BOTTOM_Y, ...[...railYs].sort((a, b) => a - b), TOP_Y];
+  chain('XFER', spineYs.map((y) => [SPINE_X, y] as XY), 'transfer');
+
+  // Turntable — 루프 전환/방향전환 노드. 스파인 교차(4)·코리도↔rail 접점(4)·외곽 코너(4).
+  const turntables: Turntable[] = [];
+  const pushTt = (at: XY, kind: Turntable['kind']) =>
+    turntables.push({ id: `TT-${kind === 'corner' ? 'C' : 'X'}-${nodeKey(at)}`, at, kind });
+  // 스파인 익스프레스 ↔ interbay 갈아타는 지점
+  for (const y of [BOTTOM_Y, MID_LO, MID_HI, TOP_Y]) pushTt([SPINE_X, y], 'transfer');
+  // 교차 코리도 ↔ 좌/우 rail 갈아타는 지점
+  for (const y of [MID_HI, MID_LO]) {
+    pushTt([LEFT_X, y], 'transfer');
+    pushTt([RIGHT_X, y], 'transfer');
+  }
+  // 외곽 루프 90° 방향전환 코너
+  for (const c of [[LEFT_X, BOTTOM_Y], [RIGHT_X, BOTTOM_Y], [RIGHT_X, TOP_Y], [LEFT_X, TOP_Y]] as XY[])
+    pushTt(c, 'corner');
 
   // Intrabay 코리도 + 공정 장비. 장비는 rail 양쪽에 배치하고 포트는 rail 위에 둔다.
   const spacing = LAYOUT.loadPorts.spacing;
@@ -286,7 +332,7 @@ export function buildRailGraph(): RailGraph {
   const portByNode = new Map<string, Port>();
   for (const p of ports) portByNode.set(nodeKey(p.at), p);
 
-  return { extent: FAB_EXTENT, segments, zones, ports, equipment, adjacency, portByNode };
+  return { extent: FAB_EXTENT, segments, zones, ports, equipment, turntables, adjacency, portByNode };
 }
 
 export function nodeKeyOf(p: XY): string {
@@ -366,6 +412,14 @@ export function railGraphToGeoJSON(graph: RailGraph) {
           [e.bounds[0], e.bounds[3]], [e.bounds[0], e.bounds[1]],
         ]] },
         properties: { equipmentId: e.id, name: e.name, process: e.process, bayId: e.bayId, kind: e.kind, status: e.status },
+      })),
+    },
+    turntables: {
+      type: 'FeatureCollection' as const,
+      features: graph.turntables.map((t) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: t.at },
+        properties: { turntableId: t.id, kind: t.kind },
       })),
     },
   };

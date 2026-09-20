@@ -4,6 +4,9 @@
   "highway": { "left": 14, "right": 186, "bottom": 14, "top": 126 },
   "spineX": 100,
   "bayEntryX": 24,
+  "$midComment": "A/B 베이 클러스터 사이의 interbay 교차 코리도. 두 개의 단방향 레인(상단 L→R=북루프 하단변, 하단 R→L=남루프 상단변)이 외곽 루프 안에 북/남 interbay 루프를 형성한다. laneGap은 두 레인의 y 간격.",
+  "midCorridorY": 70,
+  "midLaneGap": 2.4,
   "toolXs": [34, 46, 58, 70, 82, 118, 130, 142, 154, 166],
   "bufferCapacity": 2,
   "loadPorts": {

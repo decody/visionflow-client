@@ -98,6 +98,17 @@ export function fabBlueprintDataUrl(): string {
     return `<circle cx="${x}" cy="${y}" r="3.5" fill="#0b111c" stroke="#8aa0bd" stroke-width="1.2"/><circle cx="${x}" cy="${y}" r="1.2" fill="#c9d7e8"/>`;
   });
 
+  // Turntable(트랙 전환/방향전환 노드) — 회전 모티프 글리프
+  const turntablesSvg: string[] = g.turntables.map((t) => {
+    const x = sx(t.at[0]);
+    const y = toY(t.at[1]);
+    const col = t.kind === 'corner' ? '#7f93b3' : '#ffcf6b';
+    const r = t.kind === 'corner' ? 3.6 : 4.8;
+    return `<g><circle cx="${x}" cy="${y}" r="${r}" fill="#0d1526" stroke="${col}" stroke-width="1.3"/>` +
+      `<path d="M ${(x - r * 0.6).toFixed(1)} ${y.toFixed(1)} A ${(r * 0.6).toFixed(1)} ${(r * 0.6).toFixed(1)} 0 1 1 ${x.toFixed(1)} ${(y - r * 0.6).toFixed(1)}" fill="none" stroke="${col}" stroke-width="1"/>` +
+      `<circle cx="${x}" cy="${y}" r="1" fill="${col}"/></g>`;
+  });
+
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${py}" viewBox="0 0 ${px} ${py}">
     <defs>
       <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -123,9 +134,10 @@ export function fabBlueprintDataUrl(): string {
     <g>${rails.join('')}</g>
     <g opacity="0.9">${arrows.join('')}</g>
     <g>${portsSvg.join('')}</g>
+    <g>${turntablesSvg.join('')}</g>
     <g>${labels.join('')}</g>
     <text x="${px - 14}" y="${py - 16}" class="title">FAB 01 · CLEANROOM AMHS OVERVIEW</text>
-    <text x="${px - 14}" y="${py - 34}" class="dim">${g.zones.filter((z) => z.type === 'intrabay').length} PROCESS BAYS · ${g.equipment.length} EQP · ${g.ports.length} PORTS · ${g.equipment.filter((e) => e.kind === 'stocker').length} STOCKERS</text>
+    <text x="${px - 14}" y="${py - 34}" class="dim">${g.zones.filter((z) => z.type === 'intrabay').length} PROCESS BAYS · ${g.equipment.length} EQP · ${g.ports.length} PORTS · ${g.equipment.filter((e) => e.kind === 'stocker').length} STOCKERS · ${g.turntables.length} TURNTABLES</text>
   </svg>`;
 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;

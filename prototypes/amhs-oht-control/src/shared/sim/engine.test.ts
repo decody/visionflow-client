@@ -162,7 +162,8 @@ test('port incident blocks unloading, emits alarms, and resumes after recovery',
   let sawEqpAlarm = false;
   let sawWaiting = false;
   let sawDelay = false;
-  for (let i = 0; i < 1800; i++) {
+  // 다중 interbay 루프의 교차 코리도로 경로가 짧아져 특정 포트 도착 타이밍이 이동한다.
+  for (let i = 0; i < 2600; i++) {
     const delta = engine.tick(10);
     sawEqpAlarm ||= delta.alarms?.some(
       (alarm) => alarm.kind === 'EQP_DOWN',
@@ -581,7 +582,8 @@ test('battery drains while moving, alarms low, and recovers by charging', () => 
   let sawCharging = false;
   let sawBatteryAlarm = false;
   let outOfRange = false;
-  for (let i = 0; i < 4000; i++) {
+  // 교차 코리도로 경로가 짧아져 방전·충전 진입 시점이 뒤로 밀린다(더 넉넉한 예산).
+  for (let i = 0; i < 6000; i++) {
     const delta = engine.tick(10);
     for (const alarm of delta.alarms ?? [])
       if (alarm.kind === 'BATTERY') sawBatteryAlarm = true;
