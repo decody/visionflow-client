@@ -109,7 +109,7 @@ test('복수 로드포트: 각 LP는 개별 rail 정차 노드를 가진다', ()
 
 test('layout: extent가 fab-layout.json과 일치', () => {
   const g = buildRailGraph();
-  assert.deepEqual(g.extent, [0, 0, 200, 140]);
+  assert.deepEqual(g.extent, [0, 0, 300, 153]);
 });
 
 test('railGraphToGeoJSON: 피처 수가 소스와 일치', () => {
@@ -122,20 +122,21 @@ test('railGraphToGeoJSON: 피처 수가 소스와 일치', () => {
   assert.equal(geo.turntables.features.length, g.turntables.length);
 });
 
-test('다중 interbay 루프: 교차 코리도가 북/남 방향 순환을 형성', () => {
+test('다중 interbay 루프: 교차 코리도가 방향 순환 셀을 형성', () => {
   const g = buildRailGraph();
-  // 교차 코리도 두 레인(MID-HI: L→R, MID-LO: R→L)이 존재한다.
+  // 교차 코리도 레인(MID-HI: L→R, MID-LO: R→L)이 코리도마다 존재한다.
   const midHi = g.segments.filter((s) => s.id.startsWith('MID-HI'));
   const midLo = g.segments.filter((s) => s.id.startsWith('MID-LO'));
-  assert.ok(midHi.length > 0 && midLo.length > 0, '교차 코리도 두 레인 존재');
+  assert.ok(midHi.length > 0 && midLo.length > 0, '교차 코리도 레인 존재');
   // HI 레인은 좌→우, LO 레인은 우→좌 단방향이다.
   assert.ok(midHi.every((s) => s.b[0] > s.a[0]), 'MID-HI는 좌→우');
   assert.ok(midLo.every((s) => s.b[0] < s.a[0]), 'MID-LO는 우→좌');
 
-  // 각 코리도는 되돌아오려면 루프를 한 바퀴 돌아야 하는 진짜 단방향 순환이다.
-  const hiL = nodeKeyOf(midHi[0]!.a); // LEFT@MID_HI
-  const hiR = nodeKeyOf(midHi[midHi.length - 1]!.b); // RIGHT@MID_HI
-  assert.ok(findRoute(g, hiL, hiR).length > 0 && findRoute(g, hiR, hiL).length > 0, '북루프 양방향 도달(순환)');
+  // 첫 코리도(MID-HI-0)는 되돌아오려면 셀을 한 바퀴 돌아야 하는 진짜 단방향 순환이다.
+  const hi0 = g.segments.filter((s) => s.id.startsWith('MID-HI-0')).sort((a, b) => a.a[0] - b.a[0]);
+  const hiL = nodeKeyOf(hi0[0]!.a); // LEFT@corridor0
+  const hiR = nodeKeyOf(hi0[hi0.length - 1]!.b); // RIGHT@corridor0
+  assert.ok(findRoute(g, hiL, hiR).length > 0 && findRoute(g, hiR, hiL).length > 0, '셀 양방향 도달(순환)');
   assert.ok(
     findRoute(g, hiR, hiL).length > findRoute(g, hiL, hiR).length,
     '역방향은 코리도 직행이 아니라 루프 우회',

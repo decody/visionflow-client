@@ -522,7 +522,8 @@ test('large fleets circulate empty vehicles and keep movement continuous across 
     for (const v of current.vehicles) {
       const old = previous.get(v.id)!;
       assert.ok(
-        Math.hypot(v.x - old.x, v.y - old.y) <= 0.34,
+        // 실물 Vmax 5 m/s · tick(10)=0.1s → 최대 이동 ~0.5 m/틱.
+        Math.hypot(v.x - old.x, v.y - old.y) <= 0.55,
         v.id + ' must not teleport',
       );
     }
@@ -565,8 +566,8 @@ test('a vehicle accelerates from a stop and decelerates before arriving', () => 
     const delta = moving[i]! - moving[i - 1]!;
     if (delta > 0) assert.ok(delta <= 0.21, `accel step ${delta}`);
   }
-  // cruise 상한(1.5+1.8)을 넘지 않는다.
-  assert.ok(peak <= 3.31, `peak ${peak}`);
+  // cruise 상한(SMAT2022 Vmax 5 m/s)을 넘지 않는다.
+  assert.ok(peak <= 5.05, `peak ${peak}`);
   // 도착 직전 속도는 cruise plateau보다 낮다(정지거리만큼 감속).
   assert.ok(arrivalApproach !== null, 'vehicle reached a stop');
   assert.ok(

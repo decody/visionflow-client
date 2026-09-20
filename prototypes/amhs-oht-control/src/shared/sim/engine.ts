@@ -1,6 +1,7 @@
 import {
   buildRailGraph,
   nodeKeyOf,
+  type RailSegment,
   type XY,
 } from '@/entities/fab/rail-graph';
 import type {
@@ -134,8 +135,15 @@ export function detectWaitCycles(
 export class SimEngine {
   private static readonly DEFAULT_SEED = 20260905;
   // OHT 동작 현실성: 순간 가·감속 대신 물리적 가속도/정지거리 프로파일을 사용한다.
-  private static readonly ACCEL = 2.0; // m/s² 가속
-  private static readonly DECEL = 1.6; // m/s² 감속(정지거리 산정에도 사용)
+  // 값은 SMAT2022 OHTV0 실측 스펙(LogiFabSim 배포)에 맞춰 캘리브레이션:
+  // Vmax 5000 mm/s, 가속 2000 mm/s², 감속 3500 mm/s², 직선 5 m/s·곡선 1 m/s 제한.
+  private static readonly ACCEL = 2.0; // m/s² 가속 (SMAT2022 2000 mm/s²)
+  private static readonly DECEL = 3.5; // m/s² 감속(정지거리 산정에도 사용, SMAT2022 3500 mm/s²)
+  private static readonly LINE_SPEED = 5.0; // 직선 구간 속도 상한 (SMAT2022 5000 mm/s)
+  private static readonly CURVE_SPEED = 1.0; // 곡선 구간 속도 상한 (SMAT2022 1000 mm/s, B2에서 사용)
+  private static readonly MIN_HEADWAY = 0.909; // 차량 footprint+최소간격 (784+125 mm)
+  private static readonly CURVE_ZONE = 2.0; // 방향 전환 노드 전후 곡선 감속 구간(m)
+  private static readonly CURVE_ANGLE = 45; // 이 각도(°) 이상 꺾이면 곡선으로 간주해 감속
   private static readonly CRAWL = 0.2; // 최종 접근 최소 속도(정지 asymptote 방지)
   private static readonly WIP_CAP = 10; // 전역 운행 WIP 상한(용량 인지 backpressure)
   private static readonly WIP_DIV = 3; // fleet 대비 WIP 비율(vehicles/WIP_DIV)
@@ -556,7 +564,8 @@ export class SimEngine {
         leg: 0,
         distance: 0,
         dwell: 0,
-        cruise: 1.5 + this.random() * 1.8,
+        // 차량별 순항 속도 상한. SMAT2022 Vmax 5 m/s에 맞춰 3.8~5.0 m/s로 분포.
+        cruise: SimEngine.LINE_SPEED - 1.2 + this.random() * 1.2,
         job: null,
         delayedFired: false,
         trafficWait: 0,
@@ -841,7 +850,9 @@ export class SimEngine {
     for (let i = v.leg + 1; i < v.route.length; i++)
       remaining += this.graph.segments[v.route[i]!]!.length;
     const stopCap = Math.sqrt(2 * SimEngine.DECEL * Math.max(0, remaining));
-    const target = Math.min(v.cruise, stopCap);
+    // 곡선(방향 전환) 구간은 실물처럼 곡선 속도로 제한한다(직선 5 → 곡선 1 m/s).
+    const curveCap = this.curveSpeedCap(v);
+    const target = Math.min(v.cruise, stopCap, curveCap);
     let speed = v.state.speed;
     if (speed < target)
       speed = Math.min(target, speed + SimEngine.ACCEL * dt);
@@ -875,6 +886,34 @@ export class SimEngine {
     v.state.speed = 0;
     return true;
   }
+  /**
+   * 곡선 속도 상한. 진행 방향이 CURVE_ANGLE 이상 꺾이는 전환 노드가 CURVE_ZONE
+   * 이내(진입 직전 또는 진출 직후)면 곡선 속도(CURVE_SPEED)로 제한한다. 그 외엔 무제한.
+   */
+  private curveSpeedCap(v: SimVehicle): number {
+    const segs = this.graph.segments;
+    const cur = segs[v.route[v.leg]!];
+    if (!cur) return Infinity;
+    const headingOf = (s: RailSegment) =>
+      Math.atan2(s.b[1] - s.a[1], s.b[0] - s.a[0]);
+    const turnDeg = (a: RailSegment, b: RailSegment) => {
+      let d = Math.abs(((headingOf(b) - headingOf(a)) * 180) / Math.PI);
+      if (d > 180) d = 360 - d;
+      return d;
+    };
+    // 진입: 현재 구간 끝의 전환 노드가 CURVE_ZONE 이내
+    const next = segs[v.route[v.leg + 1]!];
+    if (next && turnDeg(cur, next) >= SimEngine.CURVE_ANGLE) {
+      if (cur.length - v.distance <= SimEngine.CURVE_ZONE) return SimEngine.CURVE_SPEED;
+    }
+    // 진출: 직전 구간에서 방금 꺾여 들어온 직후
+    const prev = segs[v.route[v.leg - 1]!];
+    if (prev && turnDeg(prev, cur) >= SimEngine.CURVE_ANGLE) {
+      if (v.distance <= SimEngine.CURVE_ZONE) return SimEngine.CURVE_SPEED;
+    }
+    return Infinity;
+  }
+
   /** 현재 노드에서 가장 가까운 stocker(충전소) 노드를 경로 길이로 고른다. */
   private nearestChargerNode(from: string): string | null {
     let best: string | null = null;

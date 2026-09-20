@@ -23,8 +23,8 @@ export interface FabLayout {
   highway: { left: number; right: number; bottom: number; top: number };
   spineX: number;
   bayEntryX: number;
-  /** A/B 베이 클러스터 사이 interbay 교차 코리도의 중심 y */
-  midCorridorY: number;
+  /** 베이 클러스터 사이 interbay 교차 코리도들의 중심 y (N개 → N+1 interbay 루프 셀) */
+  midCorridors: number[];
   /** 교차 코리도 두 단방향 레인의 y 간격 */
   midLaneGap: number;
   toolXs: number[];
@@ -128,9 +128,14 @@ const SPINE_X = LAYOUT.spineX;
 const BAY_ENTRY_X = LAYOUT.bayEntryX;
 const BAY_SPECS = LAYOUT.bays;
 const TOOL_XS = LAYOUT.toolXs;
-// interbay 교차 코리도 두 레인의 y. HI(북루프 하단변, L→R) / LO(남루프 상단변, R→L).
-const MID_HI = LAYOUT.midCorridorY + LAYOUT.midLaneGap / 2;
-const MID_LO = LAYOUT.midCorridorY - LAYOUT.midLaneGap / 2;
+// interbay 교차 코리도들. 각 코리도는 두 단방향 레인을 갖는다:
+//  HI(=center+gap/2, L→R, 위쪽 셀의 하단변) / LO(=center-gap/2, R→L, 아래쪽 셀의 상단변).
+// N개 코리도 → 외곽 루프 안에 N+1개의 닫힌 interbay 루프 셀을 만든다.
+const MID_CORRIDORS = LAYOUT.midCorridors.map((cy) => ({
+  hi: cy + LAYOUT.midLaneGap / 2,
+  lo: cy - LAYOUT.midLaneGap / 2,
+}));
+const MID_LANE_YS = MID_CORRIDORS.flatMap((c) => [c.hi, c.lo]);
 
 function nodeKey(p: XY): string {
   return `${Math.round(p[0] * 100)}:${Math.round(p[1] * 100)}`;
@@ -159,7 +164,7 @@ export function buildRailGraph(): RailGraph {
   // 좌변/우변/스파인에는 교차 코리도 접점(MID_HI/MID_LO)을 노드로 삽입한다. 이는
   // 하강/상승 세그먼트를 같은 방향으로 쪼갤 뿐이라 기존 흐름을 바꾸지 않는다(가산적).
   const bayYs = BAY_SPECS.map((b) => b.y);
-  const railYs = [...bayYs, MID_HI, MID_LO];
+  const railYs = [...bayYs, ...MID_LANE_YS];
   // 좌변: 위→아래 (Bay·교차 코리도 접점에서 분기)
   const leftYs = [TOP_Y, ...[...railYs].sort((a, b) => b - a), BOTTOM_Y];
   chain('HW-L', leftYs.map((y) => [LEFT_X, y] as XY), 'interbay');
@@ -177,24 +182,26 @@ export function buildRailGraph(): RailGraph {
   const topXs = Array.from(new Set([LEFT_X, SPINE_X, ...stockerXsOn(TOP_Y), RIGHT_X])).sort((a, b) => b - a);
   chain('HW-T', topXs.map((x) => [x, TOP_Y] as XY), 'interbay');
 
-  // 교차 코리도(interbay) 2개 레인 — 외곽 루프 안에 북/남 interbay 루프를 닫는다.
-  //  · 북루프 하단변: 좌→우 @MID_HI (좌변 하강 → 우변 상승을 이어 북쪽 순환 완성)
-  chain('MID-HI', [[LEFT_X, MID_HI], [SPINE_X, MID_HI], [RIGHT_X, MID_HI]], 'interbay');
-  //  · 남루프 상단변: 우→좌 @MID_LO (우변 상승 → 좌변 하강을 이어 남쪽 순환 완성)
-  chain('MID-LO', [[RIGHT_X, MID_LO], [SPINE_X, MID_LO], [LEFT_X, MID_LO]], 'interbay');
+  // 교차 코리도(interbay) — 코리도마다 두 레인이 인접 셀의 순환을 닫는다.
+  //  · HI 레인: 좌→우 (위쪽 셀의 하단변: 좌변 하강 → 우변 상승을 이음)
+  //  · LO 레인: 우→좌 (아래쪽 셀의 상단변: 우변 상승 → 좌변 하강을 이음)
+  MID_CORRIDORS.forEach(({ hi, lo }, ci) => {
+    chain(`MID-HI-${ci}`, [[LEFT_X, hi], [SPINE_X, hi], [RIGHT_X, hi]], 'interbay');
+    chain(`MID-LO-${ci}`, [[RIGHT_X, lo], [SPINE_X, lo], [LEFT_X, lo]], 'interbay');
+  });
 
   // 중앙 transfer spine은 공정 Bay 사이의 shortcut. 하→상 단방향. 교차 코리도 접점 포함.
   const spineYs = [BOTTOM_Y, ...[...railYs].sort((a, b) => a - b), TOP_Y];
   chain('XFER', spineYs.map((y) => [SPINE_X, y] as XY), 'transfer');
 
-  // Turntable — 루프 전환/방향전환 노드. 스파인 교차(4)·코리도↔rail 접점(4)·외곽 코너(4).
+  // Turntable — 루프 전환/방향전환 노드. 스파인·좌우 rail의 코리도 접점(transfer) + 외곽 코너.
   const turntables: Turntable[] = [];
   const pushTt = (at: XY, kind: Turntable['kind']) =>
     turntables.push({ id: `TT-${kind === 'corner' ? 'C' : 'X'}-${nodeKey(at)}`, at, kind });
-  // 스파인 익스프레스 ↔ interbay 갈아타는 지점
-  for (const y of [BOTTOM_Y, MID_LO, MID_HI, TOP_Y]) pushTt([SPINE_X, y], 'transfer');
+  // 스파인 익스프레스 ↔ 외곽/코리도 갈아타는 지점
+  for (const y of [BOTTOM_Y, ...MID_LANE_YS, TOP_Y]) pushTt([SPINE_X, y], 'transfer');
   // 교차 코리도 ↔ 좌/우 rail 갈아타는 지점
-  for (const y of [MID_HI, MID_LO]) {
+  for (const y of MID_LANE_YS) {
     pushTt([LEFT_X, y], 'transfer');
     pushTt([RIGHT_X, y], 'transfer');
   }

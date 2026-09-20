@@ -42,7 +42,7 @@ import {
   type HistoryFrame,
 } from './history';
 
-const COUNT_PRESETS = [8, 32, 500, 1000, 2000, 5000];
+const COUNT_PRESETS = [8, 32, 100, 500, 1000, 2000, 5000];
 const FAB_BAYS = [
   { id: 'BAY-PHOTO', label: 'PHOTO' },
   { id: 'BAY-ETCH', label: 'ETCH' },
@@ -128,7 +128,7 @@ export function LiveMap() {
   const [activeBay, setActiveBay] = useState<string | null>(null);
   const [activeEquipment, setActiveEquipment] = useState('');
   const [detail, setDetail] = useState<VehicleState | null>(null);
-  const [count, setCount] = useState(32);
+  const [count, setCount] = useState(100);
   const [operations, setOperations] = useState<OperationsState>();
   const operationsRef = useRef<OperationsState | undefined>(
     undefined,
@@ -213,7 +213,7 @@ export function LiveMap() {
     indoor.fit();
 
     const client = createRealtimeSource({
-      count: 32,
+      count: 100,
       rateHz: 10,
       onBatch: (batch) => {
         if (batch.alarms.length > 0) pushAlarms(batch.alarms);
