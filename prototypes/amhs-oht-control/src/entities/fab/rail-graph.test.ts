@@ -120,6 +120,24 @@ test('railGraphToGeoJSON: 피처 수가 소스와 일치', () => {
   assert.equal(geo.ports.features.length, g.ports.length);
   assert.equal(geo.equipment.features.length, g.equipment.length);
   assert.equal(geo.turntables.features.length, g.turntables.length);
+  assert.equal(geo.zcus.features.length, g.zcus.length);
+});
+
+test('ZCU: 합류=STOP·전환=RESET 제어점이 실제 노드에 위치', () => {
+  const g = buildRailGraph();
+  assert.ok(g.zcus.length > 0);
+  const stop = g.zcus.filter((z) => z.type === 'STOP');
+  const reset = g.zcus.filter((z) => z.type === 'RESET');
+  assert.ok(stop.length > 0 && reset.length > 0, 'STOP·RESET 모두 존재');
+  // STOP은 합류 지점(incoming≥2)이다.
+  assert.ok(stop.every((z) => z.incoming >= 2), 'STOP은 합류(incoming≥2)');
+  // 모든 ZCU는 세그먼트가 들어오는 실제 그래프 노드다.
+  const inTo = new Set(g.segments.map((s) => nodeKeyOf(s.b)));
+  for (const z of g.zcus)
+    assert.ok(inTo.has(nodeKeyOf(z.at)), `${z.id} 실제 노드`);
+  // 같은 노드에 STOP/RESET 중복 부여되지 않는다.
+  const keys = g.zcus.map((z) => nodeKeyOf(z.at));
+  assert.equal(new Set(keys).size, keys.length, 'ZCU 노드 중복 없음');
 });
 
 test('다중 interbay 루프: 교차 코리도가 방향 순환 셀을 형성', () => {

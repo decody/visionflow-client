@@ -277,6 +277,42 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     },
   });
 
+  const zcuSource = new VectorSource({
+    features: graph.zcus.map((z) => {
+      const feature = new Feature({ geometry: new Point(z.at) });
+      feature.set('zcuType', z.type);
+      return feature;
+    }),
+  });
+  const zcuLayer = new VectorLayer({
+    source: zcuSource,
+    visible: false, // equipment LOD에서만 표시(합류 마커와 겹침 최소화)
+    style: (feature, resolution) => {
+      const type = feature.get('zcuType') as 'STOP' | 'RESET';
+      const color = type === 'STOP' ? '#ff5470' : '#66d9ef';
+      return new Style({
+        image: new RegularShape({
+          points: type === 'STOP' ? 8 : 4,
+          radius: resolution < 0.095 ? 5 : 3.5,
+          angle: Math.PI / 4,
+          fill: new Fill({ color: 'rgba(8,12,19,.6)' }),
+          stroke: new Stroke({ color, width: 1.3 }),
+        }),
+        text:
+          resolution < 0.05
+            ? new Text({
+                text: type,
+                offsetY: 11,
+                font: '700 8px ui-sans-serif',
+                fill: new Fill({ color }),
+                backgroundFill: new Fill({ color: 'rgba(8,12,19,.82)' }),
+                padding: [1, 3, 1, 3],
+              })
+            : undefined,
+      });
+    },
+  });
+
   const equipmentLayer = new VectorLayer({
     source: new VectorSource({
       features: format.readFeatures(geo.equipment, readOpts),
@@ -602,6 +638,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       railLayer,
       junctionLayer,
       turntableLayer,
+      zcuLayer,
       portLayer,
       heatmapLayer,
       webglLayer,
@@ -644,6 +681,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     overlayLayer.setVisible(next !== 'overview');
     junctionLayer.setVisible(next !== 'overview');
     turntableLayer.setVisible(next !== 'overview');
+    zcuLayer.setVisible(next === 'equipment');
     portLayer.setVisible(next !== 'overview');
     equipmentLayer.setOpacity(next === 'overview' ? 0.55 : 1);
     for (const cb of lodListeners) cb(next);

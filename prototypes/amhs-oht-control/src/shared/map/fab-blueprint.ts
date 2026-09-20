@@ -109,6 +109,16 @@ export function fabBlueprintDataUrl(): string {
       `<circle cx="${x}" cy="${y}" r="1" fill="${col}"/></g>`;
   });
 
+  // ZCU(구역 제어점) — STOP(합류 순차제어, 붉은 게이트) / RESET(전환 재동기, 청록 사각)
+  const zcusSvg: string[] = g.zcus.map((z) => {
+    const x = sx(z.at[0]);
+    const y = toY(z.at[1]);
+    if (z.type === 'STOP')
+      return `<g><circle cx="${x}" cy="${y}" r="2.8" fill="none" stroke="#ff5470" stroke-width="1.2"/>` +
+        `<line x1="${(x - 2).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + 2).toFixed(1)}" y2="${y.toFixed(1)}" stroke="#ff5470" stroke-width="1"/></g>`;
+    return `<rect x="${(x - 2.3).toFixed(1)}" y="${(y - 2.3).toFixed(1)}" width="4.6" height="4.6" fill="none" stroke="#66d9ef" stroke-width="1"/>`;
+  });
+
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${py}" viewBox="0 0 ${px} ${py}">
     <defs>
       <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -135,9 +145,10 @@ export function fabBlueprintDataUrl(): string {
     <g opacity="0.9">${arrows.join('')}</g>
     <g>${portsSvg.join('')}</g>
     <g>${turntablesSvg.join('')}</g>
+    <g opacity="0.85">${zcusSvg.join('')}</g>
     <g>${labels.join('')}</g>
     <text x="${px - 14}" y="${py - 16}" class="title">FAB 01 · CLEANROOM AMHS OVERVIEW</text>
-    <text x="${px - 14}" y="${py - 34}" class="dim">${g.zones.filter((z) => z.type === 'intrabay').length} PROCESS BAYS · ${g.equipment.length} EQP · ${g.ports.length} PORTS · ${g.equipment.filter((e) => e.kind === 'stocker').length} STOCKERS · ${g.turntables.length} TURNTABLES</text>
+    <text x="${px - 14}" y="${py - 34}" class="dim">${g.zones.filter((z) => z.type === 'intrabay').length} PROCESS BAYS · ${g.equipment.length} EQP · ${g.ports.length} PORTS · ${g.equipment.filter((e) => e.kind === 'stocker').length} STOCKERS · ${g.turntables.length} TURNTABLES · ${g.zcus.length} ZCU</text>
   </svg>`;
 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;

@@ -91,6 +91,21 @@ export interface Turntable {
   kind: 'transfer' | 'corner';
 }
 
+/**
+ * ZCU (Zone Control Unit) — 실물 AMHS의 구역 트래픽 제어점.
+ * SMAT2022 ZCU_TYPE(NONE/RESET/STOP)을 반영한다.
+ *  - STOP: 흐름이 합류하는 지점. 차량은 통과 허가를 받고 순차 진입한다
+ *          (엔진의 junction 중재: hot lot·대기시간·id 우선순위가 이 지점을 순서화).
+ *  - RESET: 루프/스파인을 갈아타는 전환 지점의 위치 재동기 체크포인트.
+ */
+export interface Zcu {
+  id: string;
+  at: XY;
+  type: 'STOP' | 'RESET';
+  /** STOP일 때 이 노드로 합류하는 간선 수(경합도) */
+  incoming: number;
+}
+
 export interface Equipment {
   id: string;
   name: string;
@@ -111,6 +126,8 @@ export interface RailGraph {
   equipment: Equipment[];
   /** 트랙 전환/방향전환 노드 (다중 interbay 루프 간 이동 지점) */
   turntables: Turntable[];
+  /** 구역 트래픽 제어점 (STOP=합류 순차제어, RESET=전환 재동기) */
+  zcus: Zcu[];
   /** nodeKey → 그 노드에서 나가는 세그먼트 인덱스(seg.a === node) */
   adjacency: Map<string, number[]>;
   /** nodeKey → 그 노드에 있는 Port */
@@ -339,7 +356,32 @@ export function buildRailGraph(): RailGraph {
   const portByNode = new Map<string, Port>();
   for (const p of ports) portByNode.set(nodeKey(p.at), p);
 
-  return { extent: FAB_EXTENT, segments, zones, ports, equipment, turntables, adjacency, portByNode };
+  // ZCU 도출 — 실물 구역 제어점. STOP=합류(incoming≥2) 노드(엔진 junction 중재가
+  // 순서화하는 경합점), RESET=합류가 아닌 전환 turntable(위치 재동기 체크포인트).
+  const incoming = new Map<string, { at: XY; n: number }>();
+  for (const seg of segments) {
+    const k = nodeKey(seg.b);
+    const e = incoming.get(k) ?? { at: seg.b, n: 0 };
+    e.n += 1;
+    incoming.set(k, e);
+  }
+  const zcus: Zcu[] = [];
+  const zcuKeys = new Set<string>();
+  for (const [k, { at, n }] of incoming) {
+    if (n >= 2) {
+      zcus.push({ id: `ZCU-STOP-${k}`, at, type: 'STOP', incoming: n });
+      zcuKeys.add(k);
+    }
+  }
+  for (const tt of turntables) {
+    if (tt.kind !== 'transfer') continue;
+    const k = nodeKey(tt.at);
+    if (zcuKeys.has(k)) continue;
+    zcus.push({ id: `ZCU-RESET-${k}`, at: tt.at, type: 'RESET', incoming: incoming.get(k)?.n ?? 0 });
+    zcuKeys.add(k);
+  }
+
+  return { extent: FAB_EXTENT, segments, zones, ports, equipment, turntables, zcus, adjacency, portByNode };
 }
 
 export function nodeKeyOf(p: XY): string {
@@ -427,6 +469,14 @@ export function railGraphToGeoJSON(graph: RailGraph) {
         type: 'Feature' as const,
         geometry: { type: 'Point' as const, coordinates: t.at },
         properties: { turntableId: t.id, kind: t.kind },
+      })),
+    },
+    zcus: {
+      type: 'FeatureCollection' as const,
+      features: graph.zcus.map((z) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: z.at },
+        properties: { zcuId: z.id, type: z.type, incoming: z.incoming },
       })),
     },
   };
