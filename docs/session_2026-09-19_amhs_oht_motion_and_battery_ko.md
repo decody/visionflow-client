@@ -1,9 +1,8 @@
 # 작업 세션 로그 — 2026-09-19 (OHT 동작 현실성: 가·감속·배터리 + 교착 완화)
 
-`amhs-oht-control` 프로토타입의 2026-09-19 진행분. 직전 세션 이력은
-[`session_2026-09-06_amhs_perf_and_faults_ko.md`](session_2026-09-06_amhs_perf_and_faults_ko.md)에
-누적돼 있으며, 그 문서의 "남은 후보" 중 **OHT 동작 현실성(가·감속·정지거리·배터리)**을
-구현하고, 그 과정에서 드러난 과포화 교착을 **교착 완화(우선통과)**로 해결한다.
+`amhs-oht-control` 프로토타입의 2026-09-19 진행분. 직전 세션의 "남은 후보" 중
+**OHT 동작 현실성(가·감속·정지거리·배터리)**을 구현하고, 그 과정에서 드러난 과포화
+교착을 **교착 완화(우선통과)**로 해결한다.
 
 - 대상: `visionflow-client/prototypes/amhs-oht-control`
 - 저장소: `decody/visionflow-client`, 브랜치 `agent/amhs-oht-control-prototype`

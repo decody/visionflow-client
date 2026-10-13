@@ -196,6 +196,9 @@ export class SocketClient implements RealtimeSource {
     this.storageSaturation = enabled;
     this.send({ type: 'setStorageSaturation', enabled });
   }
+  setBatteryScenario(enabled: boolean): void {
+    this.send({ type: 'setBatteryScenario', enabled });
+  }
   resetScenario(count: number): void {
     this.count = count;
     this.portIncident = false;

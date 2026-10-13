@@ -15,9 +15,16 @@ export type TransportPhase =
   | 'TO_PICKUP'
   | 'LOADING'
   | 'DELIVERING'
+  | 'WAITING_PICKUP'
   | 'WAITING_PORT'
   | 'UNLOADING'
   | 'DONE';
+export type DockState =
+  | 'APPROACHING'
+  | 'DOCKED'
+  | 'TRANSFERRING'
+  | 'WAITING'
+  | 'RELEASING';
 export interface TransportJob {
   id: string;
   carrierId: string;
@@ -89,6 +96,8 @@ export interface OperationsState {
     blockedVehicleIds: string[];
     occupiedSegments: number;
     junctionReservations: number;
+    junctionQueue: number;
+    junctionSegmentIds: string[];
     reroutedVehicles: number;
     activeDeadlocks: number;
     resolvedDeadlocks: number;
@@ -126,7 +135,11 @@ export interface VehicleState {
   speed: number;
   /** 현재 Job의 계획 경로(스냅샷에 포함) */
   route?: Coord[];
+  /** 현재 점유 중인 Rail 세그먼트 ID(정체 시각화용) */
+  segmentId?: string | null;
   phase?: TransportPhase | 'IDLE' | 'REPOSITIONING' | 'CHARGING';
+  /** Load Port/Stocker 앞에서의 도킹 세부 상태 */
+  dockState?: DockState | null;
   loaded?: boolean;
   carrierId?: string | null;
   lotId?: string | null;
@@ -204,6 +217,7 @@ export type CommandType =
   | 'setPortIncident'
   | 'setRailClosure'
   | 'setStorageSaturation'
+  | 'setBatteryScenario'
   | 'resetScenario'
   | 'promoteHotLot';
 

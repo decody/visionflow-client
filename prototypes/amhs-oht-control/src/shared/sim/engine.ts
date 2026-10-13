@@ -12,6 +12,7 @@ import type {
   ClientCommand,
   CommandResult,
   Coord,
+  DockState,
   DeltaMessage,
   DispatchRule,
   OperationsState,
@@ -142,6 +143,8 @@ export class SimEngine {
   private static readonly LINE_SPEED = 5.0; // 직선 구간 속도 상한 (SMAT2022 5000 mm/s)
   private static readonly CURVE_SPEED = 1.0; // 곡선 구간 속도 상한 (SMAT2022 1000 mm/s, B2에서 사용)
   private static readonly MIN_HEADWAY = 0.909; // 차량 footprint+최소간격 (784+125 mm)
+  private static readonly HEADWAY_BUFFER = 0.75; // 정차·제동 여유(m)
+  private static readonly HEADWAY_TIME = 0.48; // 속도 비례 안전시간(s)
   private static readonly CURVE_ZONE = 2.0; // 방향 전환 노드 전후 곡선 감속 구간(m)
   private static readonly CURVE_ANGLE = 45; // 이 각도(°) 이상 꺾이면 곡선으로 간주해 감속
   private static readonly CRAWL = 0.2; // 최종 접근 최소 속도(정지 asymptote 방지)
@@ -235,6 +238,9 @@ export class SimEngine {
         break;
       case 'setStorageSaturation':
         this.setStorageSaturation(cmd.enabled === true);
+        break;
+      case 'setBatteryScenario':
+        this.setBatteryScenario(cmd.enabled === true);
         break;
       case 'resetScenario':
         if (typeof cmd.count === 'number' && Number.isFinite(cmd.count))
@@ -382,6 +388,27 @@ export class SimEngine {
       equipmentId: target.equipmentId,
       message: `${target.id} ${target.kind === 'stocker' ? 'stocker' : 'buffer'} 포화 · 하역 대기 예상`,
     });
+  }
+
+  /** 저배터리 차량과 충전 복귀를 고정적으로 재현하는 데모 주입. */
+  setBatteryScenario(enabled: boolean): void {
+    const targets = this.vehicles.slice(0, Math.min(2, this.vehicles.length));
+    for (const vehicle of targets) {
+      vehicle.battery = enabled ? 8 : 80;
+      vehicle.batteryWarned = false;
+      vehicle.batteryCritical = false;
+      vehicle.state.battery = Math.round(vehicle.battery);
+    }
+    if (enabled && targets[0]) {
+      this.pendingAlarms.push({
+        id: `AL-BATTERY-DEMO-${Math.round(this.now)}`,
+        kind: 'BATTERY',
+        severity: 'critical',
+        ts: this.now,
+        vehicleId: targets[0].state.id,
+        message: `${targets[0].state.id} 저배터리 시나리오 · 충전 복귀 유도`,
+      });
+    }
   }
 
   /**
@@ -548,6 +575,8 @@ export class SimEngine {
           jobId: null,
           speed: 0,
           phase: 'IDLE',
+          dockState: null,
+          segmentId: null,
           loaded: false,
           carrierId: null,
           lotId: null,
@@ -790,6 +819,7 @@ export class SimEngine {
     v.route = route;
     v.leg = 0;
     v.distance = 0;
+    v.state.segmentId = route.length ? this.graph.segments[route[0]!]!.id : null;
     const points: Coord[] = [];
     if (v.route.length) {
       points.push([...this.graph.segments[v.route[0]!]!.a] as XY);
@@ -830,6 +860,9 @@ export class SimEngine {
     v.state.phase = phase;
     v.state.status =
       phase === 'LOADING' || phase === 'UNLOADING' ? phase : 'MOVING';
+    if (phase === 'LOADING' || phase === 'UNLOADING') v.state.dockState = 'DOCKED';
+    else if (phase === 'TO_PICKUP' || phase === 'DELIVERING') v.state.dockState = 'APPROACHING';
+    else if (phase === 'WAITING_PORT' || phase === 'WAITING_PICKUP') v.state.dockState = 'WAITING';
     // 정지 상태(로딩/언로딩)만 속도 0으로 강제하고, 주행 상태는 advance가
     // 가속 프로파일에 따라 0에서부터 서서히 올린다(순간 가속 금지).
     if (phase === 'LOADING' || phase === 'UNLOADING') v.state.speed = 0;
@@ -882,6 +915,9 @@ export class SimEngine {
       v.node = nodeKeyOf(seg.b);
       v.leg++;
       v.distance = 0;
+      v.state.segmentId = v.leg < v.route.length
+        ? this.graph.segments[v.route[v.leg]!]!.id
+        : null;
     }
     v.state.speed = 0;
     return true;
@@ -1018,6 +1054,13 @@ export class SimEngine {
             .filter((segment): segment is number => segment !== undefined),
         ).size,
         junctionReservations: this.junctionReservationCount(),
+        junctionQueue: [...this.junctionRequests(1 / 10).values()].reduce(
+          (total, vehicles) => total + Math.max(0, vehicles.length - 1),
+          0,
+        ),
+        junctionSegmentIds: [...this.junctionRequests(1 / 10).keys()].map(
+          (segment) => this.graph.segments[segment]!.id,
+        ),
         reroutedVehicles: this.vehicles.filter(
           (vehicle) => (vehicle.state.rerouteCount ?? 0) > 0,
         ).length,
@@ -1080,6 +1123,23 @@ export class SimEngine {
       this.setPhase(vehicle, 'UNLOADING');
       vehicle.dwell = 2;
       unloadingByPort.set(job.to, unloading + 1);
+    }
+    // 같은 Load Port의 호이스트는 한 번에 한 OHT만 사용한다.
+    // 먼저 도착한 차량은 포트 앞에서 대기하고, 선행 적재가 끝난 다음 틱에 재개한다.
+    for (const vehicle of this.vehicles) {
+      const job = vehicle.job;
+      if (!job || job.phase !== 'WAITING_PICKUP') continue;
+      const hoistBusy = this.vehicles.some(
+        (other) =>
+          other !== vehicle &&
+          other.job?.phase === 'LOADING' &&
+          other.job.from === job.from,
+      );
+      if (hoistBusy) continue;
+      before.set(vehicle, { ...vehicle.state });
+      this.setPhase(vehicle, 'LOADING');
+      vehicle.dwell = 2;
+      vehicle.state.status = 'LOADING';
     }
     const segmentOwners = new Map<number, string>();
     for (const vehicle of this.vehicles) {
@@ -1147,19 +1207,45 @@ export class SimEngine {
       const leader = this.vehicles.find((other) => {
         if (other === vehicle) return false;
         if (!other.job && other.state.phase === 'IDLE') return false;
-        const currentGap = Math.hypot(
-          vehicle.state.x - other.state.x,
-          vehicle.state.y - other.state.y,
+        // 유클리드 거리만 사용하면 평행한 상·하행 레인의 차량을 서로
+        // 막는 오탐이 생긴다. 같은 진행 세그먼트(또는 그 뒤 세그먼트)에
+        // 있는 차량만 경로상의 선행 차량으로 인정한다.
+        const currentGap = this.forwardRouteGap(vehicle, other);
+        const nextGap = this.forwardRouteGap(probe, other);
+        if (currentGap === null || nextGap === null) return false;
+        const speed = Math.max(vehicle.state.speed, probe.state.speed);
+        const safeGap = Math.max(
+          SimEngine.MIN_HEADWAY,
+          SimEngine.HEADWAY_BUFFER + speed * SimEngine.HEADWAY_TIME,
         );
-        const nextGap = Math.hypot(
-          probe.state.x - other.state.x,
-          probe.state.y - other.state.y,
-        );
-        return nextGap < 1.6 && nextGap < currentGap;
+        return nextGap < safeGap && nextGap < currentGap;
       });
       if (leader) {
         vehicle.waitingFor = leader.state.id;
-        return `${leader.state.id} 안전 간격`;
+        const gap = this.forwardRouteGap(vehicle, leader);
+        return `${leader.state.id} 안전 간격${gap === null ? '' : ` ${Math.max(0, gap).toFixed(1)}m`}`;
+      }
+      // 최종 하드 가드: 서로 다른 Job 경로라도 같은 실제 세그먼트에
+      // 진입한 차량이 겹치려 하면 전진을 허용하지 않는다.
+      const probeSegmentId = probe.state.segmentId;
+      const collisionGuard = probeSegmentId
+        ? this.vehicles.find((other) => {
+            if (other === vehicle || (!other.job && other.state.phase === 'IDLE')) return false;
+            if (other.state.segmentId !== probeSegmentId) return false;
+            const currentDistance = Math.hypot(
+              vehicle.state.x - other.state.x,
+              vehicle.state.y - other.state.y,
+            );
+            const nextDistance = Math.hypot(
+              probe.state.x - other.state.x,
+              probe.state.y - other.state.y,
+            );
+            return nextDistance < SimEngine.MIN_HEADWAY && nextDistance < currentDistance;
+          })
+        : undefined;
+      if (collisionGuard) {
+        vehicle.waitingFor = collisionGuard.state.id;
+        return `${collisionGuard.state.id} 충돌 방지`;
       }
       return null;
     };
@@ -1177,6 +1263,7 @@ export class SimEngine {
               status: 'IDLE',
               speed: 0,
               route: [],
+              segmentId: null,
             });
           continue;
         }
@@ -1270,7 +1357,7 @@ export class SimEngine {
             v.blockedFired = true;
             alarms.push({
               id: 'AL-BLOCK-' + v.state.id + '-' + Math.round(this.now),
-              kind: 'BLOCKED',
+              kind: reason.includes('합류 예약') ? 'JAM' : 'BLOCKED',
               severity: 'warn',
               ts: this.now,
               vehicleId: v.state.id,
@@ -1317,11 +1404,26 @@ export class SimEngine {
                 ? `${job.to} 포트 장애`
                 : `${job.to} 저장 용량 포화`;
           } else {
-            this.setPhase(
-              v,
-              job.phase === 'TO_PICKUP' ? 'LOADING' : 'UNLOADING',
-            );
-            v.dwell = 2;
+            const hoistBusy =
+              job.phase === 'TO_PICKUP' &&
+              this.vehicles.some(
+                (other) =>
+                  other !== v &&
+                  other.job?.phase === 'LOADING' &&
+                  other.job.from === job.from,
+              );
+            if (hoistBusy) {
+              this.setPhase(v, 'WAITING_PICKUP');
+              v.state.status = 'BLOCKED';
+              v.state.blockedBy = `${job.from} 호이스트 사용 중`;
+              v.state.dockState = 'WAITING';
+            } else {
+              this.setPhase(
+                v,
+                job.phase === 'TO_PICKUP' ? 'LOADING' : 'UNLOADING',
+              );
+              v.dwell = 2;
+            }
           }
           } else {
           v.trafficWait = 0;
@@ -1332,7 +1434,9 @@ export class SimEngine {
           // 속도는 advance의 가·감속 프로파일이 이미 설정했다.
           }
         }
-      } else if (job.phase !== 'WAITING_PORT') {
+      } else if (job.phase !== 'WAITING_PORT' && job.phase !== 'WAITING_PICKUP') {
+        if (job.phase === 'LOADING' || job.phase === 'UNLOADING')
+          v.state.dockState = 'TRANSFERRING';
         v.dwell -= dt;
         if (v.dwell <= 0) {
           const carrier = this.carriers.find(
@@ -1342,8 +1446,10 @@ export class SimEngine {
             carrier.portId = null;
             carrier.vehicleId = v.state.id;
             v.state.loaded = true;
+            v.state.dockState = 'RELEASING';
             this.setRoute(v, this.portNode(job.to));
             this.setPhase(v, 'DELIVERING');
+            v.state.dockState = 'RELEASING';
           } else if (job.phase === 'UNLOADING') {
             carrier.portId = job.to;
             carrier.vehicleId = null;
@@ -1367,6 +1473,7 @@ export class SimEngine {
               route: [],
               blockedBy: null,
               rerouteCount: 0,
+              dockState: null,
             });
           }
         }
@@ -1521,6 +1628,37 @@ export class SimEngine {
           }
       }
     }
+  }
+
+  /**
+   * 같은 단방향 경로에서 follower 앞에 있는 leader까지의 rail 거리.
+   * 다른 레인·다른 경로에 있는 차량은 null을 반환해 안전거리 판단에서 제외한다.
+   */
+  private forwardRouteGap(follower: SimVehicle, leader: SimVehicle): number | null {
+    const followerSegment = follower.route[follower.leg];
+    if (followerSegment === undefined) return null;
+    const followerRail = this.graph.segments[followerSegment];
+    if (!followerRail) return null;
+
+    let leaderLeg = -1;
+    for (let i = leader.leg; i < leader.route.length; i += 1) {
+      if (leader.route[i] === followerSegment) {
+        leaderLeg = i;
+        break;
+      }
+    }
+    if (leaderLeg < 0) return null;
+
+    if (leaderLeg === follower.leg)
+      return leader.distance - follower.distance;
+
+    let gap = followerRail.length - follower.distance;
+    for (let i = follower.leg + 1; i < leaderLeg; i += 1) {
+      const segment = this.graph.segments[follower.route[i]!];
+      if (!segment) return null;
+      gap += segment.length;
+    }
+    return gap + leader.distance;
   }
 
   private junctionRequests(dt: number): Map<number, SimVehicle[]> {

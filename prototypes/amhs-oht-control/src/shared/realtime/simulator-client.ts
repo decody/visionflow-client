@@ -92,6 +92,10 @@ export class SimulatorClient implements RealtimeSource {
     this.worker.postMessage({ type: 'setStorageSaturation', enabled });
   }
 
+  setBatteryScenario(enabled: boolean): void {
+    this.worker.postMessage({ type: 'setBatteryScenario', enabled });
+  }
+
   resetScenario(count: number): void {
     this.worker.postMessage({ type: 'resetScenario', count });
   }

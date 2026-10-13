@@ -39,6 +39,7 @@ export interface RealtimeSource {
   setPortIncident(enabled: boolean): void;
   setRailClosure(enabled: boolean): void;
   setStorageSaturation(enabled: boolean): void;
+  setBatteryScenario(enabled: boolean): void;
   /** 고정 seed와 지정 대수로 운영 데모 초기 상태를 재생성 */
   resetScenario(count: number): void;
   promoteHotLot(jobId?: string): void;

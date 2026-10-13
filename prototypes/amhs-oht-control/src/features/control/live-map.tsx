@@ -18,6 +18,7 @@ import {
   STATUS_COLORS,
   type Alarm,
   type DispatchRule,
+  type DockState,
   type OhtStatus,
   type OperationsState,
   type VehicleState,
@@ -42,6 +43,7 @@ import {
   type HistoryFrame,
 } from './history';
 
+const DEFAULT_SCENARIO_COUNT = 8;
 const COUNT_PRESETS = [8, 32, 100, 500, 1000, 2000, 5000];
 const FAB_BAYS = [
   { id: 'BAY-PHOTO', label: 'PHOTO' },
@@ -49,20 +51,34 @@ const FAB_BAYS = [
   { id: 'BAY-CVD', label: 'CVD' },
   { id: 'BAY-CMP', label: 'CMP' },
 ] as const;
-const FAB_EQUIPMENT = buildRailGraph().equipment.filter(
+const FAB_GRAPH = buildRailGraph();
+const FAB_EQUIPMENT = FAB_GRAPH.equipment.filter(
   (item) => item.kind !== 'stocker',
 );
+function jobTouchesBay(job: { from: string; to: string }, bayId: string): boolean {
+  return [job.from, job.to].some(
+    (portId) => FAB_GRAPH.ports.find((port) => port.id === portId)?.bayId === bayId,
+  );
+}
 const PHASE_LABELS: Record<string, string> = {
   QUEUED: '배차 대기',
   TO_PICKUP: '공차 픽업',
   LOADING: '호이스팅 적재',
   DELIVERING: '적재 이송',
+  WAITING_PICKUP: '호이스트 대기',
   UNLOADING: '하역',
   WAITING_PORT: '포트 대기',
   DONE: '완료',
   IDLE: '대기',
   REPOSITIONING: '공차 순환',
   CHARGING: '충전',
+};
+const DOCK_LABELS: Record<DockState, string> = {
+  APPROACHING: '포트 접근 중',
+  DOCKED: '도킹 완료',
+  TRANSFERRING: 'FOUP 이송 중',
+  WAITING: '포트 슬롯 대기',
+  RELEASING: '도킹 해제 중',
 };
 
 const FILTERS: { key: StatusFilter; label: string }[] = [
@@ -86,6 +102,8 @@ type DemoAction =
   | 'rail-off'
   | 'storage-on'
   | 'storage-off'
+  | 'battery-on'
+  | 'battery-off'
   | 'outage-on'
   | 'outage-off'
   | 'complete';
@@ -105,7 +123,9 @@ const DEMO_STEPS: ReadonlyArray<{
   { atMs: 36_000, label: '공간 확보', hint: '가용 slot과 하역 재개', action: 'storage-off' },
   { atMs: 38_000, label: '통신 단절', hint: '화면 정지와 재연결 상태 확인', action: 'outage-on' },
   { atMs: 44_000, label: '통신 복구', hint: '스냅샷 재동기', action: 'outage-off' },
-  { atMs: 48_000, label: '데모 완료', hint: '정상 실시간 운행 유지', action: 'complete' },
+  { atMs: 46_000, label: '저배터리·충전', hint: '저배터리 알람과 충전 복귀 확인', action: 'battery-on' },
+  { atMs: 54_000, label: '충전 완료', hint: '배터리 회복과 정상 운행', action: 'battery-off' },
+  { atMs: 58_000, label: '데모 완료', hint: '정상 실시간 운행 유지', action: 'complete' },
 ];
 const DEMO_DURATION_MS = DEMO_STEPS.at(-1)!.atMs;
 
@@ -128,7 +148,7 @@ export function LiveMap() {
   const [activeBay, setActiveBay] = useState<string | null>(null);
   const [activeEquipment, setActiveEquipment] = useState('');
   const [detail, setDetail] = useState<VehicleState | null>(null);
-  const [count, setCount] = useState(100);
+  const [count, setCount] = useState(DEFAULT_SCENARIO_COUNT);
   const [operations, setOperations] = useState<OperationsState>();
   const operationsRef = useRef<OperationsState | undefined>(
     undefined,
@@ -213,7 +233,7 @@ export function LiveMap() {
     indoor.fit();
 
     const client = createRealtimeSource({
-      count: 100,
+        count: DEFAULT_SCENARIO_COUNT,
       rateHz: 10,
       onBatch: (batch) => {
         if (batch.alarms.length > 0) pushAlarms(batch.alarms);
@@ -394,7 +414,7 @@ export function LiveMap() {
       case 'reset':
         client.setOutage(false);
         setCommsOutage(false);
-        client.resetScenario(8);
+        client.resetScenario(DEFAULT_SCENARIO_COUNT);
         client.setDispatch('priority');
         break;
       case 'hot-lot': client.promoteHotLot(); break;
@@ -404,6 +424,8 @@ export function LiveMap() {
       case 'rail-off': client.setRailClosure(false); break;
       case 'storage-on': client.setStorageSaturation(true); break;
       case 'storage-off': client.setStorageSaturation(false); break;
+      case 'battery-on': client.setBatteryScenario(true); break;
+      case 'battery-off': client.setBatteryScenario(false); break;
       case 'outage-on':
         setCommsOutage(true);
         client.setOutage(true);
@@ -422,7 +444,7 @@ export function LiveMap() {
     if (paused) togglePaused();
     useControlStore.getState().clearAlarms();
     historyRef.current = [];
-    setCount(8);
+    setCount(DEFAULT_SCENARIO_COUNT);
     executeDemoAction('reset');
     setDemo({
       running: true,
@@ -438,9 +460,10 @@ export function LiveMap() {
     client?.setPortIncident(false);
     client?.setRailClosure(false);
     client?.setStorageSaturation(false);
-    client?.resetScenario(8);
+    client?.setBatteryScenario(false);
+    client?.resetScenario(DEFAULT_SCENARIO_COUNT);
     setCommsOutage(false);
-    setCount(8);
+    setCount(DEFAULT_SCENARIO_COUNT);
     setDemo({ running: false, startedAt: 0, stepIndex: 0, elapsedMs: 0 });
   }
 
@@ -568,6 +591,28 @@ export function LiveMap() {
           (job) => job.phase !== 'DONE' && job.priority < 3,
         );
   const visibleAlarms = replay.mode === 'replay' ? replayAlarms : alarms;
+  const bayKpis = useMemo(
+    () =>
+      FAB_BAYS.map((bay) => {
+        const jobs = (operations?.jobs ?? []).filter((job) => {
+          return jobTouchesBay(job, bay.id);
+        });
+        return {
+          ...bay,
+          jobs: jobs.filter((job) => job.phase !== 'DONE').length,
+          delayed: jobs.filter(
+            (job) =>
+              job.phase !== 'DONE' &&
+              (job.phase === 'WAITING_PORT' ||
+                job.phase === 'WAITING_PICKUP'),
+          ).length,
+          hot: jobs.filter(
+            (job) => job.phase !== 'DONE' && job.priority === 3,
+          ).length,
+        };
+      }),
+    [operations],
+  );
   const activeAlarm = visibleAlarms.find(
     (alarm) => alarm.id === activeAlarmId,
   );
@@ -605,7 +650,7 @@ export function LiveMap() {
         <div style={styles.brand}>
           <span style={styles.brandTag}>AMHS / OHT CONTROL</span>
           <span style={styles.brandSub}>
-            Prototype #02 · 합성 FAB 시뮬레이션
+            Prototype #02 · 합성 FAB 시뮬레이션 · START {DEFAULT_SCENARIO_COUNT} OHT
           </span>
         </div>
         <div style={styles.kpiGroup}>
@@ -692,6 +737,30 @@ export function LiveMap() {
           </select>
           <div style={styles.hint}>
             전체 FAB, 공정 Bay, 설비·포트 단계로 이동합니다.
+          </div>
+
+          <div style={styles.sectionTitle}>Bay별 KPI</div>
+          <div style={styles.bayKpiGrid}>
+            {bayKpis.map((bay) => (
+              <button
+                key={bay.id}
+                type="button"
+                onClick={() => focusBay(bay.id)}
+                aria-label={`${bay.label} Bay KPI 보기`}
+                aria-pressed={activeBay === bay.id}
+                style={{
+                  ...styles.bayKpiCard,
+                  ...(activeBay === bay.id ? styles.bayKpiCardActive : null),
+                }}
+              >
+                <span style={styles.bayKpiName}>{bay.label}</span>
+                <strong>{bay.jobs}</strong>
+                <span style={styles.bayKpiMeta}>
+                  {bay.delayed > 0 ? `지연 ${bay.delayed}` : '정상'}
+                  {bay.hot > 0 ? ` · HOT ${bay.hot}` : ''}
+                </span>
+              </button>
+            ))}
           </div>
 
           <div style={styles.sectionTitle}>필터</div>
@@ -787,7 +856,7 @@ export function LiveMap() {
             <span style={styles.hint}>
               {demo.running
                 ? `${DEMO_STEPS[Math.max(0, demo.stepIndex - 1)]!.hint} · ${Math.ceil((DEMO_DURATION_MS - demo.elapsedMs) / 1000)}초 남음`
-                : '고정 seed로 장애·우회·포화·통신 복구를 48초 동안 순서대로 재생합니다.'}
+                : '고정 seed로 장애·우회·포화·통신·저배터리 복구를 58초 동안 순서대로 재생합니다.'}
             </span>
             <div style={styles.demoProgressTrack}>
               <span
@@ -1027,6 +1096,10 @@ export function LiveMap() {
               <strong>
                 {operations?.traffic?.junctionReservations ?? 0}
               </strong>
+              <span>합류 대기열</span>
+              <strong>
+                {operations?.traffic?.junctionQueue ?? 0}
+              </strong>
               <span>우회 OHT</span>
               <strong>
                 {operations?.traffic?.reroutedVehicles ?? 0}
@@ -1193,6 +1266,13 @@ export function LiveMap() {
                 k="반송 단계"
                 v={PHASE_LABELS[detail.phase ?? 'IDLE'] ?? '—'}
               />
+              {detail.dockState && (
+                <DetailRow
+                  k="도킹 상태"
+                  v={DOCK_LABELS[detail.dockState] ?? detail.dockState}
+                  color={detail.dockState === 'WAITING' ? '#ff8b70' : '#66d9ef'}
+                />
+              )}
               <DetailRow k="FOUP" v={detail.carrierId ?? '—'} />
               <DetailRow k="Lot" v={detail.lotId ?? '—'} />
               <DetailRow
@@ -1282,6 +1362,7 @@ export function LiveMap() {
             {operations?.jobs
               .filter(
                 (j) =>
+                  (!activeBay || jobTouchesBay(j, activeBay)) &&
                   (!hotOnly || j.priority === 3) &&
                   `${j.id} ${j.carrierId} ${j.lotId} ${j.vehicleId ?? ''}`
                     .toLowerCase()
@@ -1588,6 +1669,42 @@ const styles: Record<string, CSSProperties> = {
     margin: '14px 0 8px',
   },
   filterRow: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+  bayKpiGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 6,
+  },
+  bayKpiCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 2,
+    minWidth: 0,
+    padding: '7px 8px',
+    border: '1px solid var(--line)',
+    borderRadius: 6,
+    background: '#0d121c',
+    color: 'var(--text)',
+    textAlign: 'left',
+    cursor: 'pointer',
+  },
+  bayKpiCardActive: {
+    border: '1px solid var(--accent)',
+    boxShadow: 'inset 2px 0 var(--accent)',
+  },
+  bayKpiName: {
+    color: 'var(--muted)',
+    fontSize: 10,
+    letterSpacing: '0.04em',
+  },
+  bayKpiMeta: {
+    color: 'var(--muted)',
+    fontSize: 9,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    maxWidth: '100%',
+  },
   chip: {
     padding: '5px 10px',
     fontSize: 12,

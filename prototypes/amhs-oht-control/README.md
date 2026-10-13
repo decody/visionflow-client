@@ -8,8 +8,8 @@ FAB 정적 레이아웃(Bay·툴 위치·Stocker·용량·툴별 로드포트 �
 
 도면은 SMAT2022 밀도에 맞춘 **300×153 m·9 Bay(툴 16/Bay)·장비 159·포트 294·Stocker 6** 규모다. 외곽 시계방향 interbay 루프 안에 A/B/C 클러스터 사이 **교차 코리도 2개**가 각 두 단방향 레인으로 **북/중/남 3개 interbay 루프 셀**을 형성한다(`midCorridors`로 일반화, N개 코리도 → N+1 셀). 루프·스파인 전환점과 외곽 코너에는 **turntable 18개**, 흐름 합류·전환점에는 실물 구역 제어 개념인 **ZCU 32개**(STOP 27=합류 순차제어, RESET 5=전환 재동기)를 둔다.
 
-- 세부 설계: [`docs/smart_factory_amhs_oht_prototype_plan_ko.md`](../../../docs/smart_factory_amhs_oht_prototype_plan_ko.md)
-- 상위 기획서: `docs/frontend_portfolio_planning_ko.docx` (10종 중 #02)
+- 진행 내역: [`docs/amhs_oht_control_prototype_progress_ko.md`](../../../docs/amhs_oht_control_prototype_progress_ko.md)
+- 소개 문서: `docs/AMHS_OHT_Control_Prototype_Introduction.docx` (포트폴리오 #02)
 - 스택: Next.js 16 · React 19 · TypeScript · Zustand · OpenLayers(WebGL/Heatmap) · GeoJSON · Web Worker
 
 ## 실행
@@ -91,9 +91,22 @@ WebGL 정점 버퍼 비용이 "전체 대수"가 아니라 "보이는 대수"에
 | 1. 설계·Mock | ✅ | 실내 좌표계 커스텀 투영, Rail 그래프 fixture, WebSocket 시뮬레이터(Web Worker) |
 | 2. 지도 MVP | ✅ | 정적 벡터 레이어(Rail/Zone/Equipment), 선택·필터·상세 Drawer |
 | 3. 실시간 파이프라인 | ✅ | snapshot+delta, seq gap 감지→재동기, id별 코얼레싱, rAF 배치, 알람 |
-| 4. 성능·스케일 | 구현 / 실측 대기 | WebGL 포인트 레이어, 대수 500~5,000 공차 순환 부하, LOD(포인트↔히트맵), GPU 필터. 목표 FPS/p95 달성은 미검증 |
+| 4. 성능·스케일 | 구현 / 실측 대기 | WebGL 포인트 레이어, 대수 500~5,000 공차 순환 부하, LOD(포인트↔히트맵), GPU 필터. 일반 전경 Chrome의 목표 FPS/p95 달성은 미검증 |
 | 5. 제품 완성도 | ✅ | 이력 재생(타임 스크러버/배속), 로딩·오류 상태, 접근성(aria/포커스), 경로 자동 마커링 |
-| 6. 문서·최적화 | 🔜 | 성능 리포트(before/after), 데모 영상 |
+| 6. 문서·최적화 | 🔜 | FAB 현실성 보강, 교통 동작 보강, 성능 리포트, 데모 시나리오·영상 |
+
+### 프로토타입 범위
+
+이 프로젝트의 목표는 실제 MES/AMHS 백엔드를 연결하는 것이 아니라, **실제 FAB처럼 보이고 실제 관제처럼 움직이는 프론트엔드 시뮬레이션**을 완성하는 것이다. 데이터·명령·감사 로그는 로컬 mock으로 충분하며, 인증·DB·Kafka·실제 API 계약은 범위에서 제외한다. `SimEngine`과 로컬 Web Worker/WS는 시뮬레이션과 실시간 관제 UX를 검증하기 위한 실행 수단으로만 사용한다.
+
+### 남은 주요 작업
+
+1. **FAB·Rail 맵 현실성 강화** — ✅ 완료. Bay/Interbay/Stocker/장비/Load Port 배치, Rail 곡선·분기·합류·교차 구조, 운영 라벨과 전체 FAB·Bay·장비 확대 단계의 LOD 표현을 정리했다.
+2. **OHT 교통 동작 개선** — ✅ 완료. 차량 안전거리·충돌 방지 하드가드, 교차로·합류부 대기 및 ZCU busy 표시, 곡선 진입 감속, Load Port 정밀 정차·도킹/해제 상태, 호이스트 단일 점유·대기, 정체·JAM 알람을 합성 시뮬레이션으로 표현한다.
+3. **시뮬레이션 시나리오 확장** — ✅ 완료. 정상 반송, Hot lot, Load Port 점유/장애·복구, Stocker 포화, 저배터리·충전 복귀, Rail 장애·우회, 교통 대기·ZCU busy, 통신 단절·복구와 장시간 운행 흐름을 자동 데모 프리셋으로 재현한다.
+4. **관제 UI 완성도** — ✅ 완료. Bay별 KPI, OHT/장비/작업 상세, 공통 필터, 지도-목록 동기화, 장애·정체 강조, 이력 재생·LIVE 복귀 UX와 데모 모드를 정리했다.
+5. **성능 검증·최적화** — ✅ 코어 벤치마크·렌더 경로 최적화 완료. 500~5,000대의 tick/직렬화 p95를 측정하고, WebGL feature 갱신·LOD·화면 밖 culling을 최적화했다. 브라우저별 GPU 렌더 p95는 화면의 개발 진단 패널에서 계속 확인할 수 있다.
+6. **프로토타입 마감** — ✅ 완료. 시작 상태·카메라·58초 데모 플로우와 캡처 권장 장면을 [`demo-script.md`](./demo-script.md)에 고정했고, 실제 데이터가 아닌 합성/공개 레일망 시각화임을 문서와 화면에 표시한다.
 
 ## 아키텍처 (데이터 흐름)
 
@@ -117,9 +130,9 @@ WebGL 정점 버퍼 비용이 "전체 대수"가 아니라 "보이는 대수"에
 - **용량 인지 배차 + 교착 완화**: 가·감속으로 낮아진 유효 도로 용량에 맞춰 전역 WIP·목적지/Bay/공유 경로 압력을 제한한다(backpressure). 재경로가 없는 교착 사이클은 가장 오래 기다린 차량에 **우선통과**를 부여해(점유·안전간격 대기를 수 틱 건너뜀) 링을 끊어 영구 정체를 방지한다.
 - 진단 패널에 운행 WIP·백프레셔·충전 중·저배터리 대수를, 차량 상세에 배터리·충전 상태를 노출한다. 지도에서는 저배터리(≤20%, 위험 시 붉은색)·충전 중(초록) OHT를 링으로 강조한다(overview 제외).
 
-### 연동 경계 (인증 · 감사, 2026-09-19 후속 구현)
+### 로컬 명령·감사 mock (2026-09-19 후속 구현)
 
-실제 MES/AMHS 백엔드와 이어질 지점을 형식화했다. 상세 계약: [`docs/amhs_integration_contract_ko.md`](../../../docs/amhs_integration_contract_ko.md).
+실제 MES/AMHS 연동을 위한 인증·감사·API 계약은 구현 범위에 포함하지 않는다. 다만 관제 UX에서 명령 승인·거부와 운영 이력을 보여주기 위해 로컬 mock 경계를 유지한다. 상세 설계는 향후 연동 가능성을 설명하기 위한 참고 문서일 뿐, 현재 프로토타입의 완료 조건은 아니다: [`docs/amhs_integration_contract_ko.md`](../../../docs/amhs_integration_contract_ko.md).
 
 - **단일 실행 지점** `SimEngine.applyCommand(cmd, actor)`: 모든 상태 변경 명령이 여기서 역할 기반 인증 → 감사 기록 → (승인 시) 실행된다. worker(방식 A)·ws(방식 B) 어댑터가 세션 주체를 주입한다(주체는 클라이언트가 주장하지 않음).
 - **역할 정책**(`command-contract.ts`): viewer<operator<supervisor. 배차·Hot lot은 operator+, 장애 주입·시나리오 리셋은 supervisor 전용. 권한 부족은 `FORBIDDEN`으로 거부.
@@ -197,11 +210,11 @@ pnpm test:unit
 
 ### 모델의 한계
 
-합류 제어는 junction 우선순위 중재와 ZCU(STOP) 개념으로 모델링했으나, 차량 간 물리적 안전간격(헤드웨이 상수는 정의)·충돌은 하드 제약으로 강제하지 않는다. 곡선은 속도 제한만 반영하고 트랙 자체는 직선 세그먼트다(실측 임포트 뷰만 곡선 링크 렌더). 포트 호이스트 동시 접근 제어, 실제 MES 연동은 구현하지 않았다. 정체 표시는 상대 밀도 추정이며 실제 교통 차단이나 JAM 알람 발생과 연결되지 않는다. 정적 골격은 REST/Query 대신 코드로 생성하고 좌표는 m 단위다. ws 수신의 기본 메시지 형태를 검사하지만 전체 중첩 스키마 검증은 후속 작업이다.
+합류 제어는 junction 우선순위 중재과 ZCU(STOP) 개념으로 모델링하며, 차량 간 route-relative 안전거리와 충돌 하드가드를 적용한다. 합성 FAB의 외곽 코너는 렌더링 전용 Bézier 곡선으로 라운드 처리하고, 교차로 대기열·점유 세그먼트·JAM 알람을 지도와 진단 패널에 표시한다. Load Port는 접근·도킹·이송·대기·해제 상태를 표현하고 동일 포트 호이스트는 한 번에 한 OHT만 사용하도록 대기시킨다. 정적 골격은 REST/Query 대신 코드로 생성하고 좌표는 m 단위다. WS 수신의 기본 메시지 형태를 검사하지만 전체 중첩 스키마 검증은 범위에서 제외한다.
 
 ## 백엔드 서버가 필요한가?
 
-**필수는 아니다.** 프론트엔드 단독 + 합성 데이터로 완결되며, 실시간 소스만 두 방식 중 선택한다.
+**필수는 아니다.** 이 프로토타입은 프론트엔드 단독 + 합성 데이터로 완결되며, 실시간 소스만 두 방식 중 선택한다. 실제 MES/AMHS 백엔드 연동은 진행하지 않는다.
 
 - 정적 골격(Rail/Zone/Equipment)은 코드로 결정론적 생성 — DB 불필요.
 - **방식 A (기본)**: 인-브라우저 **Web Worker 시뮬레이터**가 snapshot/delta 송출. 별도 서버·네트워크 없이 seq gap 복구까지 시연. 정적 배포 가능.

@@ -41,6 +41,7 @@ export const COMMAND_MIN_ROLE: Record<CommandType, Role> = {
   setPortIncident: 'supervisor',
   setRailClosure: 'supervisor',
   setStorageSaturation: 'supervisor',
+  setBatteryScenario: 'supervisor',
   resetScenario: 'supervisor',
 };
 
@@ -77,6 +78,8 @@ export function describeCommand(cmd: ClientCommand): string {
       return `레일 폐쇄 ${cmd.enabled ? '적용' : '해제'}`;
     case 'setStorageSaturation':
       return `저장소 포화 ${cmd.enabled ? '적용' : '해제'}`;
+    case 'setBatteryScenario':
+      return `저배터리 시나리오 ${cmd.enabled ? '적용' : '해제'}`;
     case 'resetScenario':
       return `시나리오 리셋(${cmd.count ?? '-'}대)`;
     case 'promoteHotLot':

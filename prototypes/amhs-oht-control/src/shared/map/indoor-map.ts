@@ -23,6 +23,7 @@ import type { BooleanExpression } from 'ol/style/flat';
 
 import {
   buildRailGraph,
+  nodeKeyOf,
   railGraphToGeoJSON,
   type RailGraph,
   type XY,
@@ -183,26 +184,330 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     };
   });
 
-  const railLayer = new VectorLayer({
-    source: new VectorSource({
-      features: format.readFeatures(geo.rails, readOpts),
-    }),
-    style: (f) =>
-      f.get('closed')
-        ? new Style({
-            stroke: new Stroke({ color: '#ff5470', width: 4 }),
-          })
-        : f.get('kind') === 'interbay'
-        ? new Style({
-            stroke: new Stroke({ color: '#48577a', width: 3 }),
-          })
-        : f.get('kind') === 'transfer'
-          ? new Style({
-              stroke: new Stroke({ color: '#8a6aaa', width: 2.5 }),
-            })
+  const railSource = new VectorSource({
+    features: format.readFeatures(geo.rails, readOpts),
+  });
+
+  // Bay 내부의 청정 작업 aisle. 장비와 intrabay rail 사이의 서비스 띠를
+  // 별도 레이어로 표현해 단순한 색상 박스가 아니라 운영 공간으로 읽히게 한다.
+  const aisleSource = new VectorSource({
+    features: graph.zones
+      .filter((z) => z.type === 'intrabay')
+      .flatMap((z) => {
+        const xs = z.ring.map((p) => p[0]);
+        const ys = z.ring.map((p) => p[1]);
+        const minX = Math.min(...xs) + 1.5;
+        const maxX = Math.max(...xs) - 1.5;
+        const centerY = (Math.min(...ys) + Math.max(...ys)) / 2;
+        return [-2.2, 2.2].map((offset) => {
+          const feature = new Feature({
+            geometry: new LineString([[minX, centerY + offset], [maxX, centerY + offset]]),
+          });
+          feature.set('bayId', z.id);
+          return feature;
+        });
+      }),
+  });
+  const aisleLayer = new VectorLayer({
+    source: aisleSource,
+    style: (_feature, resolution) =>
+      resolution > LOD_BAY_RESOLUTION
+        ? undefined
         : new Style({
-            stroke: new Stroke({ color: '#333e57', width: 1.5 }),
+            stroke: new Stroke({ color: 'rgba(111,145,180,.42)', width: 1, lineDash: [3, 5] }),
           }),
+  });
+
+  // 장비의 Rail-facing 도킹 면과 내부 모듈 분할선. Load Port 원형 마커와
+  // 결합되어 장비가 어느 방향으로 FOUP를 받는지 보여준다.
+  const equipmentDetailSource = new VectorSource();
+  for (const equipment of graph.equipment) {
+    if (equipment.kind === 'stocker') continue;
+    const bay = graph.zones.find((zone) => zone.id === `Z-${equipment.bayId}`);
+    if (!bay) continue;
+    const [minX, minY, maxX, maxY] = equipment.bounds;
+    const bayYs = bay.ring.map((p) => p[1]);
+    const bayY = (Math.min(...bayYs) + Math.max(...bayYs)) / 2;
+    const aboveRail = (minY + maxY) / 2 > bayY;
+    const dockY = aboveRail ? minY : maxY;
+    const detailColor = equipment.kind === 'buffer' ? '#27c1a8' : '#8ca5c7';
+    const dock = new Feature({
+      geometry: new LineString([[minX, dockY], [maxX, dockY]]),
+    });
+    dock.set('detailType', 'dock');
+    dock.set('detailColor', detailColor);
+    equipmentDetailSource.addFeature(dock);
+    const moduleCount = Math.max(2, equipment.portIds.length + 1);
+    for (let i = 1; i < moduleCount; i += 1) {
+      const x = minX + ((maxX - minX) * i) / moduleCount;
+      const moduleLine = new Feature({
+        geometry: new LineString([[x, minY + 0.7], [x, maxY - 0.7]]),
+      });
+      moduleLine.set('detailType', 'module');
+      moduleLine.set('detailColor', detailColor);
+      equipmentDetailSource.addFeature(moduleLine);
+    }
+  }
+  const equipmentDetailLayer = new VectorLayer({
+    source: equipmentDetailSource,
+    style: (feature, resolution) =>
+      resolution > LOD_BAY_RESOLUTION
+        ? undefined
+        : new Style({
+            stroke: new Stroke({
+              color: feature.get('detailColor') as string,
+              width: feature.get('detailType') === 'dock' ? 1.6 : 0.7,
+              lineDash: feature.get('detailType') === 'module' ? [2, 3] : undefined,
+            }),
+          }),
+  });
+
+  // Stocker는 하이웨이와 보관 랙 사이에 입출고 목이 있다는 점을 보여준다.
+  const stockerDetailSource = new VectorSource();
+  for (const equipment of graph.equipment.filter((item) => item.kind === 'stocker')) {
+    const port = graph.ports.find((item) => item.id === equipment.portIds[0]);
+    if (!port) continue;
+    const [minX, minY, maxX, maxY] = equipment.bounds;
+    const rackY = (minY + maxY) / 2;
+    const io = new Feature({
+      geometry: new LineString([[port.at[0], port.at[1]], [port.at[0], rackY]]),
+    });
+    io.set('detailType', 'stocker-io');
+    stockerDetailSource.addFeature(io);
+    const marker = new Feature({
+      geometry: new Point([port.at[0], rackY]),
+    });
+    marker.set('detailType', 'stocker-marker');
+    marker.set('rotation', port.at[1] < rackY ? Math.PI / 2 : -Math.PI / 2);
+    stockerDetailSource.addFeature(marker);
+  }
+  const stockerDetailLayer = new VectorLayer({
+    source: stockerDetailSource,
+    style: (feature, resolution) => {
+      if (resolution > LOD_BAY_RESOLUTION) return undefined;
+      if (feature.get('detailType') === 'stocker-marker')
+        return new Style({
+          image: new RegularShape({
+            points: 3,
+            radius: resolution < LOD_EQUIPMENT_RESOLUTION ? 5 : 3.5,
+            rotation: (feature.get('rotation') as number) ?? 0,
+            fill: new Fill({ color: '#4da3ff' }),
+            stroke: new Stroke({ color: '#d8edff', width: 0.8 }),
+          }),
+          text: resolution < LOD_EQUIPMENT_RESOLUTION
+            ? new Text({ text: 'I/O', offsetY: 10, font: '700 8px ui-sans-serif', fill: new Fill({ color: '#9dcaff' }) })
+            : undefined,
+        });
+      return new Style({ stroke: new Stroke({ color: '#4da3ff', width: 1.2, lineDash: [4, 3] }) });
+    },
+  });
+  const railLayer = new VectorLayer({
+    source: railSource,
+    // 실제 OHT 레일처럼 외곽 하이웨이·교차 레인·intrabay·transfer를
+    // 이중 선과 중앙 진행선으로 표현한다. 그래프의 lane 메타데이터는
+    // 라우팅에는 영향을 주지 않고, 맵의 공간적 판독성만 높인다.
+    style: (f) => {
+      const closed = Boolean(f.get('closed'));
+      const kind = f.get('kind') as string;
+      const lane = f.get('lane') as string;
+      const congestion = Number(f.get('congestion') ?? 0);
+      const baseWidth = kind === 'interbay' ? 3.4 : kind === 'transfer' ? 2.8 : 2.1;
+      const color = closed
+        ? '#ff5470'
+        : congestion >= 2
+          ? '#f4795b'
+          : congestion === 1
+            ? '#d6a84a'
+        : lane === 'high'
+          ? '#668fc4'
+          : lane === 'low'
+            ? '#3d5f91'
+            : kind === 'transfer'
+              ? '#9b78c2'
+              : kind === 'interbay'
+                ? '#526b98'
+                : '#43516d';
+      const styles = [
+        new Style({
+          stroke: new Stroke({
+            color: closed ? 'rgba(255,84,112,.22)' : 'rgba(4,9,18,.92)',
+            width: baseWidth + 3.6,
+            lineCap: 'round',
+            lineJoin: 'round',
+          }),
+        }),
+        new Style({
+          stroke: new Stroke({
+            color,
+            width: closed ? baseWidth + 0.8 : baseWidth + (congestion >= 2 ? 0.8 : 0),
+            lineCap: 'round',
+            lineJoin: 'round',
+          }),
+        }),
+      ];
+      // 교차 코리도의 상·하행 레인은 얇은 밝은 중앙선을 추가해 한 줄짜리
+      // 그래프가 아니라 두 개의 운영 레인으로 읽히게 한다.
+      if (!closed && (lane === 'high' || lane === 'low')) {
+        styles.push(new Style({
+          stroke: new Stroke({ color: 'rgba(174,210,247,.72)', width: 0.8, lineDash: [5, 7] }),
+        }));
+      }
+      return styles;
+    },
+  });
+
+  // 장거리 레일에는 방향 화살표를 별도 레이어로 둔다. 배경 SVG의 정적
+  // 화살표보다 선명하고, live map의 레인 색상과 같은 규칙을 공유한다.
+  const railDirectionSource = new VectorSource({
+    features: graph.segments
+      .filter((segment) => segment.length >= 10)
+      .map((segment) => {
+        const feature = new Feature({
+          geometry: new Point([
+            (segment.a[0] + segment.b[0]) / 2,
+            (segment.a[1] + segment.b[1]) / 2,
+          ]),
+        });
+        feature.set('lane', segment.lane);
+        feature.set(
+          'rotation',
+          Math.atan2(segment.b[1] - segment.a[1], segment.b[0] - segment.a[0]),
+        );
+        return feature;
+      }),
+  });
+  const railDirectionLayer = new VectorLayer({
+    source: railDirectionSource,
+    style: (feature, resolution) => {
+      if (resolution > LOD_EQUIPMENT_RESOLUTION) {
+        const lane = feature.get('lane') as string;
+        const color =
+          lane === 'high' ? '#b9d9ff' :
+          lane === 'low' ? '#7ea8d8' :
+          lane === 'transfer' ? '#d4b8ef' : '#9ab9e2';
+        return new Style({
+          image: new RegularShape({
+            points: 3,
+            radius: resolution < LOD_BAY_RESOLUTION ? 4.5 : 3.5,
+            rotation: (feature.get('rotation') as number) ?? 0,
+            fill: new Fill({ color }),
+            stroke: new Stroke({ color: 'rgba(5,10,18,.9)', width: 1 }),
+          }),
+        });
+      }
+      return undefined;
+    },
+  });
+
+  const railCurveLayer = new VectorLayer({
+    source: new VectorSource({
+      features: format.readFeatures(geo.curves, readOpts),
+    }),
+    style: (feature) => {
+      const kind = feature.get('kind') as string;
+      const color = kind === 'transfer' ? '#9b78c2' : '#526b98';
+      return [
+        new Style({
+          stroke: new Stroke({ color: 'rgba(4,9,18,.92)', width: 7.2, lineCap: 'round', lineJoin: 'round' }),
+        }),
+        new Style({
+          stroke: new Stroke({ color, width: kind === 'transfer' ? 2.8 : 3.4, lineCap: 'round', lineJoin: 'round' }),
+        }),
+      ];
+    },
+  });
+
+  // Bay 식별자는 배경 청사진에만 묻히지 않도록 별도 운영 라벨로 둔다.
+  // overview에서는 숨기고 bay LOD에서만 표시해 9개 Bay가 한눈에 읽히게 한다.
+  const bayLabelSource = new VectorSource({
+    features: graph.zones
+      .filter((z) => z.type === 'intrabay')
+      .map((z) => {
+        const xs = z.ring.map((p) => p[0]);
+        const ys = z.ring.map((p) => p[1]);
+        const feature = new Feature({
+          geometry: new Point([Math.min(...xs) + 3, Math.max(...ys) - 2]),
+        });
+        feature.set('bayId', z.id.replace(/^Z-/, ''));
+        feature.set('process', z.process);
+        return feature;
+      }),
+  });
+  const bayLabelLayer = new VectorLayer({
+    source: bayLabelSource,
+    style: (feature, resolution) => {
+      if (resolution > LOD_BAY_RESOLUTION || resolution <= LOD_EQUIPMENT_RESOLUTION) return undefined;
+      const process = feature.get('process') as string;
+      const color =
+        process === 'PHOTO' ? '#78a8ff' :
+        process === 'ETCH' ? '#c59bff' :
+        process === 'CVD' ? '#6be0cb' : '#ffc27d';
+      return new Style({
+        text: new Text({
+          text: `${feature.get('bayId')} · ${process}`,
+          font: '700 10px ui-sans-serif, system-ui',
+          fill: new Fill({ color }),
+          stroke: new Stroke({ color: 'rgba(5,10,18,.95)', width: 3 }),
+          backgroundFill: new Fill({ color: 'rgba(8,12,19,.72)' }),
+          padding: [2, 4, 2, 4],
+          textAlign: 'left',
+        }),
+      });
+    },
+  });
+
+  // 각 Process Bay의 intrabay 진입·이탈 게이트. 실제 FAB 도면처럼
+  // Bay와 interbay 하이웨이의 경계를 읽을 수 있게 하는 운영 마커다.
+  const bayGateSource = new VectorSource({
+    features: graph.zones
+      .filter((z) => z.type === 'intrabay')
+      .flatMap((z) => {
+        const ys = z.ring.map((p) => p[1]);
+        const y = (Math.min(...ys) + Math.max(...ys)) / 2;
+        return [
+          { at: [26, y] as XY, type: 'ENTRY', process: z.process, bayId: z.id.replace(/^Z-/, '') },
+          { at: [286, y] as XY, type: 'EXIT', process: z.process, bayId: z.id.replace(/^Z-/, '') },
+        ].map((item) => {
+          const feature = new Feature({ geometry: new Point(item.at) });
+          feature.set('gateType', item.type);
+          feature.set('process', item.process);
+          feature.set('bayId', item.bayId);
+          return feature;
+        });
+      }),
+  });
+  const bayGateLayer = new VectorLayer({
+    source: bayGateSource,
+    style: (feature, resolution) => {
+      if (resolution > LOD_BAY_RESOLUTION) return undefined;
+      const process = feature.get('process') as string;
+      const color =
+        process === 'PHOTO' ? '#78a8ff' :
+        process === 'ETCH' ? '#c59bff' :
+        process === 'CVD' ? '#6be0cb' : '#ffc27d';
+      const entry = feature.get('gateType') === 'ENTRY';
+      return new Style({
+        image: new RegularShape({
+          points: 4,
+          radius: resolution < LOD_EQUIPMENT_RESOLUTION ? 5 : 4,
+          angle: Math.PI / 4,
+          rotation: entry ? 0 : Math.PI,
+          fill: new Fill({ color: 'rgba(8,12,19,.95)' }),
+          stroke: new Stroke({ color, width: 1.4 }),
+        }),
+        text:
+          resolution < LOD_BAY_RESOLUTION
+            ? new Text({
+                text: entry ? 'ENTRY' : 'EXIT',
+                offsetY: entry ? -12 : 12,
+                font: '700 8px ui-sans-serif',
+                fill: new Fill({ color }),
+                backgroundFill: new Fill({ color: 'rgba(8,12,19,.84)' }),
+                padding: [1, 3, 1, 3],
+              })
+            : undefined,
+      });
+    },
   });
 
   const junctionSource = new VectorSource({
@@ -281,6 +586,13 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     features: graph.zcus.map((z) => {
       const feature = new Feature({ geometry: new Point(z.at) });
       feature.set('zcuType', z.type);
+      feature.set('active', false);
+      feature.set(
+        'controlledSegments',
+        (graph.adjacency.get(nodeKeyOf(z.at)) ?? []).map(
+          (segment) => graph.segments[segment]!.id,
+        ),
+      );
       return feature;
     }),
   });
@@ -289,19 +601,20 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     visible: false, // equipment LOD에서만 표시(합류 마커와 겹침 최소화)
     style: (feature, resolution) => {
       const type = feature.get('zcuType') as 'STOP' | 'RESET';
+      const active = Boolean(feature.get('active'));
       const color = type === 'STOP' ? '#ff5470' : '#66d9ef';
       return new Style({
         image: new RegularShape({
           points: type === 'STOP' ? 8 : 4,
           radius: resolution < 0.095 ? 5 : 3.5,
           angle: Math.PI / 4,
-          fill: new Fill({ color: 'rgba(8,12,19,.6)' }),
-          stroke: new Stroke({ color, width: 1.3 }),
+          fill: new Fill({ color: active ? `${color}55` : 'rgba(8,12,19,.6)' }),
+          stroke: new Stroke({ color, width: active ? 2.4 : 1.3 }),
         }),
         text:
           resolution < 0.05
             ? new Text({
-                text: type,
+                text: active ? `${type} · BUSY` : type,
                 offsetY: 11,
                 font: '700 8px ui-sans-serif',
                 fill: new Fill({ color }),
@@ -425,21 +738,40 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
                     })
                   : undefined,
             })
-        : new Style({
-            image: new CircleStyle({
-              radius: resolution < 0.12 ? 3.5 : 2.2,
-              fill: new Fill({ color: '#2f3a52' }),
-              stroke: new Stroke({ color: '#516079', width: 0.5 }),
-            }),
-            text:
-              resolution < 0.085
-                ? new Text({
-                    text: f.get('portId'),
-                    offsetY: 11,
-                    font: '600 9px ui-sans-serif',
-                    fill: new Fill({ color: '#9aabc1' }),
-                  })
-                : undefined,
+                : new Style({
+                    image: new CircleStyle({
+                      radius: resolution < 0.12 ? 3.5 : 2.2,
+                      fill: new Fill({
+                        color:
+                          Number(f.get('portOccupied') ?? 0) >= Number(f.get('portCapacity') ?? 1)
+                            ? '#8d3f4d'
+                            : Number(f.get('portOccupied') ?? 0) > 0
+                              ? '#285e68'
+                              : Number(f.get('portReserved') ?? 0) > 0
+                                ? '#725b2a'
+                                : '#2f3a52',
+                      }),
+                      stroke: new Stroke({
+                        color:
+                          Number(f.get('portOccupied') ?? 0) >= Number(f.get('portCapacity') ?? 1)
+                            ? '#ff8b70'
+                            : Number(f.get('portReserved') ?? 0) > 0
+                              ? '#ffd166'
+                              : '#516079',
+                        width: Number(f.get('portReserved') ?? 0) > 0 ? 1.2 : 0.5,
+                      }),
+                    }),
+                    text:
+                      resolution < 0.085
+                        ? new Text({
+                            text: `${f.get('portId')} · ${f.get('portOccupied') ?? 0}/${f.get('portCapacity') ?? 1}${Number(f.get('portReserved') ?? 0) > 0 ? ` · R${f.get('portReserved')}` : ''}`,
+                            offsetY: 11,
+                            font: '600 9px ui-sans-serif',
+                            fill: new Fill({
+                              color: Number(f.get('portReserved') ?? 0) > 0 ? '#ffd166' : '#9aabc1',
+                            }),
+                          })
+                        : undefined,
           }),
   });
 
@@ -451,6 +783,8 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
   const featureById = new Map<string, Feature<Point>>();
   // 현재 vehicleSource(렌더 소스)에 올라와 있는 OHT id 집합.
   const renderedIds = new Set<string>();
+  const CULL_REFRESH_MS = 250;
+  let lastCullSyncAt = 0;
   const routeById = new Map<string, Coord[]>();
   let selectedId: string | null = null;
   let filterCode = -1;
@@ -529,9 +863,15 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       const hot = feature.get('priority') === 3;
       const heading = (feature.get('heading') as number) ?? 0;
       const vehicle = feature.get('vehicle') as VehicleState;
+      const dockState = vehicle.dockState;
       const label = loaded
-        ? `${vehicle.id} · ${vehicle.carrierId ?? 'FOUP'}`
-        : vehicle.id;
+        ? `${vehicle.id} · ${vehicle.carrierId ?? 'FOUP'}${dockState ? ` · ${dockState}` : ''}`
+        : `${vehicle.id}${dockState ? ` · ${dockState}` : ''}`;
+      const dockColor =
+        dockState === 'WAITING' ? '#ff8b70' :
+        dockState === 'TRANSFERRING' ? '#ffd166' :
+        dockState === 'DOCKED' ? '#66d9ef' :
+        dockState === 'RELEASING' ? '#9be28f' : undefined;
       return new Style({
         image: new RegularShape({
           points: 3,
@@ -540,7 +880,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
           rotateWithView: true,
           fill: new Fill({ color: STATUS_COLORS[status] }),
           stroke: new Stroke({
-            color: hot ? '#ff79c6' : loaded ? '#ffffff' : '#0b111c',
+            color: hot ? '#ff79c6' : dockColor ?? (loaded ? '#ffffff' : '#0b111c'),
             width: hot ? 2.5 : loaded ? 2 : 1.2,
           }),
         }),
@@ -634,8 +974,15 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     layers: [
       blueprintLayer,
       zoneLayer,
+      aisleLayer,
+      bayLabelLayer,
+      bayGateLayer,
       equipmentLayer,
+      equipmentDetailLayer,
+      stockerDetailLayer,
       railLayer,
+      railCurveLayer,
+      railDirectionLayer,
       junctionLayer,
       turntableLayer,
       zcuLayer,
@@ -681,9 +1028,12 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
     overlayLayer.setVisible(next !== 'overview');
     junctionLayer.setVisible(next !== 'overview');
     turntableLayer.setVisible(next !== 'overview');
-    zcuLayer.setVisible(next === 'equipment');
+    railDirectionLayer.setVisible(next !== 'equipment');
+    zcuLayer.setVisible(next !== 'overview');
     portLayer.setVisible(next !== 'overview');
+    bayGateLayer.setVisible(next !== 'overview');
     equipmentLayer.setOpacity(next === 'overview' ? 0.55 : 1);
+    syncRenderSource(true);
     for (const cb of lodListeners) cb(next);
   };
   view.on('change:resolution', updateLod);
@@ -791,7 +1141,10 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
 
   // 렌더 소스를 현재 뷰포트에 보이는 OHT로 맞춘다.
   // overview LOD(밀집도 히트맵)나 지도 크기 미확정 시에는 전체를 유지한다.
-  const syncRenderSource = () => {
+  const syncRenderSource = (force = false) => {
+    const now = performance.now();
+    if (!force && now - lastCullSyncAt < CULL_REFRESH_MS) return;
+    lastCullSyncAt = now;
     const size = map.getSize();
     const extent: Extent | null =
       lod !== 'overview' && size
@@ -827,16 +1180,21 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       }
       vehicleSource.addFeatures(feats);
     }
-    vehicleSource.changed();
+    if (add.length || remove.length) vehicleSource.changed();
   };
 
   // 일시정지 중 pan/zoom(배치 미수신)에도 보이는 집합을 다시 맞춘다.
-  map.on('moveend', () => syncRenderSource());
+  map.on('moveend', () => syncRenderSource(true));
 
   const applyBatch = (batch: BatchResult) => {
     if (pendingRenderAt === null) pendingRenderAt = performance.now();
+    let vehicleChanged = false;
+    let needsRender = Boolean(batch.operations || batch.snapshot);
     if (batch.operations) {
       const incident = batch.operations.incident;
+      const portById = new Map(
+        batch.operations.ports.map((port) => [port.id, port]),
+      );
       for (const feature of equipmentLayer.getSource()!.getFeatures())
         feature.set(
           'operatingStatus',
@@ -847,6 +1205,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
         );
       for (const feature of portLayer.getSource()!.getFeatures())
         {
+          const port = portById.get(feature.get('portId'));
           feature.set(
             'operatingStatus',
             incident?.portId === feature.get('portId')
@@ -861,13 +1220,25 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
               : 'AVAILABLE',
             true,
           );
+          feature.set('portOccupied', port?.occupied ?? 0, true);
+          feature.set('portReserved', port?.reserved ?? 0, true);
+          feature.set('portCapacity', port?.capacity ?? feature.get('capacity') ?? 1, true);
         }
       const closedIds = new Set(batch.operations.closure?.segmentIds ?? []);
       for (const feature of railLayer.getSource()!.getFeatures())
         feature.set('closed', closedIds.has(feature.get('railId')), true);
+      const busySegments = new Set(batch.operations.traffic?.junctionSegmentIds ?? []);
+      for (const feature of zcuSource.getFeatures())
+        feature.set(
+          'active',
+          feature.get('zcuType') === 'STOP' &&
+            (feature.get('controlledSegments') as string[]).some((id) => busySegments.has(id)),
+          true,
+        );
       equipmentLayer.changed();
       portLayer.changed();
       railLayer.changed();
+      zcuSource.changed();
     }
     if (batch.snapshot) {
       // 초기 연결·fleet 변경·재동기 snapshot부터 새 측정 구간으로 본다.
@@ -882,6 +1253,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
         if (v.route && v.route.length >= 2)
           routeById.set(v.id, v.route);
       }
+      lastCullSyncAt = 0;
       // 렌더 소스 채우기는 syncRenderSource가 뷰포트에 맞춰 처리한다.
     }
 
@@ -894,6 +1266,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       }
       featureById.set(v.id, makeFeature(v));
       routeById.set(v.id, v.route ?? []);
+      vehicleChanged = true;
     }
     for (const id of batch.deletions ?? []) {
       const f = vehicleSource.getFeatureById(id);
@@ -901,6 +1274,7 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       featureById.delete(id);
       routeById.delete(id);
       renderedIds.delete(id);
+      vehicleChanged = true;
     }
 
     // (재)배정된 Job의 경로 갱신
@@ -938,11 +1312,16 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
       if (typeof u.battery === 'number') f.set('battery', u.battery, true);
       if (u.phase !== undefined)
         f.set('chargingCode', u.phase === 'CHARGING' ? 1 : 0, true);
+      vehicleChanged = true;
     }
     syncRenderSource();
     if (selectedId && !featureById.has(selectedId)) setSelected(null);
     if (selectedId) updateSelectionOverlay();
-    map.render();
+    if (vehicleChanged) {
+      vehicleSource.changed();
+      needsRender = true;
+    }
+    if (needsRender) map.render();
   };
 
   const getCounts = (): StatusCounts => {
@@ -990,6 +1369,10 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
   zoneSource
     .getFeatures()
     .forEach((f) => zoneFeatById.set(f.get('zoneId') as string, f));
+  const railFeatById = new Map<string, Feature>();
+  railSource
+    .getFeatures()
+    .forEach((f) => railFeatById.set(f.get('railId') as string, f as Feature));
 
   const updateCongestion = (): number => {
     // Zone별 개체 수 집계
@@ -1028,7 +1411,28 @@ export function createIndoorMap(target: HTMLElement): IndoorMap {
         changed = true;
       }
     });
-    if (changed) zoneSource.changed();
+    // 엔진이 방출한 현재 점유 세그먼트 ID를 이용해 Rail 자체도
+    // 저밀도/혼잡/정체 단계로 색칠한다. 위치 근접 계산을 반복하지 않아
+    // 5,000대에서도 4Hz 진단 폴링 비용을 일정하게 유지한다.
+    const railCounts = new Map<string, number>();
+    featureById.forEach((f) => {
+      const vehicle = f.get('vehicle') as VehicleState;
+      if (vehicle.status === 'IDLE' || vehicle.status === 'DOWN') return;
+      const segmentId = vehicle.segmentId;
+      if (segmentId) railCounts.set(segmentId, (railCounts.get(segmentId) ?? 0) + 1);
+    });
+    railFeatById.forEach((rf, id) => {
+      const count = railCounts.get(id) ?? 0;
+      const level = count >= 8 ? 2 : count >= 4 ? 1 : 0;
+      if (Number(rf.get('congestion') ?? 0) !== level) {
+        rf.set('congestion', level, true);
+        changed = true;
+      }
+    });
+    if (changed) {
+      zoneSource.changed();
+      railSource.changed();
+    }
     return jams;
   };
 
