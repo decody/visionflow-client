@@ -182,6 +182,33 @@ test('도로 통제 중에도 라이더는 우회해 배송을 완료한다', ()
   assert.ok(delivered, '통제(우회) 중에도 완료 주문이 나와야 한다(전면 교착 아님)');
 });
 
+test('라이더는 정지 상태에서 가속 상한 내로만 속도를 올린다(순간 가속 아님)', () => {
+  const e = new SimEngine();
+  e.spawn(20); // 스냅샷 시점 모든 라이더 currentSpeed=0
+  const delta = e.tick(10); // dt=0.1s
+  const maxSpeed = Math.max(...delta.upd.map((r) => r.speed));
+  assert.ok(maxSpeed > 0, '이동을 시작한 라이더가 있어야 한다');
+  // 한 틱(0.1s) 만에 순항속도(6~11m/s)로 점프하면 안 되고, 가속 상한(≈0.28m/s) 근처여야 한다.
+  assert.ok(maxSpeed <= 0.5, `가속 상한을 넘겼다(관측 max=${maxSpeed})`);
+});
+
+test('가·감속으로 속도가 0~순항 사이 중간값을 지난다(즉시 순항 점프 아님)', () => {
+  const e = new SimEngine();
+  e.spawn(24);
+  // 즉시(순간) 모델이라면 이동 중 속도는 항상 순항값(≥약 2.1m/s). 가감속이면 그 사이 값이 관측된다.
+  let sawRamp = false;
+  let sawCruise = false;
+  for (let i = 0; i < 400 && !(sawRamp && sawCruise); i += 1) {
+    for (const r of e.tick(10).upd) {
+      if (!r.orderId) continue;
+      if (r.speed > 0.1 && r.speed < 2.0) sawRamp = true;
+      if (r.speed > 3) sawCruise = true;
+    }
+  }
+  assert.ok(sawRamp, '가·감속 중간 속도(0.1~2.0m/s)가 관측돼야 한다');
+  assert.ok(sawCruise, '순항 속도(>3m/s)도 관측돼야 한다');
+});
+
 test('통제 on/off를 섞어도 시뮬레이션은 결정론적으로 재현된다', () => {
   const run = () => {
     const e = new SimEngine();

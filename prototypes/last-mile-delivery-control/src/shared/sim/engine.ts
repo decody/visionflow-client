@@ -72,6 +72,11 @@ const TERMINAL_GRACE_SEC = 20; // 완료/실패 주문을 스냅샷에 남겨두
 const AVG_CRUISE = 8; // QUEUED ETA 추정용 평균 순항 속도(m/s)
 const SLA_MIN: Record<OrderPriority, number> = { EXPRESS: 15, NORMAL: 25 };
 
+// 가·감속 프로파일(기획서 §5): 순간 속도 변경 대신 가속/감속 한계를 둔다.
+const MAX_ACCEL = 2.8; // 가속 상한(m/s²)
+const MAX_DECEL = 3.8; // 감속 상한(m/s²) — 정지거리 계산에도 사용
+const STOP_LOOKAHEAD_M = 30; // 정지 대상(목적지·적신호)을 탐색하는 전방 거리 상한
+
 // --- 단계 4: 배터리·알람·시나리오 ---
 const BATTERY_DRAIN_PER_M = 0.0045; // 이동 거리 비례 방전(%/m) ≈ 완충 22km
 const BATTERY_LOW = 25; // 경고 임계(%)
@@ -613,10 +618,10 @@ export class SimEngine {
       return;
     }
 
-    // 정체(전역)·지연(주문별) 계수를 함께 적용한다.
+    // 정체(전역)·지연(주문별) 계수를 함께 적용한 순항 목표 속도.
     const delayFactor = order.status === 'DELAYED' ? 0.35 : 1;
     const trafficFactor = this.incident ? INCIDENT_SPEED_FACTOR : 1;
-    rider.currentSpeed = rider.cruise * delayFactor * trafficFactor;
+    this.stepSpeed(rider, rider.cruise * delayFactor * trafficFactor, dt);
     const moved = this.travel(rider, rider.currentSpeed * dt);
     this.drainBattery(rider, moved);
     if (rider.idx >= rider.path.length - 1) this.onArrival(rider);
@@ -624,11 +629,46 @@ export class SimEngine {
     this.syncStatus(rider);
   }
 
+  /**
+   * 가·감속 프로파일(기획서 §5). 목표 순항속도(vCruise)와 "전방 정지점까지의
+   * 정지거리 제약"의 최솟값을 목표로, 가속/감속 상한 내에서 현재 속도를 한 틱 전진한다.
+   * 정지선(적신호)·목적지 접근 시 자연스럽게 감속하고, 출발 시 서서히 가속한다.
+   */
+  private stepSpeed(rider: Rider, vCruise: number, dt: number): void {
+    const stopDist = this.distanceToNextStop(rider);
+    // v = sqrt(2·a·d): 정지거리 d에서 멈추려면 현재 속도가 이 값을 넘지 않아야 한다.
+    const vStop = Math.sqrt(2 * MAX_DECEL * stopDist);
+    const vTarget = Math.min(vCruise, vStop);
+    if (rider.currentSpeed < vTarget) {
+      rider.currentSpeed = Math.min(vTarget, rider.currentSpeed + MAX_ACCEL * dt);
+    } else {
+      rider.currentSpeed = Math.max(vTarget, rider.currentSpeed - MAX_DECEL * dt);
+    }
+    if (rider.currentSpeed < 0) rider.currentSpeed = 0;
+  }
+
+  /**
+   * 전방에서 처음 만나는 "정지점"까지의 거리(m). 정지점 = 경로 종점(목적지) 또는
+   * 현재 STOP인 신호 노드. 반응 거리(STOP_LOOKAHEAD_M) 밖이면 제약 없음(Infinity).
+   */
+  private distanceToNextStop(rider: Rider): number {
+    if (rider.idx >= rider.path.length - 1) return 0;
+    let dist = this.segLen(rider, rider.idx) - rider.edgeDist; // 다음 노드까지 남은 거리
+    let n = rider.idx + 1;
+    while (true) {
+      if (n >= rider.path.length - 1) return Math.max(0, dist); // 목적지에서 정지
+      if (this.isSignalStop(rider.path[n]!)) return Math.max(0, dist); // 적신호에서 정지
+      if (dist >= STOP_LOOKAHEAD_M) return Infinity; // 반응 거리 밖 → 순항 유지
+      dist += this.segLen(rider, n);
+      n += 1;
+    }
+  }
+
   /** 충전 모드: 허브까지 이동 → 도착 후 충전 → 완충 시 유휴 복귀. */
   private advanceCharging(rider: Rider, dt: number): void {
     rider.status = 'CHARGING';
     if (rider.path.length >= 2 && rider.idx < rider.path.length - 1) {
-      rider.currentSpeed = rider.cruise * (this.incident ? INCIDENT_SPEED_FACTOR : 1);
+      this.stepSpeed(rider, rider.cruise * (this.incident ? INCIDENT_SPEED_FACTOR : 1), dt);
       const moved = this.travel(rider, rider.currentSpeed * dt);
       this.drainBattery(rider, moved);
       this.updatePosition(rider);
