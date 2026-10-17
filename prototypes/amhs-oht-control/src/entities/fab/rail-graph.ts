@@ -1,0 +1,543 @@
+import { FAB_EXTENT } from '@/shared/map/fab-constants';
+import fabLayout from './fab-layout.json';
+
+/**
+ * FAB 정적 골격(단방향 Rail / Process Bay / Equipment / Port) 생성기.
+ *
+ * 산업 표준 AMHS 관례를 단순화한 토폴로지:
+ *  - Interbay 하이웨이: 외곽 단방향 루프(시계방향). 간선.
+ *  - Intrabay 코리도: 각 Bay를 가로지르는 단방향(L→R) 지선. 툴 로드포트가 매달림.
+ *  - Stocker(STK): 하이웨이에 접한 대용량 보관 노드.
+ *  - Tool 로드포트(LP): Bay 코리도 위의 정차 노드. 공정 툴은 복수 로드포트를 가진다.
+ *
+ * 레이아웃(좌표·용량·로드포트 수)은 `fab-layout.json`에서 읽는다. 모든 세그먼트는
+ * 단방향(a→b)이며, 경로탐색은 방향을 준수한다. 결정론적으로 생성되어 Worker/노드/
+ * 렌더러가 동일 그래프를 만든다. 단위: m.
+ */
+
+export type XY = [number, number];
+
+/** fab-layout.json 스키마 */
+export interface FabLayout {
+  extent: [number, number, number, number];
+  highway: { left: number; right: number; bottom: number; top: number };
+  spineX: number;
+  bayEntryX: number;
+  /** 베이 클러스터 사이 interbay 교차 코리도들의 중심 y (N개 → N+1 interbay 루프 셀) */
+  midCorridors: number[];
+  /** 교차 코리도 두 단방향 레인의 y 간격 */
+  midLaneGap: number;
+  toolXs: number[];
+  bufferCapacity: number;
+  loadPorts: { process: number; metrology: number; spacing: number };
+  bays: {
+    id: string;
+    name: string;
+    process: Zone['process'];
+    y: number;
+  }[];
+  stockers: {
+    id: string;
+    name: string;
+    at: XY;
+    capacity: number;
+    bayId: string;
+    zoneName: string;
+  }[];
+}
+
+export type SegKind = 'interbay' | 'intrabay' | 'transfer';
+/** 시각화에서 실제 팹의 레인 역할을 구분하기 위한 토폴로지 메타데이터. */
+export type RailLane = 'outer' | 'high' | 'low' | 'main' | 'transfer';
+
+export interface RailSegment {
+  id: string;
+  a: XY;
+  b: XY;
+  /** 단방향: a→b 만 주행 가능 */
+  length: number;
+  kind: SegKind;
+  /** 같은 interbay 코리도 안에서의 진행 레인. 라우팅에는 영향을 주지 않는다. */
+  lane?: RailLane;
+}
+
+export interface Zone {
+  id: string;
+  type: 'intrabay' | 'stocker';
+  name: string;
+  process: 'PHOTO' | 'ETCH' | 'CVD' | 'CMP' | 'STORAGE';
+  status: 'normal' | 'busy' | 'down';
+  ring: XY[];
+}
+
+export interface Port {
+  id: string;
+  kind: 'tool' | 'stocker' | 'buffer';
+  /** 경로 탐색용 rail 정차 노드. 같은 툴의 복수 로드포트는 이 노드를 공유한다. */
+  at: XY;
+  /** 마커 표시 좌표(복수 로드포트를 겹치지 않게 오프셋). 없으면 at을 쓴다. */
+  renderAt?: XY;
+  bayId?: string;
+  equipmentId?: string;
+  /** 보관/전송 용량 (tool 로드포트=1, buffer=N, stocker=N) */
+  capacity: number;
+}
+
+/**
+ * Turntable — OHT가 교차하는 트랙 사이를 전환(90° 회전)하거나 서로 다른
+ * interbay 루프/스파인 익스프레스로 갈아타는 전환 노드. 실제 팹의 트랙
+ * 분기·합류·방향전환 지점을 모델링한다.
+ */
+export interface Turntable {
+  id: string;
+  at: XY;
+  /** transfer=루프↔스파인/코리도 갈아탐, corner=외곽 루프 90° 방향전환 */
+  kind: 'transfer' | 'corner';
+}
+
+/** 라우팅 세그먼트와 분리된 렌더링 전용 코너 곡선. */
+export interface RailCurve {
+  id: string;
+  at: XY;
+  points: XY[];
+  kind: 'corner' | 'transfer';
+}
+
+/**
+ * ZCU (Zone Control Unit) — 실물 AMHS의 구역 트래픽 제어점.
+ * SMAT2022 ZCU_TYPE(NONE/RESET/STOP)을 반영한다.
+ *  - STOP: 흐름이 합류하는 지점. 차량은 통과 허가를 받고 순차 진입한다
+ *          (엔진의 junction 중재: hot lot·대기시간·id 우선순위가 이 지점을 순서화).
+ *  - RESET: 루프/스파인을 갈아타는 전환 지점의 위치 재동기 체크포인트.
+ */
+export interface Zcu {
+  id: string;
+  at: XY;
+  type: 'STOP' | 'RESET';
+  /** STOP일 때 이 노드로 합류하는 간선 수(경합도) */
+  incoming: number;
+}
+
+export interface Equipment {
+  id: string;
+  name: string;
+  process: Zone['process'];
+  bayId: string;
+  kind: 'process' | 'metrology' | 'buffer' | 'stocker';
+  status: 'RUN' | 'IDLE' | 'PM' | 'DOWN';
+  /** [minX, minY, maxX, maxY] */
+  bounds: [number, number, number, number];
+  portIds: string[];
+}
+
+export interface RailGraph {
+  extent: [number, number, number, number];
+  segments: RailSegment[];
+  zones: Zone[];
+  ports: Port[];
+  equipment: Equipment[];
+  /** 트랙 전환/방향전환 노드 (다중 interbay 루프 간 이동 지점) */
+  turntables: Turntable[];
+  /** 직선 라우팅 세그먼트 위에 겹쳐 그리는 라운드 코너 geometry */
+  curves: RailCurve[];
+  /** 구역 트래픽 제어점 (STOP=합류 순차제어, RESET=전환 재동기) */
+  zcus: Zcu[];
+  /** nodeKey → 그 노드에서 나가는 세그먼트 인덱스(seg.a === node) */
+  adjacency: Map<string, number[]>;
+  /** nodeKey → 그 노드에 있는 Port */
+  portByNode: Map<string, Port>;
+}
+
+// ---- 토폴로지 파라미터 (fab-layout.json) ----
+// JSON 리터럴은 number[]/string으로 추론되므로 스펙 타입으로 단언한다.
+const LAYOUT = fabLayout as unknown as FabLayout;
+const LEFT_X = LAYOUT.highway.left;
+const RIGHT_X = LAYOUT.highway.right;
+const BOTTOM_Y = LAYOUT.highway.bottom;
+const TOP_Y = LAYOUT.highway.top;
+const SPINE_X = LAYOUT.spineX;
+const BAY_ENTRY_X = LAYOUT.bayEntryX;
+const BAY_SPECS = LAYOUT.bays;
+const TOOL_XS = LAYOUT.toolXs;
+// interbay 교차 코리도들. 각 코리도는 두 단방향 레인을 갖는다:
+//  HI(=center+gap/2, L→R, 위쪽 셀의 하단변) / LO(=center-gap/2, R→L, 아래쪽 셀의 상단변).
+// N개 코리도 → 외곽 루프 안에 N+1개의 닫힌 interbay 루프 셀을 만든다.
+const MID_CORRIDORS = LAYOUT.midCorridors.map((cy) => ({
+  hi: cy + LAYOUT.midLaneGap / 2,
+  lo: cy - LAYOUT.midLaneGap / 2,
+}));
+const MID_LANE_YS = MID_CORRIDORS.flatMap((c) => [c.hi, c.lo]);
+
+function nodeKey(p: XY): string {
+  return `${Math.round(p[0] * 100)}:${Math.round(p[1] * 100)}`;
+}
+
+function dist(a: XY, b: XY): number {
+  return Math.hypot(b[0] - a[0], b[1] - a[1]);
+}
+
+export function buildRailGraph(): RailGraph {
+  const segments: RailSegment[] = [];
+  const zones: Zone[] = [];
+  const ports: Port[] = [];
+  const equipment: Equipment[] = [];
+
+  const pushSeg = (id: string, a: XY, b: XY, kind: SegKind, lane: RailLane) => {
+    segments.push({ id, a, b, length: dist(a, b), kind, lane });
+  };
+
+  // 연속 노드 배열을 단방향 세그먼트 체인으로
+  const chain = (prefix: string, pts: XY[], kind: SegKind, lane: RailLane) => {
+    for (let i = 0; i < pts.length - 1; i += 1)
+      pushSeg(`${prefix}-${i}`, pts[i]!, pts[i + 1]!, kind, lane);
+  };
+
+  // Interbay 하이웨이: 외곽 시계방향 루프 + A/B 클러스터 사이 교차 코리도(다중 루프).
+  // 좌변/우변/스파인에는 교차 코리도 접점(MID_HI/MID_LO)을 노드로 삽입한다. 이는
+  // 하강/상승 세그먼트를 같은 방향으로 쪼갤 뿐이라 기존 흐름을 바꾸지 않는다(가산적).
+  const bayYs = BAY_SPECS.map((b) => b.y);
+  const railYs = [...bayYs, ...MID_LANE_YS];
+  // 좌변: 위→아래 (Bay·교차 코리도 접점에서 분기)
+  const leftYs = [TOP_Y, ...[...railYs].sort((a, b) => b - a), BOTTOM_Y];
+  chain('HW-L', leftYs.map((y) => [LEFT_X, y] as XY), 'interbay', 'outer');
+  // 하변/상변은 스토커가 하이웨이 라인 위에 매달리므로, 각 스토커 x를 실제 노드로
+  // 삽입해 스토커 정차 노드가 그래프에 연결되게 한다(경로탐색·충전소 도달 성립).
+  const stockerXsOn = (y: number) =>
+    LAYOUT.stockers.filter((s) => s.at[1] === y).map((s) => s.at[0]);
+  // 하변: 좌→우 (스토커·중앙 스파인 경유)
+  const bottomXs = Array.from(new Set([LEFT_X, SPINE_X, ...stockerXsOn(BOTTOM_Y), RIGHT_X])).sort((a, b) => a - b);
+  chain('HW-B', bottomXs.map((x) => [x, BOTTOM_Y] as XY), 'interbay', 'outer');
+  // 우변: 아래→위 (Bay·교차 코리도 접점에서 합류)
+  const rightYs = [BOTTOM_Y, ...[...railYs].sort((a, b) => a - b), TOP_Y];
+  chain('HW-R', rightYs.map((y) => [RIGHT_X, y] as XY), 'interbay', 'outer');
+  // 상변: 우→좌 (스토커·중앙 스파인 경유)
+  const topXs = Array.from(new Set([LEFT_X, SPINE_X, ...stockerXsOn(TOP_Y), RIGHT_X])).sort((a, b) => b - a);
+  chain('HW-T', topXs.map((x) => [x, TOP_Y] as XY), 'interbay', 'outer');
+
+  // 교차 코리도(interbay) — 코리도마다 두 레인이 인접 셀의 순환을 닫는다.
+  //  · HI 레인: 좌→우 (위쪽 셀의 하단변: 좌변 하강 → 우변 상승을 이음)
+  //  · LO 레인: 우→좌 (아래쪽 셀의 상단변: 우변 상승 → 좌변 하강을 이음)
+  MID_CORRIDORS.forEach(({ hi, lo }, ci) => {
+    chain(`MID-HI-${ci}`, [[LEFT_X, hi], [SPINE_X, hi], [RIGHT_X, hi]], 'interbay', 'high');
+    chain(`MID-LO-${ci}`, [[RIGHT_X, lo], [SPINE_X, lo], [LEFT_X, lo]], 'interbay', 'low');
+  });
+
+  // 중앙 transfer spine은 공정 Bay 사이의 shortcut. 하→상 단방향. 교차 코리도 접점 포함.
+  const spineYs = [BOTTOM_Y, ...[...railYs].sort((a, b) => a - b), TOP_Y];
+  chain('XFER', spineYs.map((y) => [SPINE_X, y] as XY), 'transfer', 'transfer');
+
+  // Turntable — 루프 전환/방향전환 노드. 스파인·좌우 rail의 코리도 접점(transfer) + 외곽 코너.
+  const turntables: Turntable[] = [];
+  const pushTt = (at: XY, kind: Turntable['kind']) =>
+    turntables.push({ id: `TT-${kind === 'corner' ? 'C' : 'X'}-${nodeKey(at)}`, at, kind });
+  // 스파인 익스프레스 ↔ 외곽/코리도 갈아타는 지점
+  for (const y of [BOTTOM_Y, ...MID_LANE_YS, TOP_Y]) pushTt([SPINE_X, y], 'transfer');
+  // 교차 코리도 ↔ 좌/우 rail 갈아타는 지점
+  for (const y of MID_LANE_YS) {
+    pushTt([LEFT_X, y], 'transfer');
+    pushTt([RIGHT_X, y], 'transfer');
+  }
+  // 외곽 루프 90° 방향전환 코너
+  for (const c of [[LEFT_X, BOTTOM_Y], [RIGHT_X, BOTTOM_Y], [RIGHT_X, TOP_Y], [LEFT_X, TOP_Y]] as XY[])
+    pushTt(c, 'corner');
+
+  // 라우팅은 기존의 직선 세그먼트를 유지하되, 지도에서는 코너의 꺾임을
+  // cubic Bézier로 라운드 처리한다. 곡선은 시뮬레이션 거리/점유 계산에
+  // 사용하지 않아 기존 이동 시간과 경로 재현성을 보존한다.
+  const curves: RailCurve[] = [];
+  const curveRadius = 2.2;
+  const curveKappa = curveRadius * 0.552;
+  for (const tt of turntables.filter((item) => item.kind === 'corner')) {
+    const incoming = segments.find((segment) => nodeKey(segment.b) === nodeKey(tt.at));
+    const outgoing = segments.find((segment) => nodeKey(segment.a) === nodeKey(tt.at));
+    if (!incoming || !outgoing) continue;
+    const inLength = dist(incoming.a, incoming.b);
+    const outLength = dist(outgoing.a, outgoing.b);
+    if (inLength <= curveRadius || outLength <= curveRadius) continue;
+    const inDir: XY = [
+      (incoming.b[0] - incoming.a[0]) / inLength,
+      (incoming.b[1] - incoming.a[1]) / inLength,
+    ];
+    const outDir: XY = [
+      (outgoing.b[0] - outgoing.a[0]) / outLength,
+      (outgoing.b[1] - outgoing.a[1]) / outLength,
+    ];
+    const start: XY = [tt.at[0] - inDir[0] * curveRadius, tt.at[1] - inDir[1] * curveRadius];
+    const end: XY = [tt.at[0] + outDir[0] * curveRadius, tt.at[1] + outDir[1] * curveRadius];
+    const controlA: XY = [start[0] + inDir[0] * curveKappa, start[1] + inDir[1] * curveKappa];
+    const controlB: XY = [end[0] - outDir[0] * curveKappa, end[1] - outDir[1] * curveKappa];
+    const points: XY[] = [];
+    for (let i = 0; i <= 8; i += 1) {
+      const t = i / 8;
+      const mt = 1 - t;
+      points.push([
+        mt ** 3 * start[0] + 3 * mt ** 2 * t * controlA[0] + 3 * mt * t ** 2 * controlB[0] + t ** 3 * end[0],
+        mt ** 3 * start[1] + 3 * mt ** 2 * t * controlA[1] + 3 * mt * t ** 2 * controlB[1] + t ** 3 * end[1],
+      ]);
+    }
+    curves.push({ id: `CURVE-${tt.id}`, at: tt.at, points, kind: tt.kind });
+  }
+
+  // Intrabay 코리도 + 공정 장비. 장비는 rail 양쪽에 배치하고 포트는 rail 위에 둔다.
+  const spacing = LAYOUT.loadPorts.spacing;
+  BAY_SPECS.forEach(({ id: bayId, name, process, y }, bi) => {
+    // 같은 공정의 Bay가 복수(A/B)면 process만으로는 장비 id가 충돌하므로,
+    // bayId의 공정 뒤 접미사(예: BAY-PHOTO-A → "A")를 붙여 유일하게 만든다.
+    // 단일 Bay 레이아웃(BAY-PHOTO)에서는 접미사가 없어 기존 id(PHOTO-01)를 유지한다.
+    const baySuffix = bayId.slice(`BAY-${process}`.length).replace(/^-/, '');
+    const eqpPrefix = baySuffix ? `${process}-${baySuffix}` : process;
+    // 각 툴의 로드포트를 rail을 따라 벌어진 **개별 정차 노드**로 배치한다.
+    // 복수 로드포트 툴에서는 OHT가 LP마다 위치를 미세 조정해 정차한다.
+    const toolLps = TOOL_XS.map((x, ti) => {
+      const isMetrology = ti === TOOL_XS.length - 1;
+      const lpCount = Math.max(
+        1,
+        isMetrology ? LAYOUT.loadPorts.metrology : LAYOUT.loadPorts.process,
+      );
+      const xsOfTool = Array.from(
+        { length: lpCount },
+        (_, lp) => x + (lp - (lpCount - 1) / 2) * spacing,
+      );
+      return { x, ti, isMetrology, xs: xsOfTool };
+    });
+    const lpXs = toolLps.flatMap((tool) => tool.xs);
+
+    // 중앙 transfer spine의 교차점도 실제 노드로 포함해 Bay 간 우회 경로가
+    // 그래프 탐색에서 연결되도록 한다. LP 노드는 이미 오름차순이다.
+    const xs = [
+      LEFT_X,
+      BAY_ENTRY_X,
+      ...lpXs.filter((x) => x < SPINE_X),
+      SPINE_X,
+      ...lpXs.filter((x) => x > SPINE_X),
+      RIGHT_X,
+    ];
+    chain(bayId, xs.map((x) => [x, y] as XY), 'intrabay', 'main');
+
+    zones.push({
+      id: `Z-${bayId}`,
+      type: 'intrabay',
+      name,
+      process,
+      status: 'normal',
+      ring: [
+        [LEFT_X - 1, y - 6],
+        [RIGHT_X + 1, y - 6],
+        [RIGHT_X + 1, y + 6],
+        [LEFT_X - 1, y + 6],
+        [LEFT_X - 1, y - 6],
+      ],
+    });
+
+    toolLps.forEach(({ x, ti, isMetrology, xs: lpXsOfTool }) => {
+      const equipmentId = `${eqpPrefix}-${String(ti + 1).padStart(2, '0')}`;
+      const portIds: string[] = [];
+      lpXsOfTool.forEach((lpX, lp) => {
+        const portId = `${equipmentId}-LP${lp + 1}`;
+        portIds.push(portId);
+        // 각 로드포트는 자신의 rail 정차 노드를 가진다(경로탐색 대상).
+        ports.push({
+          id: portId,
+          kind: 'tool',
+          at: [lpX, y],
+          bayId,
+          equipmentId,
+          capacity: 1,
+        });
+      });
+      const above = ti % 2 === 0;
+      const halfW = Math.max(5, (lpXsOfTool.length * spacing) / 2 + 1.5);
+      const bounds: Equipment['bounds'] = [
+        x - halfW,
+        above ? y + 1.4 : y - 5.8,
+        x + halfW,
+        above ? y + 5.8 : y - 1.4,
+      ];
+      equipment.push({ id: equipmentId, name: `${process} TOOL ${ti + 1}`, process, bayId,
+        kind: isMetrology ? 'metrology' : 'process', status: 'RUN', bounds, portIds });
+    });
+
+    // Bay 입구 staging buffer: 여러 FOUP를 임시 보관.
+    const bufferId = `BUF-${bi + 1}`;
+    ports.push({ id: `${bufferId}-P1`, kind: 'buffer', at: [BAY_ENTRY_X, y], bayId, equipmentId: bufferId, capacity: LAYOUT.bufferCapacity });
+    equipment.push({ id: bufferId, name: `${process} STAGING`, process, bayId, kind: 'buffer', status: 'RUN',
+      bounds: [BAY_ENTRY_X - 3.5, y + 1.2, BAY_ENTRY_X + 3.5, y + 4.8], portIds: [`${bufferId}-P1`] });
+  });
+
+  // Stocker (하이웨이 접점) + 존 박스 — 레이아웃 스펙에서 생성
+  LAYOUT.stockers.forEach((stk, si) => {
+    const [sxm, sym] = stk.at;
+    ports.push({ id: `${stk.id}-P1`, kind: 'stocker', at: stk.at as XY, equipmentId: stk.id, capacity: stk.capacity });
+    const below = sym < (BOTTOM_Y + TOP_Y) / 2;
+    equipment.push({
+      id: stk.id,
+      name: stk.name,
+      process: 'STORAGE',
+      bayId: stk.bayId,
+      kind: 'stocker',
+      status: 'RUN',
+      // 스토커 박스는 하이웨이 바깥쪽(도면 가장자리 방향)으로 자기 y에 붙여 그린다.
+      bounds: below ? [sxm - 7, sym - 7, sxm + 7, sym - 1.5] : [sxm - 7, sym + 1.5, sxm + 7, sym + 7],
+      portIds: [`${stk.id}-P1`],
+    });
+    zones.push({
+      id: `Z-STK-${si + 1}`,
+      type: 'stocker',
+      name: stk.zoneName,
+      process: 'STORAGE',
+      status: 'normal',
+      ring: [
+        [sxm - 6, sym - 4],
+        [sxm + 6, sym - 4],
+        [sxm + 6, sym + 4],
+        [sxm - 6, sym + 4],
+        [sxm - 6, sym - 4],
+      ],
+    });
+  });
+
+  // 방향성 인접 리스트 (나가는 간선) + 포트 노드 인덱스
+  const adjacency = new Map<string, number[]>();
+  segments.forEach((seg, idx) => {
+    const k = nodeKey(seg.a);
+    const list = adjacency.get(k);
+    if (list) list.push(idx);
+    else adjacency.set(k, [idx]);
+  });
+
+  const portByNode = new Map<string, Port>();
+  for (const p of ports) portByNode.set(nodeKey(p.at), p);
+
+  // ZCU 도출 — 실물 구역 제어점. STOP=합류(incoming≥2) 노드(엔진 junction 중재가
+  // 순서화하는 경합점), RESET=합류가 아닌 전환 turntable(위치 재동기 체크포인트).
+  const incoming = new Map<string, { at: XY; n: number }>();
+  for (const seg of segments) {
+    const k = nodeKey(seg.b);
+    const e = incoming.get(k) ?? { at: seg.b, n: 0 };
+    e.n += 1;
+    incoming.set(k, e);
+  }
+  const zcus: Zcu[] = [];
+  const zcuKeys = new Set<string>();
+  for (const [k, { at, n }] of incoming) {
+    if (n >= 2) {
+      zcus.push({ id: `ZCU-STOP-${k}`, at, type: 'STOP', incoming: n });
+      zcuKeys.add(k);
+    }
+  }
+  for (const tt of turntables) {
+    if (tt.kind !== 'transfer') continue;
+    const k = nodeKey(tt.at);
+    if (zcuKeys.has(k)) continue;
+    zcus.push({ id: `ZCU-RESET-${k}`, at: tt.at, type: 'RESET', incoming: incoming.get(k)?.n ?? 0 });
+    zcuKeys.add(k);
+  }
+
+  return { extent: FAB_EXTENT, segments, zones, ports, equipment, turntables, curves, zcus, adjacency, portByNode };
+}
+
+export function nodeKeyOf(p: XY): string {
+  return nodeKey(p);
+}
+
+/**
+ * BFS 최단경로 (단방향) — start→goal 를 잇는 세그먼트 인덱스 순서.
+ * 도달 불가/동일 노드면 빈 배열.
+ */
+export function findRoute(graph: RailGraph, startKey: string, goalKey: string): number[] {
+  if (startKey === goalKey) return [];
+  const prev = new Map<string, { seg: number; from: string }>();
+  const visited = new Set<string>([startKey]);
+  const queue: string[] = [startKey];
+
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    const outgoing = graph.adjacency.get(cur) ?? [];
+    for (const si of outgoing) {
+      const seg = graph.segments[si]!;
+      const other = nodeKey(seg.b);
+      if (visited.has(other)) continue;
+      visited.add(other);
+      prev.set(other, { seg: si, from: cur });
+      if (other === goalKey) {
+        const path: number[] = [];
+        let node = goalKey;
+        while (node !== startKey) {
+          const p = prev.get(node)!;
+          path.unshift(p.seg);
+          node = p.from;
+        }
+        return path;
+      }
+      queue.push(other);
+    }
+  }
+  return [];
+}
+
+// ---- GeoJSON 직렬화 ----
+
+export function railGraphToGeoJSON(graph: RailGraph) {
+  return {
+    rails: {
+      type: 'FeatureCollection' as const,
+      features: graph.segments.map((s) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'LineString' as const, coordinates: [s.a, s.b] },
+         properties: { railId: s.id, kind: s.kind, lane: s.lane, direction: 'one-way' },
+      })),
+    },
+    curves: {
+      type: 'FeatureCollection' as const,
+      features: graph.curves.map((curve) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'LineString' as const, coordinates: curve.points },
+        properties: { curveId: curve.id, kind: curve.kind, turntableId: `TT-${curve.kind === 'corner' ? 'C' : 'X'}-${nodeKey(curve.at)}` },
+      })),
+    },
+    zones: {
+      type: 'FeatureCollection' as const,
+      features: graph.zones.map((z) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Polygon' as const, coordinates: [z.ring] },
+        properties: { zoneId: z.id, zoneType: z.type, name: z.name, process: z.process, status: z.status },
+      })),
+    },
+    ports: {
+      type: 'FeatureCollection' as const,
+      features: graph.ports.map((p) => ({
+        type: 'Feature' as const,
+        // 마커는 renderAt(복수 로드포트 오프셋)으로 표시. 경로탐색은 at을 직접 쓴다.
+        geometry: { type: 'Point' as const, coordinates: p.renderAt ?? p.at },
+        properties: { portId: p.id, kind: p.kind, bayId: p.bayId ?? null, equipmentId: p.equipmentId ?? null, capacity: p.capacity },
+      })),
+    },
+    equipment: {
+      type: 'FeatureCollection' as const,
+      features: graph.equipment.map((e) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Polygon' as const, coordinates: [[
+          [e.bounds[0], e.bounds[1]], [e.bounds[2], e.bounds[1]], [e.bounds[2], e.bounds[3]],
+          [e.bounds[0], e.bounds[3]], [e.bounds[0], e.bounds[1]],
+        ]] },
+        properties: { equipmentId: e.id, name: e.name, process: e.process, bayId: e.bayId, kind: e.kind, status: e.status },
+      })),
+    },
+    turntables: {
+      type: 'FeatureCollection' as const,
+      features: graph.turntables.map((t) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: t.at },
+        properties: { turntableId: t.id, kind: t.kind },
+      })),
+    },
+    zcus: {
+      type: 'FeatureCollection' as const,
+      features: graph.zcus.map((z) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: z.at },
+        properties: { zcuId: z.id, type: z.type, incoming: z.incoming },
+      })),
+    },
+  };
+}

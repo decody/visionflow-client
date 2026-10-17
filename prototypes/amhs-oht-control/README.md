@@ -1,0 +1,222 @@
+# Smart Factory AMHS/OHT Control (Prototype #02)
+
+반도체 FAB의 OHT·FOUP·Rail을 **실내 좌표계** 위에서 실시간 관제하는 VisionFlow 포트폴리오 프로토타입. 실제 FAB 데이터가 아닌 합성 시뮬레이션이다.
+
+지도는 전체 FAB heatmap, Bay WebGL 차량, 설비 상세의 세 단계 LOD를 사용한다. 설비 확대에서는 heading 기반 방향 삼각형, 적재·Hot lot 외곽선, OHT·FOUP 라벨을 표시하고 rail 합류·분기·transfer 교차점을 별도 운영 마커로 표시한다.
+
+FAB 정적 레이아웃(Bay·툴 위치·Stocker·용량·툴별 로드포트 수·교차 코리도)은 [`src/entities/fab/fab-layout.json`](src/entities/fab/fab-layout.json)에서 읽어 `buildRailGraph()`가 해석한다. 공정 툴은 복수 로드포트(기본 2), 계측 툴은 1개를 가진다. 각 로드포트는 rail을 따라 벌어진 **개별 정차 노드**(각 용량 1)를 가져, 복수 LP 툴에서 OHT가 LP마다 위치를 미세 조정해 정차한다.
+
+도면은 SMAT2022 밀도에 맞춘 **300×153 m·9 Bay(툴 16/Bay)·장비 159·포트 294·Stocker 6** 규모다. 외곽 시계방향 interbay 루프 안에 A/B/C 클러스터 사이 **교차 코리도 2개**가 각 두 단방향 레인으로 **북/중/남 3개 interbay 루프 셀**을 형성한다(`midCorridors`로 일반화, N개 코리도 → N+1 셀). 루프·스파인 전환점과 외곽 코너에는 **turntable 18개**, 흐름 합류·전환점에는 실물 구역 제어 개념인 **ZCU 32개**(STOP 27=합류 순차제어, RESET 5=전환 재동기)를 둔다.
+
+- 진행 내역: [`docs/amhs_oht_control_prototype_progress_ko.md`](../../../docs/amhs_oht_control_prototype_progress_ko.md)
+- 소개 문서: `docs/AMHS_OHT_Control_Prototype_Introduction.docx` (포트폴리오 #02)
+- 스택: Next.js 16 · React 19 · TypeScript · Zustand · OpenLayers(WebGL/Heatmap) · GeoJSON · Web Worker
+
+## 실행
+
+pnpm 워크스페이스(`prototypes/*`) 구성이므로 저장소 루트(`visionflow-client`)에서 설치한다.
+
+```bash
+# visionflow-client 루트에서
+pnpm install
+pnpm --filter @visionflow/amhs-oht-control dev        # http://localhost:3011
+
+# 프로토타입 폴더에서
+pnpm typecheck                                        # tsc --noEmit
+pnpm test:unit                                        # node --test (tsx 로더)
+pnpm ws:server                                        # 방식 B: 로컬 ws 서버(:3012)
+pnpm perf                                             # 헤드리스 성능 벤치(코어 tick+직렬화)
+pnpm perf:long                                        # + 장시간 실행 메모리 누수 검증
+```
+
+### 성능 벤치 (헤드리스)
+
+브라우저 렌더 FPS는 GPU·자동화 환경에 좌우돼 재현성이 낮다. `server/perf-bench.ts`는
+ws-server가 매 틱 수행하는 `JSON.stringify(engine.tick())`과 동일 경로를 노드에서 반복 실행해
+대수(500/1,000/2,000/5,000)별 tick·직렬화 지연 p95, 델타 바이트, 지속 가능 Hz, 메모리를 측정한다.
+고정 시드·고정 clock으로 결정론적이며, 결과는 `perf-report.md`에 저장한다(최근 실행 결과 포함).
+
+```bash
+pnpm perf -- --counts=1000,5000 --ticks=600 --rate=10 --out=perf-report.md
+```
+
+최근 결과(Node 24): 5,000대에서도 frame p95 7.6ms(10Hz 예산 대비 13× 여유), 메모리 누수 없음 →
+**시뮬레이션 코어는 병목이 아니며, 실제 병목은 브라우저 렌더 파이프라인과 델타 대역폭이다.**
+
+이에 따라 렌더 경로에 **뷰포트 컬링**을 적용했다. 전체 모델(`featureById`)과 WebGL 렌더 소스를
+분리해, 줌인(bay·equipment LOD) 시 화면 밖 OHT를 렌더 소스에서 제외한다. 매 프레임 재생성되는
+WebGL 정점 버퍼 비용이 "전체 대수"가 아니라 "보이는 대수"에 비례한다. 순수 판정 로직은
+`src/shared/map/viewport-cull.ts`(단위 테스트 포함), 효과는 개발 진단 패널의 **렌더 대상(보이는/전체)**
+지표로 확인한다. KPI·정체·상세·클릭은 전체 모델을 사용하므로 컬링과 무관하게 전 대수를 반영한다.
+
+델타 대역폭은 **좌표 양자화 + operations 스로틀링 + id 압축**으로 줄였다. 저장 물리 상태는 full precision을
+유지하고 직렬화되는 델타·스냅샷 값만 x/y 1cm(소수 2자리)·heading 0.1도·speed 0.01m/s로 반올림한다
+(`quantizeWireFields`, engine.ts). 매 틱 전체 전송되던 `operations` 블록(대수 무관 ~9.5KB/틱)은 UI가
+4Hz로만 읽으므로 약 5Hz 주기(또는 알람 틱)에만 싣는다 — reducer가 마지막 정의된 값을 유지한다. 또
+개체 id `OHT-####`를 **ws 전송 계층에서만** 정수 `i`로 압축하고 수신 직후 복원한다(`wire-codec.ts`);
+엔진·reducer·UI·Worker 경로는 도메인 문자열 id 그대로라 무변경이다. 누적 결과: 500대 29.5KB→15.4KB(−48%),
+5,000대 214KB→115KB(−46%), 대역폭 ~2.1MB/s→~1.15MB/s. 스냅샷·델타가 동일 규칙으로 인코딩되므로
+재현 불변식은 유지된다.
+
+### 실시간 소스 전환 (방식 A ↔ B)
+
+동일한 snapshot/delta 프로토콜을 **Web Worker(A)** 또는 **실제 `ws` 소켓(B)** 으로 받는다.
+
+| 방식 | 실행 | 선택 방법 |
+| --- | --- | --- |
+| **A. Web Worker**(기본) | 추가 서버 없음 | 기본값, 또는 `?src=worker` |
+| **B. ws 소켓** | `pnpm ws:server` 먼저 실행 | `?src=ws` 또는 `NEXT_PUBLIC_WS_URL=ws://localhost:3012` |
+
+예) 소켓 모드로 보기: 서버를 띄운 뒤 `http://localhost:3011/?src=ws`.
+상단 배지에 소스(`worker` / `ws · localhost:3012`)와 연결 상태(connecting/open/reconnecting)가 표시된다.
+`ws:server`를 껐다 켜면 프론트가 **exponential backoff로 재연결 → 스냅샷 재동기**하는 것을 확인할 수 있다.
+
+## SMAT2022 실측 레일망 임포트 (`/smat2022`, 뷰 전용)
+
+라이브 관제(`/`)는 합성 FAB이지만, 별도 라우트 `/smat2022`는 **공개 실측 데이터셋의 실제 팹 AMHS 레일망**을 임포트해 그대로 렌더한다(팬/줌, 시뮬레이션 미구동).
+
+- **소스**: SMAT2022 `.rail` (노드 2,858 · 링크 3,424[곡선 951] · 섹션 1,698 · 툴그룹 108 · 약 300×153 m).
+- **파이프라인**: `src/entities/fab/smat2022-rail.ts` 파서가 `.rail`(NODE/RAILLIST/EQTONODEMAP/TEXT)을 구조화 → 파싱 산출을 `src/entities/fab/smat2022-layout.json`(런타임 입력, 좌표 mm)으로 커밋 → `src/shared/map/smat2022-blueprint.ts`가 mm→m 변환·Y 뒤집기 후 LINE/CURVE를 색으로 구분한 SVG로 렌더 → `src/features/import/smat2022-view.tsx`(라우트 `app/smat2022`)가 팬/줌으로 표시.
+- **범위**: 뷰 전용이다. 실측 그래프(2,858 노드) 위에서 `SimEngine`(경로탐색·배차·교착)을 구동하는 것은 별도의 큰 작업으로 남겨 둔다. 포트/장비 상세는 별도 CSV라 여기서는 레일망·툴그룹만 그린다.
+- **재생성**: `parseSmat2022Rail(readFile('SMAT2022.rail'))` 결과를 `smat2022-layout.json`으로 저장. 원본 `.rail`은 리포에 포함하지 않는다(파싱 산출 JSON만 포함).
+
+### 데이터 출처 · 라이선스
+
+실측 레일망(`SMAT2022.rail`)은 **U-FAST**(<https://github.com/DaeeunLim/ufast>, MIT)로 배포되는 **SMAT2022 레이아웃**(LogiFabSim — S. Rank, V. Betker, *IFAC-PapersOnLine*, 2025)에서 가져왔다. SMT2020 테스트베드(D. Kopp, M. Hassoun, A. Kalir, L. Mönch, *IEEE Trans. Semiconductor Manufacturing*, 2020) 계열이다. 본 프로토타입은 이 데이터를 파싱해 시각화에만 사용하며, 특정 기업의 실제 팹 도면이 아니다. 원저작권·라이선스는 각 출처를 따른다.
+
+## 구현 현황
+
+| 단계(계획서 §12) | 상태 | 내용 |
+| --- | --- | --- |
+| 1. 설계·Mock | ✅ | 실내 좌표계 커스텀 투영, Rail 그래프 fixture, WebSocket 시뮬레이터(Web Worker) |
+| 2. 지도 MVP | ✅ | 정적 벡터 레이어(Rail/Zone/Equipment), 선택·필터·상세 Drawer |
+| 3. 실시간 파이프라인 | ✅ | snapshot+delta, seq gap 감지→재동기, id별 코얼레싱, rAF 배치, 알람 |
+| 4. 성능·스케일 | 구현 / 실측 대기 | WebGL 포인트 레이어, 대수 500~5,000 공차 순환 부하, LOD(포인트↔히트맵), GPU 필터. 일반 전경 Chrome의 목표 FPS/p95 달성은 미검증 |
+| 5. 제품 완성도 | ✅ | 이력 재생(타임 스크러버/배속), 로딩·오류 상태, 접근성(aria/포커스), 경로 자동 마커링 |
+| 6. 문서·최적화 | 🔜 | FAB 현실성 보강, 교통 동작 보강, 성능 리포트, 데모 시나리오·영상 |
+
+### 프로토타입 범위
+
+이 프로젝트의 목표는 실제 MES/AMHS 백엔드를 연결하는 것이 아니라, **실제 FAB처럼 보이고 실제 관제처럼 움직이는 프론트엔드 시뮬레이션**을 완성하는 것이다. 데이터·명령·감사 로그는 로컬 mock으로 충분하며, 인증·DB·Kafka·실제 API 계약은 범위에서 제외한다. `SimEngine`과 로컬 Web Worker/WS는 시뮬레이션과 실시간 관제 UX를 검증하기 위한 실행 수단으로만 사용한다.
+
+### 남은 주요 작업
+
+1. **FAB·Rail 맵 현실성 강화** — ✅ 완료. Bay/Interbay/Stocker/장비/Load Port 배치, Rail 곡선·분기·합류·교차 구조, 운영 라벨과 전체 FAB·Bay·장비 확대 단계의 LOD 표현을 정리했다.
+2. **OHT 교통 동작 개선** — ✅ 완료. 차량 안전거리·충돌 방지 하드가드, 교차로·합류부 대기 및 ZCU busy 표시, 곡선 진입 감속, Load Port 정밀 정차·도킹/해제 상태, 호이스트 단일 점유·대기, 정체·JAM 알람을 합성 시뮬레이션으로 표현한다.
+3. **시뮬레이션 시나리오 확장** — ✅ 완료. 정상 반송, Hot lot, Load Port 점유/장애·복구, Stocker 포화, 저배터리·충전 복귀, Rail 장애·우회, 교통 대기·ZCU busy, 통신 단절·복구와 장시간 운행 흐름을 자동 데모 프리셋으로 재현한다.
+4. **관제 UI 완성도** — ✅ 완료. Bay별 KPI, OHT/장비/작업 상세, 공통 필터, 지도-목록 동기화, 장애·정체 강조, 이력 재생·LIVE 복귀 UX와 데모 모드를 정리했다.
+5. **성능 검증·최적화** — ✅ 코어 벤치마크·렌더 경로 최적화 완료. 500~5,000대의 tick/직렬화 p95를 측정하고, WebGL feature 갱신·LOD·화면 밖 culling을 최적화했다. 브라우저별 GPU 렌더 p95는 화면의 개발 진단 패널에서 계속 확인할 수 있다.
+6. **프로토타입 마감** — ✅ 완료. 시작 상태·카메라·58초 데모 플로우와 캡처 권장 장면을 [`demo-script.md`](./demo-script.md)에 고정했고, 실제 데이터가 아닌 합성/공개 레일망 시각화임을 문서와 화면에 표시한다.
+
+## 아키텍처 (데이터 흐름)
+
+### 반송 운영 모델 (2026-09-05 후속 구현)
+
+- 기본 100대(부하 프리셋 8/32/100/500/1,000/2,000/5,000). 8대에서는 잡풀의 배차 대기와 정책 차이를, 100대에서는 대형 팹의 반송 밀집을 관찰할 수 있다.
+- FOUP별 Lot와 단일 소유 위치(포트 또는 차량)를 유지한다. 동시에 최대 20건을 생성하며 완료 작업은 최근 40건만 보관한다.
+- `QUEUED → TO_PICKUP → LOADING → DELIVERING → UNLOADING → DONE`: 적재 전에는 공차, 적재 완료 후에만 FOUP가 차량으로 이동한다. 하역 완료 시 목적지 점유로 전환한다.
+- 목적지 슬롯을 작업 생성 시 예약한다. 툴 포트 용량 1, 스토커 용량 24이며 점유+예약이 용량을 넘지 않는다.
+- 우선순위: Hot lot(3) 우선 후 FIFO. 최장대기: FIFO. 두 정책 모두 선택된 작업에 가장 가까운 공차를 배정한다. 최근접: 작업·공차 쌍의 단방향 레일 거리를 비교한다. 물리적 거리 계산은 Dijkstra를 사용한다.
+- 정책 변경은 기존 배차를 취소하지 않고 새 배차에 적용한다. 작업 마감과 이동은 시뮬레이션 시간을 사용하므로 일시정지 중 마감도 멈춘다.
+- 500~5,000대에서는 미배차 공차도 순환하여 고빈도 델타 부하를 유지한다. 노드 도착 시 배차 가능하며 중간 위치에서 순간 이동하지 않는다.
+- 작업 목록 검색·차량 선택, FOUP/Lot/출발/도착/단계 상세, 적재·공차/Hot lot 필터, 포트 점유·예약, 완료 건수·평균 반송시간을 표시한다. 필터는 포인트·히트맵·지도 클릭 선택에 공통 적용한다.
+- 이력은 최대 120프레임/최근 60초를 보관하며 위치·heading·Job·경로·적재·운영 상태·알람을 함께 복원한다. 재생 속도는 기록된 타임스탬프를 따른다. 재생 중 라이브 시뮬레이터는 계속 진행하고 화면 반영만 보류하며 LIVE 복귀 시 스냅샷을 요청한다.
+
+### OHT 동작 현실성 (2026-09-19 후속 구현)
+
+- **가·감속·정지거리**: 순간 속도 변경 대신 물리적 가속도 프로파일로 주행한다. 값은 SMAT2022 OHTV0 실측 스펙에 맞춰 캘리브레이션했다 — 최고속도 5 m/s(차량별 순항 3.8~5.0), 가속 2.0 m/s², 감속 3.5 m/s². 출발 시 0에서 가속하고, 목적지 접근 시 남은 주행거리의 정지거리(√(2·감속·거리))로 목표속도를 제한해 정차 지점 앞에서 감속한다. 속도는 항상 cruise 이하라 틱당 이동 상한(teleport 방지)이 유지된다.
+- **곡선 속도제한**: 실물 OHT처럼 방향이 크게(≥45°) 꺾이는 전환 노드 전후 2 m 구간에서는 곡선 속도(1 m/s)로 감속한다(직선 5 m/s). `curveSpeedCap`.
+- **배터리**: 각 OHT는 잔여 배터리(%)를 가진다. 주행 시 거리 비례 방전, 로딩/언로딩 도킹 시 소폭 충전한다. 임계(22%) 미만이면 공차가 가장 가까운 stocker(충전소)로 이동해 85%까지 충전하며 그동안 배차에서 제외된다. 20%/10%에서 경고·위험 알람을 발생시킨다. 배터리는 정수로 양자화해 델타로 방출한다.
+- **용량 인지 배차 + 교착 완화**: 가·감속으로 낮아진 유효 도로 용량에 맞춰 전역 WIP·목적지/Bay/공유 경로 압력을 제한한다(backpressure). 재경로가 없는 교착 사이클은 가장 오래 기다린 차량에 **우선통과**를 부여해(점유·안전간격 대기를 수 틱 건너뜀) 링을 끊어 영구 정체를 방지한다.
+- 진단 패널에 운행 WIP·백프레셔·충전 중·저배터리 대수를, 차량 상세에 배터리·충전 상태를 노출한다. 지도에서는 저배터리(≤20%, 위험 시 붉은색)·충전 중(초록) OHT를 링으로 강조한다(overview 제외).
+
+### 로컬 명령·감사 mock (2026-09-19 후속 구현)
+
+실제 MES/AMHS 연동을 위한 인증·감사·API 계약은 구현 범위에 포함하지 않는다. 다만 관제 UX에서 명령 승인·거부와 운영 이력을 보여주기 위해 로컬 mock 경계를 유지한다. 상세 설계는 향후 연동 가능성을 설명하기 위한 참고 문서일 뿐, 현재 프로토타입의 완료 조건은 아니다: [`docs/amhs_integration_contract_ko.md`](../../../docs/amhs_integration_contract_ko.md).
+
+- **단일 실행 지점** `SimEngine.applyCommand(cmd, actor)`: 모든 상태 변경 명령이 여기서 역할 기반 인증 → 감사 기록 → (승인 시) 실행된다. worker(방식 A)·ws(방식 B) 어댑터가 세션 주체를 주입한다(주체는 클라이언트가 주장하지 않음).
+- **역할 정책**(`command-contract.ts`): viewer<operator<supervisor. 배차·Hot lot은 operator+, 장애 주입·시나리오 리셋은 supervisor 전용. 권한 부족은 `FORBIDDEN`으로 거부.
+- **감사 로그**: 승인·거부 모두 actor·시각·상세로 기록되어 `operations.audit`로 방출, UI "운영 감사 로그" 패널에 표시.
+
+### 실시간 보완
+
+- 중복 seq 무시, gap 이후 스냅샷까지 델타 수용 중단, 추가·삭제 반영.
+- 특정 소켓으로 보내는 스냅샷은 공통 seq를 증가시키지 않아 다른 클라이언트에 가짜 gap을 만들지 않는다.
+- 디스패치 명령은 Worker/ws 공통 제공. ws는 ping/pong와 응답 시간 초과 재접속을 지원한다.
+- ws 서버의 대수·정책·일시정지는 연결된 클라이언트가 공유한다.
+
+```
+ Web Worker (simulator)           Main thread
+ ┌─────────────────────┐         ┌──────────────────────────────────────────┐
+ │ Rail 그래프 위       │  msg    │ SimulatorClient                          │
+ │ OHT 이동/상태/알람   │ ──────▶ │  └ DeltaReducer (순수)                   │
+ │ snapshot + delta     │ (seq)   │      · seq gap 감지 → 스냅샷 재동기       │
+ │ 의도적 seq gap 주입  │         │      · id별 최신 delta 코얼레싱           │
+ └─────────────────────┘         │  └ requestAnimationFrame flush ──┐        │
+                                 │                                  ▼        │
+                                 │  IndoorMap (OpenLayers adapter)           │
+                                 │   · featureById 인플레이스 갱신           │
+                                 │   · WebGLPoints(색/필터=GPU) ↔ Heatmap    │
+                                 │   · 실내 좌표계(FAB:LOCAL, 재투영 0)      │
+                                 │   · 선택 오버레이 + 최근접 레일(경로)     │
+                                 └──────────────────────────────────────────┘
+   상태 분리: 서버성 데이터=시뮬레이터, UI/선택/필터=Zustand,
+             고빈도 위치=React 밖(지도가 직접), KPI/상세=저빈도 폴링(4Hz)
+```
+
+## 폴더 구조
+
+```
+src/
+  app/                       # Next.js routes/layouts (/ → LiveMap, /smat2022 → 실측 임포트 뷰)
+  features/control/          # LiveMap: KPI·지도·필터·이력재생·알람 UI
+  features/import/           # SMAT2022 실측 레일망 뷰어(팬/줌, 뷰 전용)
+  entities/oht/              # 타입, status 코드/필터(순수) — + *.test.ts
+  entities/fab/              # Rail 그래프 생성/경로/GeoJSON(순수) + SMAT2022 .rail 파서 — + *.test.ts
+  shared/sim/                # SimEngine (Worker·ws 서버 공용 시뮬레이션)
+  shared/realtime/           # DeltaReducer·SimulatorClient·SocketClient·팩토리 — + *.test.ts
+  shared/map/                # 실내 투영, IndoorMap 어댑터, geometry(순수), FAB 도면 — + *.test.ts
+  stores/                    # Zustand(선택/필터/알람/일시정지)
+  workers/                   # simulator.worker.ts (방식 A 래퍼)
+server/                      # ws-server.ts (방식 B: 로컬 ws 서버)
+```
+
+## 테스트
+
+Node 24 네이티브 러너 + `tsx` 로더로 순수 로직 및 로컬 ws 통합 테스트를 실행한다(80 케이스).
+
+- `delta-reducer` — 코얼레싱, seq gap 감지, 스냅샷 재동기, 알람 누적
+- `rail-graph` — 결정론적 생성, adjacency, GeoJSON 피처 수, 도달성(포트 전수), 다중 interbay 루프 순환, turntable·ZCU 노드
+- `smat2022-rail` — 실측 `.rail` 파서(NODE/RAILLIST/EQTONODEMAP/TEXT, LINE·CURVE, 툴그룹)
+- `geometry` — 점-선분 거리, 최근접 세그먼트
+- `status` — 필터 코드 매핑, 코드↔상태 역매핑
+- `engine` — 전체 반송 단계, FOUP 소유권, 용량 예약, 정책 선택, 정지 시간, 델타 일치, 공차 순환 연속성
+- `history` — Job/경로/적재 복원, 불규칙 캡처 간격의 배속 재생
+- `socket-server` — 임시 포트의 서버와 두 클라이언트로 snapshot/seq/배차/pause/pong/reset 확인
+
+검증: 타입 검사·프로덕션 빌드·80개 테스트 통과. 브라우저에서 작업 선택/상세, 정책 변경, 이력 재생/배속/seek/LIVE, 적재·Hot lot 필터 및 5,000대 전환을 확인했다. 이 확인은 성능 벤치마크가 아니다.
+
+```bash
+pnpm test:unit
+```
+
+## 성능 계측
+
+상단 스트립에 실시간 지표를 노출한다: **FPS · msg/s · upd/s · coalesced · resync · latency**.
+`대수 5,000` + 축소(히트맵 LOD)로 부하/스케일 거동을 즉시 확인할 수 있다.
+목표(계획서 §9): 상호작용 중 50~60 FPS, p95 반영 지연 ≤ 200ms.
+
+현재 `lat`는 마지막 수신부터 배치 호출 직전까지의 대기 시간으로, 네트워크와 실제 GPU 렌더 완료를 포함한 p95가 아니다. 자동화 브라우저에서는 1~4 FPS와 지연 증가가 관찰되어 목표 달성을 주장하지 않는다. 포그라운드 환경에서 재현 가능한 성능 리포트와 렌더 완료 계측이 남아 있다.
+
+### 모델의 한계
+
+합류 제어는 junction 우선순위 중재과 ZCU(STOP) 개념으로 모델링하며, 차량 간 route-relative 안전거리와 충돌 하드가드를 적용한다. 합성 FAB의 외곽 코너는 렌더링 전용 Bézier 곡선으로 라운드 처리하고, 교차로 대기열·점유 세그먼트·JAM 알람을 지도와 진단 패널에 표시한다. Load Port는 접근·도킹·이송·대기·해제 상태를 표현하고 동일 포트 호이스트는 한 번에 한 OHT만 사용하도록 대기시킨다. 정적 골격은 REST/Query 대신 코드로 생성하고 좌표는 m 단위다. WS 수신의 기본 메시지 형태를 검사하지만 전체 중첩 스키마 검증은 범위에서 제외한다.
+
+## 백엔드 서버가 필요한가?
+
+**필수는 아니다.** 이 프로토타입은 프론트엔드 단독 + 합성 데이터로 완결되며, 실시간 소스만 두 방식 중 선택한다. 실제 MES/AMHS 백엔드 연동은 진행하지 않는다.
+
+- 정적 골격(Rail/Zone/Equipment)은 코드로 결정론적 생성 — DB 불필요.
+- **방식 A (기본)**: 인-브라우저 **Web Worker 시뮬레이터**가 snapshot/delta 송출. 별도 서버·네트워크 없이 seq gap 복구까지 시연. 정적 배포 가능.
+- **방식 B (옵션)**: 로컬 **`ws` 서버**(`server/ws-server.ts`, 포트 3012)가 동일 `SimEngine`을 노드에서 구동해 브로드캐스트. **실제 소켓의 재연결·exponential backoff·heartbeat**를 시연. 인증/DB는 없다.
+- 두 방식은 **`SimEngine`(시뮬레이션)과 `DeltaReducer`(수신 파이프라인)를 공유**하고 전송 수단만 다르다 → `RealtimeSource` 공통 인터페이스로 교체.
