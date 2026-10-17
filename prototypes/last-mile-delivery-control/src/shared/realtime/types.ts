@@ -7,6 +7,7 @@ import type {
   AuditEntry,
   CourierStatus,
   DispatchRule,
+  DockPhase,
   OrderLifecycle,
   OrderPriority,
   Role,
@@ -35,6 +36,8 @@ export interface RiderWire {
   route?: [number, number][];
   /** 배터리 잔량 %. 단계 4. */
   battery?: number;
+  /** 집화·배송 도킹 단계(보강). 도킹 중이 아니면 생략. */
+  dock?: DockPhase;
 }
 
 /** 와이어로 흐르는 라이브 알람(지연·미배차·지오펜스·배터리). 단계 4. */

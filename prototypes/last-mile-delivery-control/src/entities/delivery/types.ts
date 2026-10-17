@@ -21,6 +21,12 @@ export type OrderLifecycle =
 /** 배차 규칙 — ETA 최소 / 최근접(라이더→집화 최단거리) / 선입선출. */
 export type DispatchRule = 'FASTEST_ETA' | 'NEAREST' | 'FIFO';
 
+/**
+ * 집화·배송 도킹 상태기계(기획서 §2/§5).
+ * APPROACHING(최종 접근·감속) → DOCKED(정차·정렬) → HANDOFF(인수·인계) → RELEASING(출차).
+ */
+export type DockPhase = 'APPROACHING' | 'DOCKED' | 'HANDOFF' | 'RELEASING';
+
 /** 패널 표시용 라이더 뷰모델. 실시간 좌표(lon/lat)는 지도에서 RiderWire로 직접 다룬다. */
 export type Courier = {
   id: string;

@@ -29,6 +29,7 @@ import type {
   CommandResult,
   CommandType,
   DispatchRule,
+  DockPhase,
   OrderLifecycle,
   OrderPriority,
   ScenarioKind,
@@ -62,7 +63,10 @@ const NAMES = [
 const MAX_RIDERS = 5000;
 const DISPATCH_POOL_CAP = 256; // 1회 배차에서 검토·배정하는 최대 대기 주문 수(대규모 함대 비용 상한)
 const EXPRESS_PROB = 0.2; // 특급 주문 비율
-const HANDOFF_SEC = 1.5; // 집화 핸드오프 체류 시간
+const HANDOFF_SEC = 1.5; // 도킹 HANDOFF(인수·인계) 체류 시간
+const DOCK_SETTLE_SEC = 0.6; // 도착 후 DOCKED(정차·정렬) 시간
+const RELEASE_SEC = 0.6; // RELEASING(출차 준비) 시간
+const APPROACH_DIST_M = 18; // 목적지 이 거리 안이면 APPROACHING(최종 접근)으로 표시
 const FAIL_PROB = 0.03; // 배송지 도착 시 실패(수취 불가) 확률
 const DISPATCH_EVERY = 5; // 배차 주기(틱)
 const ARRIVAL_EVERY = 12; // 신규 주문 도착 주기(틱)
@@ -133,7 +137,8 @@ interface Rider {
   edgeDist: number; // 현재 세그먼트에서 진행한 거리(m)
   cruise: number; // m/s
   currentSpeed: number;
-  dwellSec: number; // 집화 체류 잔여 시간(s)
+  dock: DockPhase | null; // 도킹 상태기계(null=주행/유휴)
+  dockSec: number; // 현재 도킹 단계 잔여 시간(s)
   lon: number;
   lat: number;
   heading: number;
@@ -330,7 +335,8 @@ export class SimEngine {
         edgeDist: 0,
         cruise: 6 + this.rng() * 5,
         currentSpeed: 0,
-        dwellSec: 0,
+        dock: null,
+        dockSec: 0,
         lon: start.lon,
         lat: start.lat,
         heading: 0,
@@ -600,14 +606,10 @@ export class SimEngine {
     }
     this.checkDelay(order);
 
-    if (rider.dwellSec > 0) {
-      rider.dwellSec = Math.max(0, rider.dwellSec - dt);
-      rider.currentSpeed = 0;
-      if (rider.dwellSec === 0) {
-        this.onArrival(rider);
-        this.updatePosition(rider);
-      }
-      this.syncStatus(rider);
+    // 도킹 시퀀스(DOCKED·HANDOFF·RELEASING) 진행 중이면 타이머만 돌린다.
+    // APPROACHING은 주행 중 라벨이라 여기서 가로채지 않는다(계속 접근·감속).
+    if (rider.dock && rider.dock !== 'APPROACHING') {
+      this.advanceDocking(rider, order, dt);
       return;
     }
 
@@ -624,9 +626,69 @@ export class SimEngine {
     this.stepSpeed(rider, rider.cruise * delayFactor * trafficFactor, dt);
     const moved = this.travel(rider, rider.currentSpeed * dt);
     this.drainBattery(rider, moved);
+    // 목적지에 충분히 가까워지면 최종 접근(APPROACHING)으로 표시한다.
+    rider.dock = this.distanceToEnd(rider) <= APPROACH_DIST_M ? 'APPROACHING' : null;
     if (rider.idx >= rider.path.length - 1) this.onArrival(rider);
     this.updatePosition(rider);
     this.syncStatus(rider);
+  }
+
+  /**
+   * 도킹 상태기계 한 틱(정차 상태). 단계 타이머가 끝나면 다음 단계로 전이한다.
+   *  DOCKED → HANDOFF(집화면 이 시점에 PICKED_UP) → RELEASING → (집화: 배송구간 라우팅 / 배송: 완료·실패 후 해제)
+   */
+  private advanceDocking(rider: Rider, order: Order, dt: number): void {
+    rider.currentSpeed = 0;
+    this.updatePosition(rider); // 도크 노드에 스냅
+    rider.dockSec = Math.max(0, rider.dockSec - dt);
+    if (rider.dockSec > 0) {
+      this.syncStatus(rider);
+      return;
+    }
+
+    if (rider.dock === 'DOCKED') {
+      rider.dock = 'HANDOFF';
+      rider.dockSec = HANDOFF_SEC;
+      if (order.leg === 'PICKUP') {
+        order.status = 'PICKED_UP';
+        order.dirty = true;
+      }
+    } else if (rider.dock === 'HANDOFF') {
+      rider.dock = 'RELEASING';
+      rider.dockSec = RELEASE_SEC;
+    } else {
+      // RELEASING 완료 → 출차
+      rider.dock = null;
+      rider.dockSec = 0;
+      if (order.leg === 'PICKUP') {
+        order.leg = 'DELIVER';
+        order.status = 'DELIVERING';
+        order.dirty = true;
+        rider.status = 'DELIVERING';
+        this.routeRider(rider, order.dropoffNode);
+      } else {
+        // 배송 구간 도착 처리: 완료 또는 실패(수취 불가)
+        const failed = this.rng() < FAIL_PROB;
+        order.status = failed ? 'FAILED' : 'DELIVERED';
+        order.terminalSec = this.simSec;
+        order.dirty = true;
+        if (!failed) rider.completed += 1;
+        this.release(rider);
+        return;
+      }
+    }
+    this.syncStatus(rider);
+  }
+
+  /** 현재 위치에서 경로 종점(목적지)까지 남은 거리(m). APPROACH_DIST_M 초과 시 조기 종료. */
+  private distanceToEnd(rider: Rider): number {
+    if (rider.idx >= rider.path.length - 1) return 0;
+    let d = this.segLen(rider, rider.idx) - rider.edgeDist;
+    for (let n = rider.idx + 1; n < rider.path.length - 1; n += 1) {
+      if (d > APPROACH_DIST_M) return d; // 이미 충분히 멀다
+      d += this.segLen(rider, n);
+    }
+    return Math.max(0, d);
   }
 
   /**
@@ -732,35 +794,15 @@ export class SimEngine {
     // 엉뚱한 지점에서 집화/완료 처리되는 것을 막는다.
     const target = order.leg === 'PICKUP' ? order.pickupNode : order.dropoffNode;
     if (this.currentNode(rider) !== target) {
-      this.routeRider(rider, target);
+      this.routeRider(rider, target); // routeRider가 dock을 비운다
       rider.currentSpeed = 0;
       return;
     }
 
-    if (order.leg === 'PICKUP') {
-      if (order.status !== 'PICKED_UP') {
-        // 집화 핸드오프: 잠시 체류한 뒤 배송 구간으로 전환한다.
-        order.status = 'PICKED_UP';
-        order.dirty = true;
-        rider.dwellSec = HANDOFF_SEC;
-        rider.currentSpeed = 0;
-        return;
-      }
-      order.leg = 'DELIVER';
-      order.status = 'DELIVERING';
-      order.dirty = true;
-      rider.status = 'DELIVERING';
-      this.routeRider(rider, order.dropoffNode);
-      return;
-    }
-
-    // 배송 구간 도착 → 완료 또는 실패(수취 불가)
-    const failed = this.rng() < FAIL_PROB;
-    order.status = failed ? 'FAILED' : 'DELIVERED';
-    order.terminalSec = this.simSec;
-    order.dirty = true;
-    if (!failed) rider.completed += 1;
-    this.release(rider);
+    // 도크에 도착 → 도킹 시퀀스 시작(DOCKED). 집화/배송 공통.
+    rider.dock = 'DOCKED';
+    rider.dockSec = DOCK_SETTLE_SEC;
+    rider.currentSpeed = 0;
   }
 
   /** 라이더를 유휴 상태로 되돌린다(다음 배차 대상). 배터리가 위험하면 충전으로 전환. */
@@ -768,7 +810,8 @@ export class SimEngine {
     const here = rider.path[Math.min(rider.idx, rider.path.length - 1)]!;
     rider.orderId = null;
     rider.currentSpeed = 0;
-    rider.dwellSec = 0;
+    rider.dock = null;
+    rider.dockSec = 0;
     rider.path = [here];
     rider.idx = 0;
     rider.edgeDist = 0;
@@ -783,7 +826,8 @@ export class SimEngine {
   /** 가장 가까운 허브로 경로를 잡고 충전 모드로 전환한다. */
   private startCharging(rider: Rider): void {
     rider.orderId = null;
-    rider.dwellSec = 0;
+    rider.dock = null;
+    rider.dockSec = 0;
     rider.charging = true;
     rider.status = 'CHARGING';
     rider.currentSpeed = 0;
@@ -1054,6 +1098,9 @@ export class SimEngine {
   /** 운행 중(배정·충전) 라이더를 현재 목표로 재경로. 통제 전환 시 우회를 즉시 반영. */
   private rerouteAll(): void {
     for (const rider of this.riders.values()) {
+      // 도크에 정차 중(DOCKED·HANDOFF·RELEASING)인 라이더는 건너뛴다 — 현재 경로가
+      // 0길이라 통제와 무관하고, 도킹이 끝난 뒤 다음 구간 라우팅이 최신 차단을 반영한다.
+      if (rider.dock && rider.dock !== 'APPROACHING') continue;
       const goal = this.riderGoalNode(rider);
       if (goal) this.routeRider(rider, goal);
     }
@@ -1149,6 +1196,7 @@ export class SimEngine {
     rider.path = info.path && info.path.length >= 2 ? [...info.path] : [start];
     rider.idx = 0;
     rider.edgeDist = 0;
+    rider.dock = null; // 새 경로로 주행 시작 — 도킹 상태 해제
   }
 
   private roadDist(from: string, to: string): number {
@@ -1204,6 +1252,8 @@ export class SimEngine {
       // 단계 7: 추적선은 포커스된 라이더에게만(그 외는 생략해 델타·연산 절감).
       route: rider.id === this.focusId ? this.routeCoords(rider) : undefined,
       battery: Math.round(rider.battery),
+      // 보강: 도킹 단계(진행 중일 때만 — 생략해 델타 바이트 절감).
+      dock: rider.dock ?? undefined,
     };
   }
 

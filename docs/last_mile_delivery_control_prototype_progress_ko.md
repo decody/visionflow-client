@@ -106,7 +106,7 @@
 통과한 검증:
 
 - TypeScript: `pnpm typecheck` (next typegen + `tsc --noEmit`)
-- 전체 unit test: `pnpm test:unit` — 63 테스트 green (road-graph·delta-reducer·dispatch·engine·alerts·signals·zone-kpi·command-contract·socket-server·viewport-cull)
+- 전체 unit test: `pnpm test:unit` — 65 테스트 green (road-graph·delta-reducer·dispatch·engine·alerts·signals·zone-kpi·command-contract·socket-server·viewport-cull)
 - 프로덕션 빌드: `pnpm build`
 - 개발 서버 기동 및 `/`·`/?src=ws` 200 응답 확인
 - SimEngine 500~5,000대 성능 벤치마크(5,000대 10Hz 예산 통과)
@@ -130,7 +130,13 @@
 
 순간 속도 변경을 **가속/감속 한계**로 교체했다(엔진 `stepSpeed`·`distanceToNextStop`). 매 틱 목표 순항속도(정체·지연 계수 반영)와 "전방 정지점까지의 정지거리 제약"의 최솟값을 목표로, 가속 상한 `MAX_ACCEL=2.8`·감속 상한 `MAX_DECEL=3.8` m/s² 내에서 현재 속도를 전진한다. 정지점은 **경로 종점(목적지)** 또는 **현재 STOP인 신호 노드**이며, `v=√(2·a·d)`로 감속 목표를 잡아 정지선·목적지에 미리 감속한다(전방 탐색은 `STOP_LOOKAHEAD_M=30m`로 상한). 신호 대기가 즉시 정지가 아니라 감속→정차→재가속으로 자연스러워졌고, 인스펙터 `속도`가 램프업/다운을 보여준다. 충전 이동에도 동일 프로파일 적용.
 
-검증(2026-10-17 2차): `pnpm typecheck`·`pnpm build` 통과, unit **63 green**(가속 상한·가감속 중간속도 관측 2종 추가), 성능 벤치 재실행 — 5,000대 frame p95 12.38ms(약 8× 여유)로 보강 후에도 10Hz 예산 통과.
+검증(2026-10-17 2차): `pnpm typecheck`·`pnpm build` 통과, unit **63 green**(가속 상한·가감속 중간속도 관측 2종 추가), 성능 벤치 재실행 — 5,000대 frame p95 12.38ms(약 8× 여유)로 보강 후에도 10Hz 예산 통과. 커밋 `8938ca7`.
+
+### 집화·배송 도킹 상태기계 (계획서 §2/§5, 2026-10-17 3차)
+
+도착 시의 단일 dwell(집화만)을 **단계형 도킹 상태기계**로 교체하고 집화·배송에 공통 적용했다. 라이더에 `dock`(APPROACHING·DOCKED·HANDOFF·RELEASING) 상태와 단계 타이머(`dockSec`)를 둔다. 주행 중 목적지 `APPROACH_DIST_M=18m` 안에 들면 **APPROACHING**(계속 감속·주행 라벨), 도크 노드 도착 시 `onArrival`이 **DOCKED**(`DOCK_SETTLE_SEC=0.6s`)로 진입 → **HANDOFF**(`HANDOFF_SEC=1.5s`, 집화면 이 시점에 주문 `PICKED_UP`) → **RELEASING**(`RELEASE_SEC=0.6s`) → 출차. 출차 시 집화 레그면 배송 구간 라우팅(`DELIVERING`), 배송 레그면 `DELIVERED/FAILED` 확정 후 해제. `advanceDocking`이 정차 중 타이머만 돌리고, `rerouteAll`(도로 통제 토글)은 정차 중(DOCKED·HANDOFF·RELEASING) 라이더를 건너뛴다(0길이 경로라 통제 무관, 도킹 후 다음 구간이 최신 차단 반영). `RiderWire.dock`로 와이어 전달(진행 중일 때만), 인스펙터에 단계 배지 표시.
+
+검증(2026-10-17 3차): `pnpm typecheck`·`pnpm build` 통과, unit **65 green**(도킹 단계 전이·집화 HANDOFF→PICKED_UP 2종 추가), 성능 벤치 재실행 — 5,000대 frame p95 12.18ms(약 8× 여유) 10Hz 예산 통과.
 
 ## 11. 범위 밖 항목
 

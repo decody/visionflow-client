@@ -143,6 +143,40 @@ test('교통 정체는 meta에 반영되고 해제된다', () => {
   assert.equal(e.snapshot().meta!.incident, false);
 });
 
+// --- 보강: 도킹 상태기계 ---
+
+test('도킹 상태기계가 APPROACHING→DOCKED→HANDOFF→RELEASING 단계를 모두 거친다', () => {
+  const e = new SimEngine();
+  e.spawn(16);
+  const seen = new Set<string>();
+  for (let i = 0; i < 6000 && seen.size < 4; i += 1) {
+    for (const r of e.tick(10).upd) if (r.dock) seen.add(r.dock);
+  }
+  assert.ok(seen.has('APPROACHING'), '최종 접근 단계가 관측돼야 한다');
+  assert.ok(seen.has('DOCKED'), '정차 단계가 관측돼야 한다');
+  assert.ok(seen.has('HANDOFF'), '인수·인계 단계가 관측돼야 한다');
+  assert.ok(seen.has('RELEASING'), '출차 단계가 관측돼야 한다');
+});
+
+test('집화 도킹 HANDOFF 단계에서 주문이 PICKED_UP로 전이한다', () => {
+  const e = new SimEngine();
+  e.spawn(16);
+  let confirmed = false;
+  for (let i = 0; i < 6000 && !confirmed; i += 1) {
+    e.tick(10);
+    const snap = e.snapshot();
+    const byId = new Map(snap.orders!.map((o) => [o.id, o]));
+    for (const r of snap.riders) {
+      // 집화 핸드오프(배송 레그가 아닌)는 주문이 PICKED_UP 상태여야 한다.
+      if (r.dock === 'HANDOFF' && r.orderId) {
+        const o = byId.get(r.orderId);
+        if (o && o.status === 'PICKED_UP') confirmed = true;
+      }
+    }
+  }
+  assert.ok(confirmed, '집화 HANDOFF 중 PICKED_UP 주문이 관측돼야 한다');
+});
+
 // --- 보강: 신호 교차로·도로 통제 ---
 
 test('스냅샷은 신호 상태를 포함하고, 운행 중 신호가 flip된다', () => {

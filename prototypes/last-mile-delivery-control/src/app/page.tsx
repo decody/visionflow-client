@@ -36,6 +36,13 @@ const statusLabel: Record<CourierStatus, string> = {
   CHARGING: '충전',
 };
 
+const dockLabel: Record<NonNullable<RiderWire['dock']>, string> = {
+  APPROACHING: '접근 중',
+  DOCKED: '정차',
+  HANDOFF: '인수·인계',
+  RELEASING: '출차',
+};
+
 const orderStatusLabel: Record<OrderLifecycle, string> = {
   QUEUED: '대기',
   ASSIGNED: '배차',
@@ -671,7 +678,7 @@ export default function DeliveryControlPage() {
 
         <aside className="panel right-panel">
           <OverlayScrollbarsComponent className="panel-scroll" defer options={scrollOptions}>
-          <div className="panel-heading"><div><span className="section-kicker">INSPECTOR</span><h2>라이더 상세</h2></div>{selected && <span className={`pill ${selected.status.toLowerCase()}`}>{statusLabel[selected.status]}</span>}</div>
+          <div className="panel-heading"><div><span className="section-kicker">INSPECTOR</span><h2>라이더 상세</h2></div>{selected && <span className={`pill ${selected.status.toLowerCase()}`}>{statusLabel[selected.status]}</span>}{selectedWire?.dock && <span className="pill" style={{ marginLeft: 6, background: '#243447', color: '#9fd0ff' }}>도킹 · {dockLabel[selectedWire.dock]}</span>}</div>
           {selected ? (
             <>
               <div className="profile"><div className="avatar">{selected.name.slice(0, 1)}</div><div><h3>{selected.id}</h3><p>{selected.name} · {selected.zone}</p></div></div>
