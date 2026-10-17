@@ -8,6 +8,7 @@ import LineString from 'ol/geom/LineString';
 import Point from 'ol/geom/Point';
 import Polygon from 'ol/geom/Polygon';
 import VectorLayer from 'ol/layer/Vector';
+import Heatmap from 'ol/layer/Heatmap';
 import WebGLPointsLayer from 'ol/layer/WebGLPoints';
 import VectorSource from 'ol/source/Vector';
 import GeoJSON from 'ol/format/GeoJSON';
@@ -293,6 +294,7 @@ export function DeliveryMap({
   const routeSourceRef = useRef<VectorSource | null>(null);
   const zoneLayerRef = useRef<VectorLayer | null>(null);
   const webglLayerRef = useRef<WebGLPointsLayer<VectorSource<FeatureLike>> | null>(null);
+  const heatmapLayerRef = useRef<Heatmap | null>(null);
   const detailLayerRef = useRef<VectorLayer | null>(null);
   const signalSourceRef = useRef<VectorSource | null>(null);
   const signalLayerRef = useRef<VectorLayer | null>(null);
@@ -404,6 +406,18 @@ export function DeliveryMap({
     } as unknown as ConstructorParameters<typeof WebGLPointsLayer>[0]);
     webglLayerRef.current = webglLayer;
 
+    // Overview LOD에서는 개별 점 대신 밀도 Heatmap으로 전환한다(기획서 §3/§10).
+    // 같은 riderSource(뷰포트 컬링 적용)를 쓰고, 각 라이더를 동일 가중으로 집계한다.
+    const heatmapLayer = new Heatmap({
+      source: riderSource,
+      blur: 20,
+      radius: 11,
+      weight: () => 1,
+      gradient: ['rgba(30,91,127,0)', '#1e5b7f', '#3dd598', '#ffc34d', '#ff6f7d'],
+      visible: false,
+    });
+    heatmapLayerRef.current = heatmapLayer;
+
     // 상세 LOD에서만 방향 삼각형·라벨을 그린다(컬링으로 보이는 소수만).
     const detailLayer = new VectorLayer({ source: riderSource, visible: false, declutter: true, style: riderDetailStyle });
     detailLayerRef.current = detailLayer;
@@ -412,7 +426,7 @@ export function DeliveryMap({
 
     const map = new Map({
       target: targetRef.current,
-      layers: [basemapLayer, zoneLayer, arterialLayer, closureLayer, hubLayer, routeLayer, signalLayer, webglLayer, detailLayer, selectedLayer],
+      layers: [basemapLayer, zoneLayer, arterialLayer, closureLayer, hubLayer, routeLayer, signalLayer, heatmapLayer, webglLayer, detailLayer, selectedLayer],
       view,
       controls: [new Attribution({ collapsible: false })],
     });
@@ -427,7 +441,9 @@ export function DeliveryMap({
       if (next === lodRef.current) return;
       lodRef.current = next;
       if (lodBadgeRef.current) lodBadgeRef.current.textContent = lodLabel[next];
-      webglLayer.setVisible(next !== 'detail');
+      // Overview=밀도 Heatmap · Zone=WebGL 점 · Detail=방향 벡터 심벌.
+      heatmapLayer.setVisible(next === 'overview');
+      webglLayer.setVisible(next === 'zone');
       detailLayer.setVisible(next === 'detail');
       [zoneLayer, arterialLayer, hubLayer, signalLayer].forEach((layer) => layer.changed());
     };
@@ -467,6 +483,7 @@ export function DeliveryMap({
       resizeObserver.disconnect();
       map.setTarget(undefined);
       webglLayer.dispose();
+      heatmapLayerRef.current = null;
       mapRef.current = null;
       riderSourceRef.current = null;
       selectedSourceRef.current = null;

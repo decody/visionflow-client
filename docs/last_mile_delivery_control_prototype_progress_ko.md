@@ -144,7 +144,13 @@
 
 주의(테스트): QUEUED가 5번째 DockPhase라, 도킹 단계 관측 테스트의 조기 종료 조건을 `seen.size<4` → "목표 4단계 모두 포함"으로 바꿨다(QUEUED가 먼저 채워져 APPROACHING 수집 전 종료되던 문제). 또한 DeliveryMap에서 정적 import `hubs`와 prop 이름이 충돌해 prop을 `hubSlots`로 분리했다.
 
-검증(2026-10-17 4차): `pnpm typecheck`·`pnpm build` 통과, unit **67 green**(슬롯 경합 QUEUED·용량 스케일 2종 추가), 성능 벤치 재실행 — 5,000대 frame p95 12.17ms(약 8× 여유) 10Hz 예산 통과.
+검증(2026-10-17 4차): `pnpm typecheck`·`pnpm build` 통과, unit **67 green**(슬롯 경합 QUEUED·용량 스케일 2종 추가), 성능 벤치 재실행 — 5,000대 frame p95 12.17ms(약 8× 여유) 10Hz 예산 통과. 커밋 `22b9627`.
+
+### Overview LOD Heatmap (계획서 §3/§10, 2026-10-17 5차)
+
+도시 전체(Overview) 줌에서 개별 점 대신 **밀도 히트맵**으로 전환한다(`ol/layer/Heatmap`). 같은 `riderSource`(뷰포트 컬링 적용)를 동일 가중(`weight: () => 1`)으로 집계하고, LOD 전환을 **Overview=Heatmap · Zone=WebGLPoints · Detail=방향 벡터**로 재배치(`applyLod`). 혼잡 밀도를 한눈에 보여주는 관제형 뷰. 렌더 전용 변경이라 유닛 테스트 대상이 아니며 **브라우저 육안 확인 필요**(아래 §주의 참고).
+
+검증(2026-10-17 5차): `pnpm typecheck`·`pnpm build` 통과, unit 67 green(렌더 변경이라 테스트 수 불변). ⚠️ Heatmap·WebGL·신호등·도킹·허브 슬롯의 실제 렌더는 클라이언트 전용이라 dev 200 스모크로 검증되지 않음 — 브라우저 육안 확인 권장.
 
 ## 11. 범위 밖 항목
 
