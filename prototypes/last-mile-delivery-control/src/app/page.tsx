@@ -38,6 +38,7 @@ const statusLabel: Record<CourierStatus, string> = {
 
 const dockLabel: Record<NonNullable<RiderWire['dock']>, string> = {
   APPROACHING: '접근 중',
+  QUEUED: '슬롯 대기',
   DOCKED: '정차',
   HANDOFF: '인수·인계',
   RELEASING: '출차',
@@ -634,7 +635,7 @@ export default function DeliveryControlPage() {
             <button className={paused ? 'filter active' : 'filter'} onClick={toggleComms}>{paused ? '통신 복구' : '통신 단절'}</button>
           </div>
           <div className="map-canvas">
-            <DeliveryMap riders={mapRiders} selectedId={selected?.id ?? ''} onSelect={setSelectedId} focusZone={selectedZone} onVisibleCount={setVisibleOnMap} signals={viewSignals} closureActive={closureOn} />
+            <DeliveryMap riders={mapRiders} selectedId={selected?.id ?? ''} onSelect={setSelectedId} focusZone={selectedZone} onVisibleCount={setVisibleOnMap} signals={viewSignals} closureActive={closureOn} hubSlots={viewMeta?.hubs} />
             <div className="map-legend"><span><i className="legend-delivering" /> 배송 중</span><span><i className="legend-pickup" /> 픽업 중</span><span><i className="legend-delayed" /> 지연</span><span><i className="legend-charging" /> 충전</span><span><i className="legend-idle" /> 대기</span><span><i style={{ background: '#3dd598', borderRadius: '50%' }} /> 신호</span><span><i style={{ background: '#ff5a5f', borderRadius: '50%' }} /> 통제</span></div>
             {showDiag && diag && (
               <div className="diag-panel" aria-label="개발 진단">

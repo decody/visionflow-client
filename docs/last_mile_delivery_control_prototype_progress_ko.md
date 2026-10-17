@@ -106,7 +106,7 @@
 통과한 검증:
 
 - TypeScript: `pnpm typecheck` (next typegen + `tsc --noEmit`)
-- 전체 unit test: `pnpm test:unit` — 65 테스트 green (road-graph·delta-reducer·dispatch·engine·alerts·signals·zone-kpi·command-contract·socket-server·viewport-cull)
+- 전체 unit test: `pnpm test:unit` — 67 테스트 green (road-graph·delta-reducer·dispatch·engine·alerts·signals·zone-kpi·command-contract·socket-server·viewport-cull)
 - 프로덕션 빌드: `pnpm build`
 - 개발 서버 기동 및 `/`·`/?src=ws` 200 응답 확인
 - SimEngine 500~5,000대 성능 벤치마크(5,000대 10Hz 예산 통과)
@@ -136,7 +136,15 @@
 
 도착 시의 단일 dwell(집화만)을 **단계형 도킹 상태기계**로 교체하고 집화·배송에 공통 적용했다. 라이더에 `dock`(APPROACHING·DOCKED·HANDOFF·RELEASING) 상태와 단계 타이머(`dockSec`)를 둔다. 주행 중 목적지 `APPROACH_DIST_M=18m` 안에 들면 **APPROACHING**(계속 감속·주행 라벨), 도크 노드 도착 시 `onArrival`이 **DOCKED**(`DOCK_SETTLE_SEC=0.6s`)로 진입 → **HANDOFF**(`HANDOFF_SEC=1.5s`, 집화면 이 시점에 주문 `PICKED_UP`) → **RELEASING**(`RELEASE_SEC=0.6s`) → 출차. 출차 시 집화 레그면 배송 구간 라우팅(`DELIVERING`), 배송 레그면 `DELIVERED/FAILED` 확정 후 해제. `advanceDocking`이 정차 중 타이머만 돌리고, `rerouteAll`(도로 통제 토글)은 정차 중(DOCKED·HANDOFF·RELEASING) 라이더를 건너뛴다(0길이 경로라 통제 무관, 도킹 후 다음 구간이 최신 차단 반영). `RiderWire.dock`로 와이어 전달(진행 중일 때만), 인스펙터에 단계 배지 표시.
 
-검증(2026-10-17 3차): `pnpm typecheck`·`pnpm build` 통과, unit **65 green**(도킹 단계 전이·집화 HANDOFF→PICKED_UP 2종 추가), 성능 벤치 재실행 — 5,000대 frame p95 12.18ms(약 8× 여유) 10Hz 예산 통과.
+검증(2026-10-17 3차): `pnpm typecheck`·`pnpm build` 통과, unit **65 green**(도킹 단계 전이·집화 HANDOFF→PICKED_UP 2종 추가), 성능 벤치 재실행 — 5,000대 frame p95 12.18ms(약 8× 여유) 10Hz 예산 통과. 커밋 `1b01a59`.
+
+### 허브 집화 슬롯 예약 (계획서 §6, 2026-10-17 4차)
+
+허브별 동시 집화 도크 수를 제한하는 **슬롯 예약**을 도킹 상태기계 위에 얹었다. 허브당 용량 `cap = clamp(round(라이더수/허브수/8), 2, 200)`(소규모에선 경합, 대규모에선 완화). 집화 도착 시 `acquireHubSlot` 성공이면 DOCKED, 실패면 **QUEUED**(새 DockPhase)로 대기하다 `advanceDocking`에서 매 틱 재시도한다. RELEASING(출차) 완료 시 `releaseHubSlot`으로 슬롯 반납, `release()`(재배차·완료·충전 전환)도 슬롯/대기를 정리한다. 점유는 용량을 넘지 않는다. 배송지(고객)는 전용 지점이라 슬롯 제약 없음. 현황은 `meta.hubs`(HubWire: id·used·cap·queued)로 스냅샷/델타에 동봉(별도 리듀서 채널 없이 기존 meta 채널 재사용), 지도 허브 마커에 `점유/용량 · 대기` 표시·만차 적색. `RiderWire.dock`에 QUEUED 추가, 인스펙터 배지 `슬롯 대기`.
+
+주의(테스트): QUEUED가 5번째 DockPhase라, 도킹 단계 관측 테스트의 조기 종료 조건을 `seen.size<4` → "목표 4단계 모두 포함"으로 바꿨다(QUEUED가 먼저 채워져 APPROACHING 수집 전 종료되던 문제). 또한 DeliveryMap에서 정적 import `hubs`와 prop 이름이 충돌해 prop을 `hubSlots`로 분리했다.
+
+검증(2026-10-17 4차): `pnpm typecheck`·`pnpm build` 통과, unit **67 green**(슬롯 경합 QUEUED·용량 스케일 2종 추가), 성능 벤치 재실행 — 5,000대 frame p95 12.17ms(약 8× 여유) 10Hz 예산 통과.
 
 ## 11. 범위 밖 항목
 

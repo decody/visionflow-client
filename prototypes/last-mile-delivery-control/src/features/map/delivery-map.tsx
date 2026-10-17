@@ -17,7 +17,7 @@ import { fromLonLat } from 'ol/proj';
 import { Circle as CircleStyle, Fill, RegularShape, Stroke, Style, Text } from 'ol/style';
 import type { FeatureLike } from 'ol/Feature';
 
-import type { RiderStatus } from '@/shared/realtime/types';
+import type { HubWire, RiderStatus } from '@/shared/realtime/types';
 import { arterials, closureSites, hubs, networkCenter, signalSites, zones } from '@/shared/map/seoul-layout';
 import { expandExtent, withinExtent, type Extent } from '@/shared/map/viewport-cull';
 
@@ -200,17 +200,24 @@ function arterialStyle(feature: FeatureLike, lod: Lod) {
 }
 
 function hubStyle(feature: FeatureLike, lod: Lod) {
+  const cap = feature.get('cap') as number | undefined;
+  const used = (feature.get('used') as number | undefined) ?? 0;
+  const queued = (feature.get('queued') as number | undefined) ?? 0;
+  const full = typeof cap === 'number' && used >= cap;
+  // 집화 슬롯 현황을 라벨에 덧붙인다(용량 정보가 있을 때만). 가득 차면 적색 강조.
+  const name = lod === 'overview' ? 'FC' : String(feature.get('name'));
+  const slotText = typeof cap === 'number' ? `\n${used}/${cap}${queued > 0 ? ` · 대기 ${queued}` : ''}` : '';
   return new Style({
     image: new CircleStyle({
       radius: lod === 'overview' ? 7 : 9,
-      fill: new Fill({ color: '#1e5b7f' }),
-      stroke: new Stroke({ color: '#9bd9ff', width: 2 }),
+      fill: new Fill({ color: full ? '#7f2a30' : '#1e5b7f' }),
+      stroke: new Stroke({ color: full ? '#ff8c93' : '#9bd9ff', width: 2 }),
     }),
     text: new Text({
-      text: lod === 'overview' ? 'FC' : String(feature.get('name')),
-      offsetY: 18,
+      text: lod === 'overview' ? name : `${name}${slotText}`,
+      offsetY: 20,
       font: lod === 'overview' ? 'bold 9px sans-serif' : '10px sans-serif',
-      fill: new Fill({ color: '#bfe5ff' }),
+      fill: new Fill({ color: queued > 0 ? '#ffd4d6' : '#bfe5ff' }),
       stroke: new Stroke({ color: '#0a0e16', width: 3 }),
     }),
   });
@@ -262,6 +269,7 @@ export function DeliveryMap({
   onVisibleCount,
   signals,
   closureActive = false,
+  hubSlots,
 }: {
   riders: MapRider[];
   selectedId: string;
@@ -274,6 +282,8 @@ export function DeliveryMap({
   signals?: MapSignal[];
   /** 도로 통제 활성 여부(보강). true면 통제 구역을 강조한다. */
   closureActive?: boolean;
+  /** 허브 집화 슬롯 현황(보강). 허브 마커에 점유/용량·대기를 표시한다. */
+  hubSlots?: HubWire[];
 }) {
   const targetRef = useRef<HTMLDivElement>(null);
   const lodBadgeRef = useRef<HTMLSpanElement>(null);
@@ -287,6 +297,8 @@ export function DeliveryMap({
   const signalSourceRef = useRef<VectorSource | null>(null);
   const signalLayerRef = useRef<VectorLayer | null>(null);
   const closureLayerRef = useRef<VectorLayer | null>(null);
+  const hubSourceRef = useRef<VectorSource | null>(null);
+  const hubLayerRef = useRef<VectorLayer | null>(null);
   const lodRef = useRef<Lod>('zone');
   const focusZoneRef = useRef<string>(focusZone);
   focusZoneRef.current = focusZone;
@@ -328,8 +340,13 @@ export function DeliveryMap({
       })),
     });
     const hubSource = new VectorSource({
-      features: hubs.map((hub) => new Feature({ geometry: new Point(fromLonLat(hub.at)), name: hub.name })),
+      features: hubs.map((hub) => {
+        const f = new Feature({ geometry: new Point(fromLonLat(hub.at)), name: hub.name });
+        f.setId(hub.id);
+        return f;
+      }),
     });
+    hubSourceRef.current = hubSource;
     const riderSource = new VectorSource();
     riderSourceRef.current = riderSource;
     const selectedSource = new VectorSource();
@@ -347,6 +364,7 @@ export function DeliveryMap({
     zoneLayerRef.current = zoneLayer;
     const arterialLayer = new VectorLayer({ source: arterialSource, style: (f) => arterialStyle(f, lodRef.current) });
     const hubLayer = new VectorLayer({ source: hubSource, style: (f) => hubStyle(f, lodRef.current) });
+    hubLayerRef.current = hubLayer;
     const routeLayer = new VectorLayer({ source: routeSource, style: routeStyle });
 
     // 보강: 신호 교차로 — 위치는 정적(signalSites), 상태(GO/STOP)만 prop으로 갱신.
@@ -459,9 +477,22 @@ export function DeliveryMap({
       signalSourceRef.current = null;
       signalLayerRef.current = null;
       closureLayerRef.current = null;
+      hubSourceRef.current = null;
+      hubLayerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onSelect]);
+
+  // 허브 집화 슬롯 현황 갱신 → 해당 허브 피처 속성 갱신 후 재스타일.
+  useEffect(() => {
+    const source = hubSourceRef.current;
+    if (!source || !hubSlots) return;
+    for (const h of hubSlots) {
+      const f = source.getFeatureById(h.id);
+      if (f) f.setProperties({ used: h.used, cap: h.cap, queued: h.queued }, true);
+    }
+    hubLayerRef.current?.changed();
+  }, [hubSlots]);
 
   // 신호 상태(GO/STOP) 갱신 → 해당 피처의 state 갱신 후 레이어 재스타일.
   useEffect(() => {

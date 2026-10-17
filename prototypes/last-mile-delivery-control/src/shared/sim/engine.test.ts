@@ -149,7 +149,8 @@ test('도킹 상태기계가 APPROACHING→DOCKED→HANDOFF→RELEASING 단계�
   const e = new SimEngine();
   e.spawn(16);
   const seen = new Set<string>();
-  for (let i = 0; i < 6000 && seen.size < 4; i += 1) {
+  const targets = ['APPROACHING', 'DOCKED', 'HANDOFF', 'RELEASING'];
+  for (let i = 0; i < 8000 && !targets.every((t) => seen.has(t)); i += 1) {
     for (const r of e.tick(10).upd) if (r.dock) seen.add(r.dock);
   }
   assert.ok(seen.has('APPROACHING'), '최종 접근 단계가 관측돼야 한다');
@@ -175,6 +176,32 @@ test('집화 도킹 HANDOFF 단계에서 주문이 PICKED_UP로 전이한다', (
     }
   }
   assert.ok(confirmed, '집화 HANDOFF 중 PICKED_UP 주문이 관측돼야 한다');
+});
+
+test('허브 집화 슬롯이 가득 차면 QUEUED로 대기하고, 점유는 용량을 넘지 않는다', () => {
+  const e = new SimEngine();
+  e.spawn(40); // 용량 = clamp(round(40/3/8),2,200) = 2 → 경합 발생
+  let sawQueued = false;
+  let overCap = false;
+  for (let i = 0; i < 2500 && !sawQueued; i += 1) {
+    e.tick(10);
+    const snap = e.snapshot();
+    for (const r of snap.riders) if (r.dock === 'QUEUED') sawQueued = true;
+    for (const h of snap.meta!.hubs ?? []) if (h.used > h.cap) overCap = true;
+  }
+  assert.ok(sawQueued, '슬롯 경합으로 대기(QUEUED) 라이더가 관측돼야 한다');
+  assert.ok(!overCap, '허브 점유가 용량을 초과하면 안 된다');
+});
+
+test('허브 슬롯은 스냅샷 meta.hubs로 노출되고 함대 규모로 용량이 스케일한다', () => {
+  const small = new SimEngine();
+  small.spawn(40);
+  const big = new SimEngine();
+  big.spawn(2000);
+  const capSmall = small.snapshot().meta!.hubs![0]!.cap;
+  const capBig = big.snapshot().meta!.hubs![0]!.cap;
+  assert.ok(capSmall >= 2, '최소 용량(2) 이상이어야 한다');
+  assert.ok(capBig > capSmall, '대규모 함대에서 용량이 더 커야 한다(완화)');
 });
 
 // --- 보강: 신호 교차로·도로 통제 ---

@@ -54,6 +54,14 @@ export interface AlertWire {
   ageSec: number; // 알람 발생 후 경과(초)
 }
 
+/** 허브 집화 슬롯 현황(보강). meta에 동봉해 스냅샷·델타로 전달. */
+export interface HubWire {
+  id: string; // 허브 id(FC-YS 등)
+  used: number; // 점유 중인 집화 슬롯
+  cap: number; // 슬롯 용량
+  queued: number; // 슬롯 대기(QUEUED) 라이더 수
+}
+
 /** 시나리오·자동 데모 진행 상태(스냅샷·델타에 동봉). 단계 4. */
 export interface ScenarioMeta {
   incident: boolean; // 교통 정체
@@ -62,6 +70,8 @@ export interface ScenarioMeta {
   demoActive: boolean;
   demoLabel?: string;
   demoSec?: number;
+  /** 허브 집화 슬롯 현황(보강). */
+  hubs?: HubWire[];
 }
 
 /** 신호 교차로 상태(스냅샷=전체, 델타=flip된 것만). 위치는 정적(signalSites)이라 id만 흐른다. */

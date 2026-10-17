@@ -44,6 +44,7 @@ import type {
   AlertWire,
   ClientCommand,
   DeltaMessage,
+  HubWire,
   OrderWire,
   RiderStatus,
   RiderWire,
@@ -67,6 +68,12 @@ const HANDOFF_SEC = 1.5; // 도킹 HANDOFF(인수·인계) 체류 시간
 const DOCK_SETTLE_SEC = 0.6; // 도착 후 DOCKED(정차·정렬) 시간
 const RELEASE_SEC = 0.6; // RELEASING(출차 준비) 시간
 const APPROACH_DIST_M = 18; // 목적지 이 거리 안이면 APPROACHING(최종 접근)으로 표시
+
+// 허브 집화 슬롯(기획서 §6): 허브당 동시 집화 도크 수를 제한한다. 슬롯이 차면 라이더는
+// QUEUED로 대기한다. 용량은 함대 규모에 맞춰 스케일(소규모에선 경합·대규모에선 완화).
+const HUB_SLOT_DIVISOR = 8; // 허브당 용량 = round(라이더수 / 허브수 / 이 값)
+const HUB_SLOTS_MIN = 2;
+const HUB_SLOTS_MAX = 200;
 const FAIL_PROB = 0.03; // 배송지 도착 시 실패(수취 불가) 확률
 const DISPATCH_EVERY = 5; // 배차 주기(틱)
 const ARRIVAL_EVERY = 12; // 신규 주문 도착 주기(틱)
@@ -139,6 +146,8 @@ interface Rider {
   currentSpeed: number;
   dock: DockPhase | null; // 도킹 상태기계(null=주행/유휴)
   dockSec: number; // 현재 도킹 단계 잔여 시간(s)
+  hubSlot: string | null; // 점유 중인 허브 집화 슬롯 노드(없으면 null)
+  queueHub: string | null; // 슬롯 대기(QUEUED) 중인 허브 노드(없으면 null)
   lon: number;
   lat: number;
   heading: number;
@@ -227,6 +236,11 @@ export class SimEngine {
   private readonly closureEdgeSets: Set<string>[];
   private blockedEdges = new Set<string>();
 
+  // 보강: 허브 집화 슬롯 — 허브 노드별 점유/대기 수와 용량(spawn에서 함대 규모로 설정).
+  private readonly hubUsed = new Map<string, number>();
+  private readonly hubQueue = new Map<string, number>();
+  private hubCapacity = HUB_SLOTS_MIN;
+
   constructor(private readonly clock: () => number = () => Date.now()) {
     this.graph = buildRoadGraph(arterials.map((a) => a.path));
     this.hubNodes = hubs.map((h) => nearestNode(this.graph, h.at));
@@ -307,6 +321,8 @@ export class SimEngine {
     this.surge = false;
     this.closure = false;
     this.blockedEdges = new Set();
+    this.hubUsed.clear();
+    this.hubQueue.clear();
     this.prevSignalState = signalSites.map((_, i) => signalStateAt(i, 0));
     this.demoActive = false;
     this.demoLabel = undefined;
@@ -320,6 +336,10 @@ export class SimEngine {
     this.orderSeq = 0;
 
     const n = Math.max(1, Math.min(MAX_RIDERS, Math.floor(count)));
+    this.hubCapacity = Math.max(
+      HUB_SLOTS_MIN,
+      Math.min(HUB_SLOTS_MAX, Math.round(n / this.hubNodes.length / HUB_SLOT_DIVISOR)),
+    );
     for (let i = 0; i < n; i += 1) {
       const zone = zones[i % zones.length]!;
       const startNode = this.hubNodes[i % this.hubNodes.length]!;
@@ -337,6 +357,8 @@ export class SimEngine {
         currentSpeed: 0,
         dock: null,
         dockSec: 0,
+        hubSlot: null,
+        queueHub: null,
         lon: start.lon,
         lat: start.lat,
         heading: 0,
@@ -475,7 +497,21 @@ export class SimEngine {
       demoActive: this.demoActive,
       demoLabel: this.demoLabel,
       demoSec: this.demoActive ? Math.max(0, Math.round(this.simSec - this.demoStarted)) : undefined,
+      hubs: this.hubWire(),
     };
+  }
+
+  /** 허브별 집화 슬롯 현황(점유·용량·대기). meta에 동봉. */
+  private hubWire(): HubWire[] {
+    return hubs.map((hub, i) => {
+      const node = this.hubNodes[i]!;
+      return {
+        id: hub.id,
+        used: this.hubUsed.get(node) ?? 0,
+        cap: this.hubCapacity,
+        queued: this.hubQueue.get(node) ?? 0,
+      };
+    });
   }
 
   // --- 주문 생성·배차 ---
@@ -640,6 +676,18 @@ export class SimEngine {
   private advanceDocking(rider: Rider, order: Order, dt: number): void {
     rider.currentSpeed = 0;
     this.updatePosition(rider); // 도크 노드에 스냅
+
+    // 허브 슬롯 대기: 슬롯이 나면 입고(DOCKED), 아니면 계속 대기.
+    if (rider.dock === 'QUEUED') {
+      if (this.acquireHubSlot(rider, order.pickupNode)) {
+        this.leaveHubQueue(rider);
+        rider.dock = 'DOCKED';
+        rider.dockSec = DOCK_SETTLE_SEC;
+      }
+      this.syncStatus(rider);
+      return;
+    }
+
     rider.dockSec = Math.max(0, rider.dockSec - dt);
     if (rider.dockSec > 0) {
       this.syncStatus(rider);
@@ -657,7 +705,8 @@ export class SimEngine {
       rider.dock = 'RELEASING';
       rider.dockSec = RELEASE_SEC;
     } else {
-      // RELEASING 완료 → 출차
+      // RELEASING 완료 → 출차. 허브 집화 슬롯을 반납한다(배송 레그엔 슬롯 없음 → 무시).
+      this.releaseHubSlot(rider);
       rider.dock = null;
       rider.dockSec = 0;
       if (order.leg === 'PICKUP') {
@@ -678,6 +727,41 @@ export class SimEngine {
       }
     }
     this.syncStatus(rider);
+  }
+
+  // --- 보강: 허브 집화 슬롯 예약 ---
+
+  /** 허브 슬롯 확보 시도. 여유가 있으면 점유하고 true. */
+  private acquireHubSlot(rider: Rider, hub: string): boolean {
+    const used = this.hubUsed.get(hub) ?? 0;
+    if (used >= this.hubCapacity) return false;
+    this.hubUsed.set(hub, used + 1);
+    rider.hubSlot = hub;
+    this.metaDirty = true;
+    return true;
+  }
+
+  /** 점유 중인 허브 슬롯 반납(없으면 무시). */
+  private releaseHubSlot(rider: Rider): void {
+    if (!rider.hubSlot) return;
+    const used = this.hubUsed.get(rider.hubSlot) ?? 0;
+    this.hubUsed.set(rider.hubSlot, Math.max(0, used - 1));
+    rider.hubSlot = null;
+    this.metaDirty = true;
+  }
+
+  private enterHubQueue(rider: Rider, hub: string): void {
+    rider.queueHub = hub;
+    this.hubQueue.set(hub, (this.hubQueue.get(hub) ?? 0) + 1);
+    this.metaDirty = true;
+  }
+
+  private leaveHubQueue(rider: Rider): void {
+    if (!rider.queueHub) return;
+    const q = this.hubQueue.get(rider.queueHub) ?? 0;
+    this.hubQueue.set(rider.queueHub, Math.max(0, q - 1));
+    rider.queueHub = null;
+    this.metaDirty = true;
   }
 
   /** 현재 위치에서 경로 종점(목적지)까지 남은 거리(m). APPROACH_DIST_M 초과 시 조기 종료. */
@@ -799,15 +883,29 @@ export class SimEngine {
       return;
     }
 
-    // 도크에 도착 → 도킹 시퀀스 시작(DOCKED). 집화/배송 공통.
+    rider.currentSpeed = 0;
+    // 집화(허브)는 슬롯을 확보해야 입고한다 — 가득 차면 QUEUED로 대기.
+    if (order.leg === 'PICKUP') {
+      if (this.acquireHubSlot(rider, order.pickupNode)) {
+        rider.dock = 'DOCKED';
+        rider.dockSec = DOCK_SETTLE_SEC;
+      } else {
+        rider.dock = 'QUEUED';
+        this.enterHubQueue(rider, order.pickupNode);
+      }
+      return;
+    }
+    // 배송지(고객)는 전용 지점이라 슬롯 제약 없이 바로 입고.
     rider.dock = 'DOCKED';
     rider.dockSec = DOCK_SETTLE_SEC;
-    rider.currentSpeed = 0;
   }
 
   /** 라이더를 유휴 상태로 되돌린다(다음 배차 대상). 배터리가 위험하면 충전으로 전환. */
   private release(rider: Rider): void {
     const here = rider.path[Math.min(rider.idx, rider.path.length - 1)]!;
+    // 도크 점유/대기 중이었다면 허브 슬롯을 먼저 정리한다.
+    this.releaseHubSlot(rider);
+    this.leaveHubQueue(rider);
     rider.orderId = null;
     rider.currentSpeed = 0;
     rider.dock = null;

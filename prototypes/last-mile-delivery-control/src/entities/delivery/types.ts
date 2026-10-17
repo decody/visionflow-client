@@ -23,9 +23,10 @@ export type DispatchRule = 'FASTEST_ETA' | 'NEAREST' | 'FIFO';
 
 /**
  * 집화·배송 도킹 상태기계(기획서 §2/§5).
- * APPROACHING(최종 접근·감속) → DOCKED(정차·정렬) → HANDOFF(인수·인계) → RELEASING(출차).
+ * APPROACHING(최종 접근·감속) → [QUEUED(허브 슬롯 대기)] → DOCKED(정차·정렬)
+ * → HANDOFF(인수·인계) → RELEASING(출차). QUEUED는 허브 집화 슬롯이 가득 찼을 때만.
  */
-export type DockPhase = 'APPROACHING' | 'DOCKED' | 'HANDOFF' | 'RELEASING';
+export type DockPhase = 'APPROACHING' | 'QUEUED' | 'DOCKED' | 'HANDOFF' | 'RELEASING';
 
 /** 패널 표시용 라이더 뷰모델. 실시간 좌표(lon/lat)는 지도에서 RiderWire로 직접 다룬다. */
 export type Courier = {
