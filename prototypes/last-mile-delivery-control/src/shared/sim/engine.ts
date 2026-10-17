@@ -13,6 +13,7 @@
 import {
   bearing,
   buildRoadGraph,
+  edgeKey,
   lerp,
   metersBetween,
   nearestNode,
@@ -32,7 +33,7 @@ import type {
   OrderPriority,
   ScenarioKind,
 } from '@/entities/delivery/types';
-import { arterials, hubs, zones } from '@/shared/map/seoul-layout';
+import { arterials, closureSites, hubs, signalSites, zones } from '@/shared/map/seoul-layout';
 import {
   authorizeCommand,
   buildAuditEntry,
@@ -46,10 +47,12 @@ import type {
   RiderStatus,
   RiderWire,
   ScenarioMeta,
+  SignalWire,
   SnapshotMessage,
 } from '@/shared/realtime/types';
 import { chooseOrder, type Dispatchable } from './dispatch';
 import { deriveAlerts, type AlertThresholds, type DesiredAlert } from './alerts';
+import { signalStateAt, type SignalState } from './signals';
 
 const NAMES = [
   '김민준', '박서연', '이도윤', '최하은', '정지훈', '강서준',
@@ -189,6 +192,7 @@ export class SimEngine {
   private readonly zoneCentroid: Record<string, LonLat>;
   private incident = false; // 교통 정체
   private surge = false; // 수요 서지
+  private closure = false; // 도로 통제·폐쇄(우회)
   private demoActive = false;
   private demoLabel: string | undefined;
   private demoStarted = -1; // 데모 시작 simSec(-1=비활성)
@@ -200,10 +204,18 @@ export class SimEngine {
   private auditTrail: AuditEntry[] = [];
   private readonly newAuditIds = new Set<string>();
 
-  // 단계 7: 성능 — 경로/거리 메모(그래프는 정적이라 항상 유효, spawn에서 비움).
+  // 단계 7: 성능 — 경로/거리 메모(그래프는 정적이라 항상 유효, spawn·통제 변경에서 비움).
   private readonly pathMemo = new Map<string, { path: string[] | null; dist: number }>();
   // 단계 7: 추적선은 포커스된 라이더에게만 스트리밍한다(델타 바이트·연산 상한).
   private focusId: string | null = null;
+
+  // 보강: 신호 교차로 — 신호 노드와 역인덱스, 직전 상태(flip 감지).
+  private readonly signalNodes: string[];
+  private readonly signalIndexByNode = new Map<string, number>();
+  private prevSignalState: SignalState[];
+  // 보강: 도로 통제 — 통제 지점별 차단 간선 집합(정적 사전계산)과 현재 활성 차단 간선.
+  private readonly closureEdgeSets: Set<string>[];
+  private blockedEdges = new Set<string>();
 
   constructor(private readonly clock: () => number = () => Date.now()) {
     this.graph = buildRoadGraph(arterials.map((a) => a.path));
@@ -216,14 +228,42 @@ export class SimEngine {
     );
     this.zoneCentroid = Object.fromEntries(zones.map((z) => [z.name, z.centroid]));
 
-    // 약 60초 고정 데모: 서지 → 정체 → 저배터리 → 해소 → 정상 복귀.
+    // 신호 교차로: 각 지점에서 가장 가까운 그래프 노드를 신호 노드로(중복 제거).
+    const nodes: string[] = [];
+    signalSites.forEach((site) => {
+      const node = nearestNode(this.graph, site.at);
+      this.signalIndexByNode.set(node, nodes.length);
+      nodes.push(node);
+    });
+    this.signalNodes = nodes;
+    this.prevSignalState = signalSites.map((_, i) => signalStateAt(i, 0));
+
+    // 도로 통제: 지점별로 중심 반경 안의 간선(양끝 모두 포함)을 차단 집합으로 사전계산.
+    this.closureEdgeSets = closureSites.map((site) => {
+      const inside = new Set(
+        this.graph.nodes
+          .filter((n) => metersBetween([n.lon, n.lat], site.center) <= site.radiusM)
+          .map((n) => n.id),
+      );
+      const edges = new Set<string>();
+      for (const id of inside) {
+        for (const e of this.graph.adjacency.get(id) ?? []) {
+          if (inside.has(e.to)) edges.add(edgeKey(id, e.to));
+        }
+      }
+      return edges;
+    });
+
+    // 약 60초 고정 데모: 서지 → 정체 → 통제·우회 → 저배터리 → 해소 → 정상 복귀.
     this.demoScript = [
       { at: 0, label: '정상 운행', run: () => this.resetScenarios() },
       { at: 8, label: '수요 서지', run: () => this.applyScenario('surge', true) },
-      { at: 18, label: '교통 정체', run: () => this.applyScenario('incident', true) },
-      { at: 30, label: '정체 해제', run: () => this.applyScenario('incident', false) },
-      { at: 36, label: '라이더 저배터리', run: () => this.applyScenario('battery', true) },
-      { at: 48, label: '서지 해소', run: () => this.applyScenario('surge', false) },
+      { at: 16, label: '교통 정체', run: () => this.applyScenario('incident', true) },
+      { at: 24, label: '도로 통제·우회', run: () => this.applyScenario('closure', true) },
+      { at: 32, label: '정체 해제', run: () => this.applyScenario('incident', false) },
+      { at: 40, label: '통제 해제', run: () => this.applyScenario('closure', false) },
+      { at: 44, label: '라이더 저배터리', run: () => this.applyScenario('battery', true) },
+      { at: 52, label: '서지 해소', run: () => this.applyScenario('surge', false) },
       { at: 58, label: '정상 복귀', run: () => this.demoFinish() },
     ];
   }
@@ -255,6 +295,9 @@ export class SimEngine {
     this.removedAlertIds.clear();
     this.incident = false;
     this.surge = false;
+    this.closure = false;
+    this.blockedEdges = new Set();
+    this.prevSignalState = signalSites.map((_, i) => signalStateAt(i, 0));
     this.demoActive = false;
     this.demoLabel = undefined;
     this.demoStarted = -1;
@@ -331,6 +374,7 @@ export class SimEngine {
     this.pruneTerminal();
     if (this.tickCount % ALERT_EVERY === 0) this.evaluateAlerts();
     this.pruneAlerts();
+    const signalsUpd = this.collectSignalChanges();
 
     this.seq += 1;
 
@@ -368,6 +412,7 @@ export class SimEngine {
     if (alertsAdd.length) msg.alertsAdd = alertsAdd;
     if (alertsUpd.length) msg.alertsUpd = alertsUpd;
     if (alertsDel.length) msg.alertsDel = alertsDel;
+    if (signalsUpd.length) msg.signalsUpd = signalsUpd;
     if (this.metaDirty) {
       msg.meta = this.meta();
       this.metaDirty = false;
@@ -387,15 +432,35 @@ export class SimEngine {
       riders: [...this.riders.values()].map((r) => this.toWire(r)),
       orders: [...this.orders.values()].map((o) => this.toWireOrder(o)),
       alerts: [...this.alerts.values()].map((a) => this.toWireAlert(a)),
+      signals: this.signalSnapshot(),
       meta: this.meta(),
       audit: this.auditTrail.slice(-8),
     };
+  }
+
+  /** 신호 교차로 전체 상태(스냅샷용). 위치는 정적이라 id+상태만 흐른다. */
+  private signalSnapshot(): SignalWire[] {
+    return signalSites.map((site, i) => ({ id: site.id, state: signalStateAt(i, this.simSec) }));
+  }
+
+  /** 직전 틱 대비 상태가 바뀐 신호만 추려 내고 prev를 갱신한다(델타 스트리밍). */
+  private collectSignalChanges(): SignalWire[] {
+    const changed: SignalWire[] = [];
+    for (let i = 0; i < signalSites.length; i += 1) {
+      const state = signalStateAt(i, this.simSec);
+      if (state !== this.prevSignalState[i]) {
+        this.prevSignalState[i] = state;
+        changed.push({ id: signalSites[i]!.id, state });
+      }
+    }
+    return changed;
   }
 
   private meta(): ScenarioMeta {
     return {
       incident: this.incident,
       surge: this.surge,
+      closure: this.closure,
       demoActive: this.demoActive,
       demoLabel: this.demoLabel,
       demoSec: this.demoActive ? Math.max(0, Math.round(this.simSec - this.demoStarted)) : undefined,
@@ -579,7 +644,10 @@ export class SimEngine {
     }
   }
 
-  /** 경로를 따라 move(m)만큼 진행하고 실제 이동 거리(m)를 돌려준다. */
+  /**
+   * 경로를 따라 move(m)만큼 진행하고 실제 이동 거리(m)를 돌려준다.
+   * 중간 신호 노드가 STOP이면 정지선(현재 세그먼트 끝)에서 대기한다 — 목적지 노드는 통과.
+   */
   private travel(rider: Rider, move: number): number {
     let remaining = move;
     while (remaining > 0 && rider.idx < rider.path.length - 1) {
@@ -589,12 +657,24 @@ export class SimEngine {
         rider.edgeDist += remaining;
         remaining = 0;
       } else {
+        const nextId = rider.path[rider.idx + 1]!;
+        const isFinal = rider.idx + 1 >= rider.path.length - 1;
+        if (!isFinal && this.isSignalStop(nextId)) {
+          rider.edgeDist = len; // 정지선 대기 — 이번 틱 남은 이동량은 소멸
+          break;
+        }
         remaining -= remain;
         rider.idx += 1;
         rider.edgeDist = 0;
       }
     }
     return move - remaining;
+  }
+
+  /** 노드가 신호 교차로이고 현재 STOP이면 true. */
+  private isSignalStop(nodeId: string): boolean {
+    const i = this.signalIndexByNode.get(nodeId);
+    return i !== undefined && signalStateAt(i, this.simSec) === 'STOP';
   }
 
   private drainBattery(rider: Rider, movedM: number): void {
@@ -605,6 +685,15 @@ export class SimEngine {
     const order = rider.orderId ? this.orders.get(rider.orderId) : undefined;
     if (!order) {
       this.release(rider);
+      return;
+    }
+
+    // 통제로 경로가 끊겨 목표에 아직 못 닿았으면(경로 truncation) 재경로 시도 후 대기 —
+    // 엉뚱한 지점에서 집화/완료 처리되는 것을 막는다.
+    const target = order.leg === 'PICKUP' ? order.pickupNode : order.dropoffNode;
+    if (this.currentNode(rider) !== target) {
+      this.routeRider(rider, target);
+      rider.currentSpeed = 0;
       return;
     }
 
@@ -898,16 +987,51 @@ export class SimEngine {
       case 'battery':
         if (on) this.forceBatteryDrain();
         break;
+      case 'closure':
+        this.setClosure(on);
+        break;
       case 'reset':
         this.resetScenarios();
         break;
     }
   }
 
+  /**
+   * 도로 통제·폐쇄 토글. 통제 지점의 간선을 차단 집합에 넣고/빼고, 경로 메모를 비워
+   * 이후 Dijkstra가 차단을 반영하게 한 뒤, 운행 중 라이더를 즉시 재경로(우회)한다.
+   */
+  private setClosure(on: boolean): void {
+    if (this.closure === on) return;
+    this.closure = on;
+    const blocked = new Set<string>();
+    if (on) for (const set of this.closureEdgeSets) for (const k of set) blocked.add(k);
+    this.blockedEdges = blocked;
+    this.pathMemo.clear(); // 차단 반영을 위해 (from,to) 메모 무효화
+    this.rerouteAll();
+    this.metaDirty = true;
+  }
+
+  /** 운행 중(배정·충전) 라이더를 현재 목표로 재경로. 통제 전환 시 우회를 즉시 반영. */
+  private rerouteAll(): void {
+    for (const rider of this.riders.values()) {
+      const goal = this.riderGoalNode(rider);
+      if (goal) this.routeRider(rider, goal);
+    }
+  }
+
+  /** 라이더가 지금 향하는 목표 노드(집화/배송/허브). 유휴면 null. */
+  private riderGoalNode(rider: Rider): string | null {
+    if (rider.charging) return this.nearestHubNode(this.currentNode(rider));
+    const order = rider.orderId ? this.orders.get(rider.orderId) : undefined;
+    if (!order || isTerminal(order)) return null;
+    return order.leg === 'PICKUP' ? order.pickupNode : order.dropoffNode;
+  }
+
   private resetScenarios(): void {
-    if (this.incident || this.surge) this.metaDirty = true;
+    if (this.incident || this.surge || this.closure) this.metaDirty = true;
     this.incident = false;
     this.surge = false;
+    this.setClosure(false);
   }
 
   /** 운행 중인 라이더 한 명을 위험 배터리로 떨어뜨려 저배터리 시나리오를 재현한다. */
@@ -971,7 +1095,7 @@ export class SimEngine {
     const key = `${from}>${to}`;
     const cached = this.pathMemo.get(key);
     if (cached) return cached;
-    const path = shortestPath(this.graph, from, to);
+    const path = shortestPath(this.graph, from, to, this.blockedEdges.size ? this.blockedEdges : undefined);
     const dist = path && path.length > 1 ? pathDistance(this.graph, path) : Infinity;
     const info = { path, dist };
     this.pathMemo.set(key, info);

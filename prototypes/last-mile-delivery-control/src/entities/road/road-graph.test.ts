@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildRoadGraph, nearestNode, type LonLat } from '@/entities/road';
+import { buildRoadGraph, edgeKey, nearestNode, type LonLat } from '@/entities/road';
 import { shortestPath, pathDistance } from '@/entities/road';
 
 // 두 도로가 교차하는 최소 입력: 수평선과 수직선이 (0,0) 부근에서 만난다.
@@ -62,4 +62,28 @@ test('shortestPath/pathDistance는 교차 경로를 연결한다', () => {
   const path = shortestPath(graph, from, to);
   assert.ok(path && path.length >= 2);
   assert.ok(pathDistance(graph, path!) > 0);
+});
+
+test('차단 간선(도로 통제)을 피해 우회로를 찾는다', () => {
+  // 두 경로가 있는 격자: 직선 최단 경로의 첫 간선을 막으면 다른 경로로 우회해야 한다.
+  const grid: LonLat[][] = [
+    [[127.00, 37.50], [127.01, 37.50], [127.02, 37.50]], // 아래쪽 가로
+    [[127.00, 37.51], [127.01, 37.51], [127.02, 37.51]], // 위쪽 가로
+    [[127.00, 37.50], [127.00, 37.51]], // 왼쪽 세로
+    [[127.02, 37.50], [127.02, 37.51]], // 오른쪽 세로
+  ];
+  const graph = buildRoadGraph(grid, { maxSegment: 2000, junctionRadius: 50 });
+  const from = nearestNode(graph, [127.00, 37.50]);
+  const to = nearestNode(graph, [127.02, 37.50]);
+  const open = shortestPath(graph, from, to);
+  assert.ok(open && open.length >= 2);
+
+  // 최단 경로의 첫 간선을 통제하면 경로가 바뀌어야 한다(그래도 도달은 가능).
+  const blocked = new Set<string>([edgeKey(open![0]!, open![1]!)]);
+  const detour = shortestPath(graph, from, to, blocked);
+  assert.ok(detour && detour.length >= 2, '우회로가 존재해야 한다');
+  assert.notDeepEqual(detour, open, '통제 시 경로가 달라져야 한다');
+  for (let i = 1; i < detour!.length; i += 1) {
+    assert.ok(!blocked.has(edgeKey(detour![i - 1]!, detour![i]!)), '우회로는 통제 간선을 쓰지 않는다');
+  }
 });

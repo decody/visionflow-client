@@ -55,9 +55,16 @@ export interface AlertWire {
 export interface ScenarioMeta {
   incident: boolean; // 교통 정체
   surge: boolean; // 수요 서지
+  closure: boolean; // 도로 통제·폐쇄(우회)
   demoActive: boolean;
   demoLabel?: string;
   demoSec?: number;
+}
+
+/** 신호 교차로 상태(스냅샷=전체, 델타=flip된 것만). 위치는 정적(signalSites)이라 id만 흐른다. */
+export interface SignalWire {
+  id: string;
+  state: 'GO' | 'STOP';
 }
 
 /** 와이어로 흐르는 주문 상태(생명주기·배차 패널 공통). 단계 3. */
@@ -83,6 +90,8 @@ export interface SnapshotMessage {
   alerts?: AlertWire[];
   /** 단계 4: 시나리오·데모 진행. */
   meta?: ScenarioMeta;
+  /** 신호 교차로 전체 상태(보강). */
+  signals?: SignalWire[];
   /** 단계 6: 최근 감사 로그(연동 경계). 승인/거부 모두 포함. */
   audit?: AuditEntry[];
 }
@@ -104,6 +113,8 @@ export interface DeltaMessage {
   alertsDel?: string[];
   /** 단계 4: 시나리오·데모 진행(변경 시 동봉). */
   meta?: ScenarioMeta;
+  /** 신호 교차로 상태 변화(flip된 것만, 보강). */
+  signalsUpd?: SignalWire[];
   /** 단계 6: 이번 틱에 추가된 감사 로그(append-only). */
   auditAdd?: AuditEntry[];
 }

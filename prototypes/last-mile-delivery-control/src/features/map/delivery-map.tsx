@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Feature from 'ol/Feature';
 import Map from 'ol/Map';
+import Circle from 'ol/geom/Circle';
 import LineString from 'ol/geom/LineString';
 import Point from 'ol/geom/Point';
 import Polygon from 'ol/geom/Polygon';
@@ -17,7 +18,7 @@ import { Circle as CircleStyle, Fill, RegularShape, Stroke, Style, Text } from '
 import type { FeatureLike } from 'ol/Feature';
 
 import type { RiderStatus } from '@/shared/realtime/types';
-import { arterials, hubs, networkCenter, zones } from '@/shared/map/seoul-layout';
+import { arterials, closureSites, hubs, networkCenter, signalSites, zones } from '@/shared/map/seoul-layout';
 import { expandExtent, withinExtent, type Extent } from '@/shared/map/viewport-cull';
 
 import 'ol/ol.css';
@@ -32,6 +33,9 @@ export interface MapRider {
   /** 현재 위치→목적지 남은 경로(lon/lat). 선택 라이더 추적선 표시용. */
   route?: [number, number][];
 }
+
+/** 신호 교차로 상태(지도 표시용). */
+export type MapSignal = { id: string; state: 'GO' | 'STOP' };
 
 /** 줌 기반 상세 단계(LOD). 도시 전체 → 권역 → 라이더 상세. */
 type Lod = 'overview' | 'zone' | 'detail';
@@ -212,12 +216,52 @@ function hubStyle(feature: FeatureLike, lod: Lod) {
   });
 }
 
+/** 신호등 심벌: GO=녹색, STOP=적색 원형. 상세 LOD에서만 라벨을 붙인다. */
+function signalStyle(feature: FeatureLike, lod: Lod): Style {
+  const state = feature.get('state') as 'GO' | 'STOP';
+  const color = state === 'STOP' ? '#ff5a5f' : '#3dd598';
+  return new Style({
+    image: new CircleStyle({
+      radius: lod === 'overview' ? 3 : 4.5,
+      fill: new Fill({ color }),
+      stroke: new Stroke({ color: '#0a0e16', width: 1.5 }),
+    }),
+    text:
+      lod === 'detail'
+        ? new Text({
+            text: '신호',
+            offsetY: 13,
+            font: '9px sans-serif',
+            fill: new Fill({ color: '#9fb4c6' }),
+            stroke: new Stroke({ color: '#0a0e16', width: 2 }),
+          })
+        : undefined,
+  });
+}
+
+/** 도로 통제 구역: 반경 디스크(적색 반투명) + 통제 라벨. 활성 시에만 표시. */
+function closureStyle(feature: FeatureLike): Style {
+  return new Style({
+    fill: new Fill({ color: 'rgba(255,90,95,0.14)' }),
+    stroke: new Stroke({ color: '#ff5a5f', width: 2, lineDash: [6, 5] }),
+    text: new Text({
+      text: `⛔ ${String(feature.get('name') ?? '도로 통제')}`,
+      font: 'bold 11px sans-serif',
+      fill: new Fill({ color: '#ffd4d6' }),
+      stroke: new Stroke({ color: '#0a0e16', width: 3 }),
+      overflow: true,
+    }),
+  });
+}
+
 export function DeliveryMap({
   riders,
   selectedId,
   onSelect,
   focusZone = '',
   onVisibleCount,
+  signals,
+  closureActive = false,
 }: {
   riders: MapRider[];
   selectedId: string;
@@ -226,6 +270,10 @@ export function DeliveryMap({
   focusZone?: string;
   /** 단계 7: 뷰포트 컬링 후 실제 렌더 중인 라이더 수(개발 진단용). */
   onVisibleCount?: (n: number) => void;
+  /** 신호 교차로 상태(보강). 미지정이면 신호 레이어를 그리지 않는다. */
+  signals?: MapSignal[];
+  /** 도로 통제 활성 여부(보강). true면 통제 구역을 강조한다. */
+  closureActive?: boolean;
 }) {
   const targetRef = useRef<HTMLDivElement>(null);
   const lodBadgeRef = useRef<HTMLSpanElement>(null);
@@ -236,6 +284,9 @@ export function DeliveryMap({
   const zoneLayerRef = useRef<VectorLayer | null>(null);
   const webglLayerRef = useRef<WebGLPointsLayer<VectorSource<FeatureLike>> | null>(null);
   const detailLayerRef = useRef<VectorLayer | null>(null);
+  const signalSourceRef = useRef<VectorSource | null>(null);
+  const signalLayerRef = useRef<VectorLayer | null>(null);
+  const closureLayerRef = useRef<VectorLayer | null>(null);
   const lodRef = useRef<Lod>('zone');
   const focusZoneRef = useRef<string>(focusZone);
   focusZoneRef.current = focusZone;
@@ -298,6 +349,28 @@ export function DeliveryMap({
     const hubLayer = new VectorLayer({ source: hubSource, style: (f) => hubStyle(f, lodRef.current) });
     const routeLayer = new VectorLayer({ source: routeSource, style: routeStyle });
 
+    // 보강: 신호 교차로 — 위치는 정적(signalSites), 상태(GO/STOP)만 prop으로 갱신.
+    const signalSource = new VectorSource({
+      features: signalSites.map((site) => {
+        const f = new Feature({ geometry: new Point(fromLonLat(site.at)), id: site.id, state: 'GO' });
+        f.setId(site.id);
+        return f;
+      }),
+    });
+    signalSourceRef.current = signalSource;
+    const signalLayer = new VectorLayer({ source: signalSource, style: (f) => signalStyle(f, lodRef.current) });
+    signalLayerRef.current = signalLayer;
+
+    // 보강: 도로 통제 구역 — 반경 디스크. 활성 시에만 보이게 토글.
+    const closureSource = new VectorSource({
+      features: closureSites.map((site) => new Feature({
+        geometry: new Circle(fromLonLat(site.center), site.radiusM / Math.cos((site.center[1] * Math.PI) / 180)),
+        name: site.name,
+      })),
+    });
+    const closureLayer = new VectorLayer({ source: closureSource, style: closureStyle, visible: false });
+    closureLayerRef.current = closureLayer;
+
     // 단계 7: 대규모 함대는 WebGL 포인트로 렌더한다(상태색 = statusCode 매치, 반지름 = 줌 보간).
     const colorExpr: Array<string | number | string[]> = ['match', ['get', 'statusCode']];
     STATUS_ORDER.forEach((s) => colorExpr.push(statusCode[s], statusColor[s]));
@@ -321,7 +394,7 @@ export function DeliveryMap({
 
     const map = new Map({
       target: targetRef.current,
-      layers: [basemapLayer, zoneLayer, arterialLayer, hubLayer, routeLayer, webglLayer, detailLayer, selectedLayer],
+      layers: [basemapLayer, zoneLayer, arterialLayer, closureLayer, hubLayer, routeLayer, signalLayer, webglLayer, detailLayer, selectedLayer],
       view,
       controls: [new Attribution({ collapsible: false })],
     });
@@ -338,7 +411,7 @@ export function DeliveryMap({
       if (lodBadgeRef.current) lodBadgeRef.current.textContent = lodLabel[next];
       webglLayer.setVisible(next !== 'detail');
       detailLayer.setVisible(next === 'detail');
-      [zoneLayer, arterialLayer, hubLayer].forEach((layer) => layer.changed());
+      [zoneLayer, arterialLayer, hubLayer, signalLayer].forEach((layer) => layer.changed());
     };
     view.on('change:resolution', applyLod);
     // 팬/줌 종료 시 뷰포트 컬링을 다시 적용(보이는 라이더만 소스에 유지).
@@ -383,9 +456,28 @@ export function DeliveryMap({
       zoneLayerRef.current = null;
       webglLayerRef.current = null;
       detailLayerRef.current = null;
+      signalSourceRef.current = null;
+      signalLayerRef.current = null;
+      closureLayerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onSelect]);
+
+  // 신호 상태(GO/STOP) 갱신 → 해당 피처의 state 갱신 후 레이어 재스타일.
+  useEffect(() => {
+    const source = signalSourceRef.current;
+    if (!source || !signals) return;
+    for (const sig of signals) {
+      const f = source.getFeatureById(sig.id);
+      if (f && f.get('state') !== sig.state) f.set('state', sig.state);
+    }
+    signalLayerRef.current?.changed();
+  }, [signals]);
+
+  // 도로 통제 활성/해제 → 통제 구역 레이어 토글.
+  useEffect(() => {
+    closureLayerRef.current?.setVisible(closureActive);
+  }, [closureActive]);
 
   // 뷰포트 컬링: 확장된 현재 뷰 익스텐트 안의 라이더만 소스에 넣는다(렌더 비용 ∝ 보이는 수).
   const syncRiders = (list: MapRider[]) => {

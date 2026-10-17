@@ -161,6 +161,11 @@ function stitchComponents(
   }
 }
 
+/** 무방향 간선의 정규화 키(통제·폐쇄 집합 조회용). 양끝 노드 id를 정렬해 방향 무관. */
+export function edgeKey(a: string, b: string): string {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
 /** 좌표에 가장 가까운 노드 id(선형 탐색). */
 export function nearestNode(graph: RoadGraph, point: LonLat): string {
   let bestId = graph.nodes[0]!.id;

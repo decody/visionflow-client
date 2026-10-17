@@ -8,7 +8,7 @@
  */
 
 import type { AuditEntry } from '@/entities/delivery/types';
-import type { AlertWire, OrderWire, RiderWire, ScenarioMeta, ServerMessage } from './types';
+import type { AlertWire, OrderWire, RiderWire, ScenarioMeta, ServerMessage, SignalWire } from './types';
 
 const AUDIT_MAX = 20; // 클라이언트가 보관하는 감사 로그 상한
 
@@ -28,6 +28,9 @@ export interface BatchResult {
   alerts?: AlertWire[];
   alertAdditions?: AlertWire[];
   alertDeletions?: string[];
+  /** 신호 채널(보강) — id별 최신 상태만 유지 */
+  signalUpdates: SignalWire[];
+  signals?: SignalWire[];
   /** 시나리오·데모 진행(단계 4) — 최신값만 유지 */
   meta?: ScenarioMeta;
   /** 감사 로그(단계 6) — 변경 시에만 최신 전체 목록 */
@@ -57,6 +60,9 @@ export class DeltaReducer {
   private pendingAlertSnapshot: AlertWire[] | undefined;
   private alertAdditions = new Map<string, AlertWire>();
   private alertDeletions = new Set<string>();
+  // 신호 채널(보강) — id별 최신 상태 코얼레싱, 스냅샷은 전체 교체.
+  private pendingSignals = new Map<string, SignalWire>();
+  private pendingSignalSnapshot: SignalWire[] | undefined;
   private pendingMeta: ScenarioMeta | undefined;
   // 감사 채널(단계 6) — append-only, 상한 유지. 변경 시 dirty로 표시.
   private auditLog: AuditEntry[] = [];
@@ -80,6 +86,8 @@ export class DeltaReducer {
       this.pendingSnapshot = msg.riders;
       this.pendingOrderSnapshot = msg.orders;
       this.pendingAlertSnapshot = msg.alerts;
+      this.pendingSignals.clear();
+      this.pendingSignalSnapshot = msg.signals;
       if (msg.meta) this.pendingMeta = msg.meta;
       if (msg.audit) this.resetAudit(msg.audit);
       this.tick = msg.tick;
@@ -104,12 +112,15 @@ export class DeltaReducer {
       this.pendingAlertSnapshot = undefined;
       this.alertAdditions.clear();
       this.alertDeletions.clear();
+      this.pendingSignals.clear();
+      this.pendingSignalSnapshot = undefined;
       return { needResync: true, updCount: 0 };
     }
 
     this.expectedSeq = msg.seq + 1;
     this.tick = msg.tick;
     if (msg.meta) this.pendingMeta = msg.meta;
+    if (msg.signalsUpd) for (const s of msg.signalsUpd) this.pendingSignals.set(s.id, { ...s });
     if (msg.auditAdd) for (const a of msg.auditAdd) this.appendAudit(a);
     if (msg.add)
       for (const a of msg.add) {
@@ -213,6 +224,8 @@ export class DeltaReducer {
       this.pendingAlertSnapshot !== undefined ||
       this.alertAdditions.size > 0 ||
       this.alertDeletions.size > 0 ||
+      this.pendingSignals.size > 0 ||
+      this.pendingSignalSnapshot !== undefined ||
       this.pendingMeta !== undefined
     );
   }
@@ -235,6 +248,8 @@ export class DeltaReducer {
       alerts: this.pendingAlertSnapshot,
       alertAdditions: [...this.alertAdditions.values()],
       alertDeletions: [...this.alertDeletions],
+      signalUpdates: Array.from(this.pendingSignals.values()),
+      signals: this.pendingSignalSnapshot,
       meta: this.pendingMeta,
       audit: this.auditDirty ? [...this.auditLog] : undefined,
       tick: this.tick,
@@ -251,6 +266,8 @@ export class DeltaReducer {
     this.pendingAlertSnapshot = undefined;
     this.alertAdditions.clear();
     this.alertDeletions.clear();
+    this.pendingSignals.clear();
+    this.pendingSignalSnapshot = undefined;
     this.pendingMeta = undefined;
     this.auditDirty = false;
     return res;

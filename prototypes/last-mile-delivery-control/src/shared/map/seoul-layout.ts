@@ -99,6 +99,33 @@ export const arterials: Arterial[] = [
   { name: '학동로', rank: 'secondary', path: [[127.0255, 37.5120], [127.0400, 37.5110], [127.0540, 37.5100]] },
 ];
 
+/**
+ * 신호 교차로(합성). 간선이 교차하는 주요 사거리를 근사한 좌표다.
+ * 엔진은 각 지점에서 가장 가까운 도로 그래프 노드를 신호 노드로 삼고(nearestNode),
+ * 지도는 같은 좌표에 신호등 심벌을 그린다. 상태(GO/STOP)는 엔진이 스트리밍한다.
+ */
+export type SignalSite = { id: string; name: string; at: LonLat };
+
+export const signalSites: SignalSite[] = [
+  { id: 'SIG-GN', name: '강남역 사거리', at: [127.0276, 37.4979] },
+  { id: 'SIG-YS', name: '역삼역 교차로', at: [127.0364, 37.5006] },
+  { id: 'SIG-SR', name: '선릉역 교차로', at: [127.0489, 37.5045] },
+  { id: 'SIG-SS', name: '삼성역 교차로', at: [127.0631, 37.5089] },
+  { id: 'SIG-GC', name: '강남구청 교차로', at: [127.0470, 37.5150] },
+  { id: 'SIG-NH', name: '논현 사거리', at: [127.0340, 37.5175] },
+];
+
+/**
+ * 도로 통제·폐쇄 지점(합성). 활성화되면 중심에서 반경(m) 안의 모든 간선을
+ * 통행 불가로 간주해(구간 비용 ∞) 라이더가 자동 우회하도록 한다.
+ */
+export type ClosureSite = { id: string; name: string; center: LonLat; radiusM: number };
+
+export const closureSites: ClosureSite[] = [
+  // 테헤란로 중간(역삼~선릉) 구간 통제 — 병행 도로로 우회가 가능한 지점.
+  { id: 'CLZ-TH', name: '테헤란로 통제(역삼~선릉)', center: [127.0427, 37.5026], radiusM: 320 },
+];
+
 /** 전체 네트워크 기준 중심(강남 일대 경계 중앙 근사). */
 export const networkCenter: LonLat = [127.045, 37.507];
 

@@ -66,6 +66,7 @@ const scenarioLabel: Record<string, string> = {
   incident: '교통 정체',
   surge: '수요 서지',
   battery: '저배터리',
+  closure: '도로 통제',
   reset: '시나리오 초기화',
 };
 

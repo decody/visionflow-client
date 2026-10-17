@@ -106,7 +106,7 @@
 통과한 검증:
 
 - TypeScript: `pnpm typecheck` (next typegen + `tsc --noEmit`)
-- 전체 unit test: `pnpm test:unit` — 52 테스트 green (road-graph·delta-reducer·dispatch·engine·alerts·zone-kpi·command-contract·socket-server·viewport-cull)
+- 전체 unit test: `pnpm test:unit` — 61 테스트 green (road-graph·delta-reducer·dispatch·engine·alerts·signals·zone-kpi·command-contract·socket-server·viewport-cull)
 - 프로덕션 빌드: `pnpm build`
 - 개발 서버 기동 및 `/`·`/?src=ws` 200 응답 확인
 - SimEngine 500~5,000대 성능 벤치마크(5,000대 10Hz 예산 통과)
@@ -117,7 +117,16 @@
 
 주의: WebGL 포인트 렌더는 클라이언트 전용이라 dev 200 스모크로는 검증되지 않는다. AMHS(#02)의 동일 OpenLayers 10.6 패턴을 이식했으나, 실제 브라우저에서 한 번 육안 확인이 권장된다.
 
-## 10. 범위 밖 항목
+## 10. 기획서 보강 — 신호 교차로·도로 통제 (2026-10-17)
+
+계획서 §5(라이더 동작 현실성)·§7(시나리오)의 미구현 항목 2건을 기존 아키텍처(순수 코어 + snapshot/delta + 역할 인증 + 결정론) 위에 이식했다.
+
+- **신호 교차로**(항상 켜짐): `shared/map/seoul-layout.ts`의 `signalSites`(강남·역삼·선릉·삼성·강남구청·논현 6곳)를 엔진이 가장 가까운 도로 그래프 노드로 삼는다. 위상은 순수 `shared/sim/signals.ts`의 `signalStateAt(i, simSec)`가 고정 주기(초록 14s·빨강 8s, 교차로별 오프셋)로 결정론적으로 계산한다. 엔진 `travel()`은 중간 신호 노드가 STOP이면 정지선에서 대기(목적지 노드는 통과) → 번칭·ETA 가중이 자연 발생한다. 상태는 flip된 교차로만 `signalsUpd` 델타로 스트리밍(스냅샷엔 전체)하고 `DeltaReducer`가 id별 최신으로 코얼레싱 → pause/replay와 일관. 지도는 녹/적 신호등 심벌로 표시한다.
+- **도로 통제·우회**(시나리오): `closureSites`(테헤란로 역삼~선릉, 중심+반경)를 사전계산해 활성 시 반경 내 간선을 차단 집합(`edgeKey`)으로 묶는다. `shortestPath(graph, from, to, blocked?)`가 차단 간선을 건너뛰어 자동 우회(구간 비용 ∞와 동치). 토글 시 경로 메모를 비우고 운행 중 라이더를 즉시 재경로(`rerouteAll`)한다. `inject('closure', on)`으로 감독 권한·감사 경계를 그대로 통과하며, `onArrival` 가드로 통제로 경로가 끊긴 라이더가 엉뚱한 지점에서 집화/완료되지 않도록 막았다. `meta.closure`로 UI/지도 강조, 자동 데모(24s 통제→40s 해제) 스텝 추가.
+
+검증: `pnpm typecheck`·`pnpm build` 통과, unit 61 green(신호 주기·차단 우회·통제 중 완료·통제 on/off 결정론 포함), 성능 벤치 재실행 — 5,000대 frame p95 11.14ms(약 9× 여유)로 보강 후에도 10Hz 예산 통과.
+
+## 11. 범위 밖 항목
 
 다음은 현재 프로토타입의 완료 조건이 아니다.
 

@@ -56,8 +56,8 @@ export type AlertSeverity = 'critical' | 'warning' | 'info';
 /** 라이브 알람 생명주기: 미확인 → 확인 → (조건 해소 시) 복구. */
 export type AlertStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
 
-/** 수동 주입·자동 데모가 토글하는 시나리오. */
-export type ScenarioKind = 'incident' | 'surge' | 'battery' | 'reset';
+/** 수동 주입·자동 데모가 토글하는 시나리오. closure=도로 통제·우회. */
+export type ScenarioKind = 'incident' | 'surge' | 'battery' | 'closure' | 'reset';
 
 export type AuditEvent = {
   id: string;

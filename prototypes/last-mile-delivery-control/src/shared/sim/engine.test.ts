@@ -143,6 +143,59 @@ test('교통 정체는 meta에 반영되고 해제된다', () => {
   assert.equal(e.snapshot().meta!.incident, false);
 });
 
+// --- 보강: 신호 교차로·도로 통제 ---
+
+test('스냅샷은 신호 상태를 포함하고, 운행 중 신호가 flip된다', () => {
+  const e = new SimEngine();
+  e.spawn(10);
+  const sig = e.snapshot().signals ?? [];
+  assert.ok(sig.length > 0, '신호 교차로가 스냅샷에 있어야 한다');
+  assert.ok(sig.every((s) => s.state === 'GO' || s.state === 'STOP'));
+
+  // 여러 틱을 돌리면 신호 상태 변화(signalsUpd)가 관측돼야 한다.
+  let flips = 0;
+  for (let i = 0; i < 300; i += 1) flips += (e.tick(10).signalsUpd ?? []).length;
+  assert.ok(flips > 0, '신호가 주기적으로 flip돼야 한다');
+});
+
+test('도로 통제는 meta.closure에 반영되고 해제된다', () => {
+  const e = new SimEngine();
+  e.spawn(10);
+  assert.equal(e.snapshot().meta!.closure, false);
+  e.inject('closure', true);
+  assert.equal(e.snapshot().meta!.closure, true);
+  e.inject('closure', false);
+  assert.equal(e.snapshot().meta!.closure, false);
+});
+
+test('도로 통제 중에도 라이더는 우회해 배송을 완료한다', () => {
+  const e = new SimEngine();
+  e.spawn(12);
+  e.inject('closure', true);
+  let delivered = false;
+  for (let i = 0; i < 8000 && !delivered; i += 1) {
+    const delta = e.tick(10);
+    for (const o of [...(delta.ordersAdd ?? []), ...(delta.ordersUpd ?? [])]) {
+      if (o.status === 'DELIVERED') delivered = true;
+    }
+  }
+  assert.ok(delivered, '통제(우회) 중에도 완료 주문이 나와야 한다(전면 교착 아님)');
+});
+
+test('통제 on/off를 섞어도 시뮬레이션은 결정론적으로 재현된다', () => {
+  const run = () => {
+    const e = new SimEngine();
+    e.spawn(12);
+    for (let i = 0; i < 200; i += 1) {
+      if (i === 40) e.inject('closure', true);
+      if (i === 120) e.inject('closure', false);
+      e.tick(10);
+    }
+    return e.snapshot().riders.map((r) => `${r.id}:${r.status}:${r.lon.toFixed(5)}`);
+  };
+  assert.deepEqual(run(), run());
+});
+
 test('알람 확인(ack)은 상태를 ACKNOWLEDGED로 전이한다', () => {
   const e = new SimEngine();
   e.spawn(10);

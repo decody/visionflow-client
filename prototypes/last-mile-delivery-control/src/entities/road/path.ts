@@ -1,12 +1,20 @@
 /** 최단 경로(Dijkstra, 순수) — 단계 2 */
 
-import type { RoadGraph } from './build-road-graph';
+import { edgeKey, type RoadGraph } from './build-road-graph';
 
 /**
  * from→to 최단 경로를 노드 id 배열로 반환. 경로 없음/동일 노드는 null/[from].
  * 노드 수가 작아(수백) 선형 탐색 우선순위 큐로 충분하다.
+ *
+ * `blocked`(무방향 edgeKey 집합)가 주어지면 해당 간선을 통행 불가로 간주한다 —
+ * 도로 통제·폐쇄 시 Dijkstra가 자동으로 우회로를 찾게 한다(구간 비용 ∞와 동치).
  */
-export function shortestPath(graph: RoadGraph, from: string, to: string): string[] | null {
+export function shortestPath(
+  graph: RoadGraph,
+  from: string,
+  to: string,
+  blocked?: Set<string>,
+): string[] | null {
   if (from === to) return [from];
   if (!graph.nodeById.has(from) || !graph.nodeById.has(to)) return null;
 
@@ -31,6 +39,7 @@ export function shortestPath(graph: RoadGraph, from: string, to: string): string
 
     for (const edge of graph.adjacency.get(current) ?? []) {
       if (visited.has(edge.to)) continue;
+      if (blocked && blocked.has(edgeKey(current, edge.to))) continue; // 통제·폐쇄 구간 회피
       const next = currentDist + edge.weight;
       if (next < (dist.get(edge.to) ?? Infinity)) {
         dist.set(edge.to, next);

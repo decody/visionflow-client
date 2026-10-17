@@ -1,6 +1,7 @@
 export { metersBetween, bearing, lerp, type LonLat } from './geo';
 export {
   buildRoadGraph,
+  edgeKey,
   nearestNode,
   nodesWithin,
   type RoadGraph,

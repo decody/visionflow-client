@@ -23,6 +23,7 @@ import type {
   RealtimeSource,
   RiderWire,
   ScenarioMeta,
+  SignalWire,
   SourceMetrics,
 } from '@/shared/realtime/types';
 import { zoneSummary } from '@/shared/stats/zone-kpi';
@@ -139,6 +140,7 @@ interface Frame {
   riders: RiderWire[];
   orders: OrderWire[];
   alerts: AlertWire[];
+  signals: SignalWire[];
   meta: ScenarioMeta | null;
   audit: AuditEntry[];
 }
@@ -174,6 +176,7 @@ export default function DeliveryControlPage() {
   const [riders, setRiders] = useState<RiderWire[]>([]);
   const [orders, setOrders] = useState<OrderWire[]>([]);
   const [alerts, setAlerts] = useState<AlertWire[]>([]);
+  const [signals, setSignals] = useState<SignalWire[]>([]);
   const [meta, setMeta] = useState<ScenarioMeta | null>(null);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [role, setRoleState] = useState<Role>('supervisor');
@@ -206,6 +209,8 @@ export default function DeliveryControlPage() {
     const ridersById = new Map<string, RiderWire>();
     const ordersById = new Map<string, OrderWire>();
     const alertsById = new Map<string, AlertWire>();
+    const signalsById = new Map<string, SignalWire>();
+    let curSignals: SignalWire[] = [];
     let curMeta: ScenarioMeta | null = null;
     let curAudit: AuditEntry[] = [];
     const source = createRealtimeSource({
@@ -243,6 +248,22 @@ export default function DeliveryControlPage() {
         const nextAlerts = [...alertsById.values()];
         setAlerts(nextAlerts);
 
+        // 신호 채널: 스냅샷은 전체 교체, 델타는 flip된 것만 최신으로.
+        let signalsChanged = false;
+        if (batch.signals) {
+          signalsById.clear();
+          for (const s of batch.signals) signalsById.set(s.id, s);
+          signalsChanged = true;
+        }
+        for (const s of batch.signalUpdates) {
+          signalsById.set(s.id, s);
+          signalsChanged = true;
+        }
+        if (signalsChanged) {
+          curSignals = [...signalsById.values()];
+          setSignals(curSignals);
+        }
+
         if (batch.meta) {
           curMeta = batch.meta;
           setMeta(batch.meta);
@@ -263,7 +284,7 @@ export default function DeliveryControlPage() {
         if (typeof batch.tick === 'number' && batch.tick !== lastTickRef.current) {
           lastTickRef.current = batch.tick;
           const hist = historyRef.current;
-          hist.push({ tick: batch.tick, riders: nextRiders, orders: nextOrders, alerts: nextAlerts, meta: curMeta, audit: curAudit });
+          hist.push({ tick: batch.tick, riders: nextRiders, orders: nextOrders, alerts: nextAlerts, signals: curSignals, meta: curMeta, audit: curAudit });
           if (hist.length > HISTORY_MAX) hist.shift();
           setFrameCount(hist.length);
         }
@@ -347,7 +368,7 @@ export default function DeliveryControlPage() {
     setActionMessage(`함대 규모를 ${next.toLocaleString()}대로 전환했습니다.`);
   };
 
-  const toggleScenario = (kind: 'incident' | 'surge', on: boolean) => {
+  const toggleScenario = (kind: 'incident' | 'surge' | 'closure', on: boolean) => {
     sourceRef.current?.inject(kind, on);
   };
 
@@ -406,6 +427,7 @@ export default function DeliveryControlPage() {
   const viewAlerts = replayFrame ? replayFrame.alerts : alerts;
   const viewMeta = replayFrame ? replayFrame.meta : meta;
   const viewAudit = replayFrame ? replayFrame.audit : audit;
+  const viewSignals = replayFrame ? replayFrame.signals : signals;
 
   const allCouriers = useMemo(() => viewRiders.map(toCourier), [viewRiders]);
   const matchesFilter = (c: Courier) =>
@@ -487,6 +509,7 @@ export default function DeliveryControlPage() {
 
   const incidentOn = viewMeta?.incident ?? false;
   const surgeOn = viewMeta?.surge ?? false;
+  const closureOn = viewMeta?.closure ?? false;
   const demoOn = viewMeta?.demoActive ?? false;
   const sliderMax = Math.max(0, (replayActive ? replayLen : frameCount) - 1);
   const sliderValue = replayActive ? replayIndex : sliderMax;
@@ -596,6 +619,7 @@ export default function DeliveryControlPage() {
             <span className="dispatch-kicker">시나리오</span>
             <button className={incidentOn ? 'filter active' : 'filter'} onClick={() => toggleScenario('incident', !incidentOn)}>교통 정체</button>
             <button className={surgeOn ? 'filter active' : 'filter'} onClick={() => toggleScenario('surge', !surgeOn)}>수요 서지</button>
+            <button className={closureOn ? 'filter active' : 'filter'} onClick={() => toggleScenario('closure', !closureOn)}>도로 통제</button>
             <button className="filter" onClick={() => injectOnce('battery')}>저배터리</button>
             <button className="filter" onClick={() => injectOnce('reset')}>초기화</button>
             <span className="bar-sep" />
@@ -603,8 +627,8 @@ export default function DeliveryControlPage() {
             <button className={paused ? 'filter active' : 'filter'} onClick={toggleComms}>{paused ? '통신 복구' : '통신 단절'}</button>
           </div>
           <div className="map-canvas">
-            <DeliveryMap riders={mapRiders} selectedId={selected?.id ?? ''} onSelect={setSelectedId} focusZone={selectedZone} onVisibleCount={setVisibleOnMap} />
-            <div className="map-legend"><span><i className="legend-delivering" /> 배송 중</span><span><i className="legend-pickup" /> 픽업 중</span><span><i className="legend-delayed" /> 지연</span><span><i className="legend-charging" /> 충전</span><span><i className="legend-idle" /> 대기</span></div>
+            <DeliveryMap riders={mapRiders} selectedId={selected?.id ?? ''} onSelect={setSelectedId} focusZone={selectedZone} onVisibleCount={setVisibleOnMap} signals={viewSignals} closureActive={closureOn} />
+            <div className="map-legend"><span><i className="legend-delivering" /> 배송 중</span><span><i className="legend-pickup" /> 픽업 중</span><span><i className="legend-delayed" /> 지연</span><span><i className="legend-charging" /> 충전</span><span><i className="legend-idle" /> 대기</span><span><i style={{ background: '#3dd598', borderRadius: '50%' }} /> 신호</span><span><i style={{ background: '#ff5a5f', borderRadius: '50%' }} /> 통제</span></div>
             {showDiag && diag && (
               <div className="diag-panel" aria-label="개발 진단">
                 <div className="diag-head">DIAGNOSTICS</div>

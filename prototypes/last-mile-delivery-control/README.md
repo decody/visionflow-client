@@ -21,11 +21,16 @@ AMHS/OHT(#02)가 세운 완성 기준 — 실시간 파이프라인(snapshot/del
 7. ✅ 성능·최적화 (경로 메모·배차 상한·WebGL 포인트·뷰포트 컬링·헤드리스 벤치, 1,000~5,000대)
 8. ✅ 마감 (합성 데이터 고지·시연 스크립트·진행 문서)
 
+### 기획서 보강 (계획서 §5·§7)
+
+- ✅ **신호 교차로**: 주요 사거리(강남·역삼·선릉·삼성·강남구청·논현)에 결정론적 신호 주기(GO/STOP). 라이더가 적신호 정지선에서 대기 → 번칭·ETA 가중이 자연 발생. 상태는 flip 시에만 델타로 스트리밍, 지도에 녹/적 신호등으로 표시.
+- ✅ **도로 통제·우회**: 통제 구간(테헤란로 역삼~선릉)을 간선 비용 ∞로 막아 Dijkstra가 자동 우회. `도로 통제` 시나리오(감독 권한)로 토글하며, 활성 시 운행 중 라이더를 즉시 재경로하고 지도에 통제 구역을 강조.
+
 ## 주요 폴더
 
 - `src/entities/road/` — 도로 그래프 생성/경로(Dijkstra), 순수
 - `src/entities/delivery/` — 라이더·주문 도메인 타입, 연동 경계 타입(역할·감사)
-- `src/shared/sim/` — SimEngine(Worker·ws 공용), 배차·알람(순수)
+- `src/shared/sim/` — SimEngine(Worker·ws 공용), 배차·알람·신호 위상(`signals.ts`, 순수)
 - `src/shared/realtime/` — snapshot/delta 프로토콜·DeltaReducer·Worker/ws 클라이언트·소스 팩토리
 - `src/shared/integration/` — 명령 계약(역할 정책·감사 생성), 순수
 - `src/shared/map/` — 권역 도면·뷰포트 컬링(순수)
@@ -56,7 +61,7 @@ pnpm perf                                                  # 헤드리스 성능
 
 ### 성능 벤치 (헤드리스)
 
-브라우저 렌더 FPS는 GPU·자동화 환경에 좌우돼 재현성이 낮다. `server/perf-bench.ts`는 ws-server가 매 틱 수행하는 `JSON.stringify(engine.tick())`과 동일 경로를 노드에서 반복 실행해 대수(500/1,000/2,000/5,000)별 tick·직렬화 지연 p95, 델타 바이트, 지속 가능 Hz, 메모리를 측정한다. 고정 seed·고정 clock으로 결정론적이며 결과는 `perf-report.md`에 저장한다. 최근 실행 기준 5,000대에서 frame p95 12.37ms로 10Hz 예산을 8× 여유로 통과했다.
+브라우저 렌더 FPS는 GPU·자동화 환경에 좌우돼 재현성이 낮다. `server/perf-bench.ts`는 ws-server가 매 틱 수행하는 `JSON.stringify(engine.tick())`과 동일 경로를 노드에서 반복 실행해 대수(500/1,000/2,000/5,000)별 tick·직렬화 지연 p95, 델타 바이트, 지속 가능 Hz, 메모리를 측정한다. 고정 seed·고정 clock으로 결정론적이며 결과는 `perf-report.md`에 저장한다. 최근 실행 기준 5,000대에서 frame p95 11.14ms로 10Hz 예산을 약 9× 여유로 통과했다(신호·통제 보강 포함).
 
 ```bash
 pnpm perf -- --counts=1000,5000 --ticks=600 --rate=10

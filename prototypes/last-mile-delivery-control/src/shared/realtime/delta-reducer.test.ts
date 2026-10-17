@@ -122,10 +122,22 @@ test('알람 채널도 스냅샷·코얼레싱·add/del을 처리한다', () => 
 test('시나리오 meta는 최신값으로 전달된다', () => {
   const r = new DeltaReducer();
   r.ingest(snapshot(0, []));
-  r.ingest(delta(1, [], { meta: { incident: true, surge: false, demoActive: false } }));
-  r.ingest(delta(2, [], { meta: { incident: false, surge: true, demoActive: true, demoLabel: '수요 서지' } }));
+  r.ingest(delta(1, [], { meta: { incident: true, surge: false, closure: false, demoActive: false } }));
+  r.ingest(delta(2, [], { meta: { incident: false, surge: true, closure: true, demoActive: true, demoLabel: '수요 서지' } }));
   const batch = r.drain();
   assert.equal(batch.meta?.surge, true);
   assert.equal(batch.meta?.incident, false);
+  assert.equal(batch.meta?.closure, true);
   assert.equal(batch.meta?.demoLabel, '수요 서지');
+});
+
+test('신호 채널은 스냅샷 전체·델타 flip을 id별 최신으로 전달한다', () => {
+  const r = new DeltaReducer();
+  r.ingest({ type: 'snapshot', seq: 0, tick: 0, riders: [], signals: [{ id: 'SIG-A', state: 'GO' }, { id: 'SIG-B', state: 'STOP' }] });
+  r.ingest(delta(1, [], { signalsUpd: [{ id: 'SIG-A', state: 'STOP' }] }));
+  r.ingest(delta(2, [], { signalsUpd: [{ id: 'SIG-A', state: 'GO' }] })); // 같은 id → 최신값만
+  const batch = r.drain();
+  assert.deepEqual(batch.signals?.map((s) => s.id), ['SIG-A', 'SIG-B']);
+  assert.equal(batch.signalUpdates.length, 1);
+  assert.equal(batch.signalUpdates[0]!.state, 'GO');
 });
