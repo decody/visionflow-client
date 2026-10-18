@@ -9,6 +9,7 @@
     "start": "next start -p 3013",
     "typecheck": "next typegen && tsc --noEmit",
     "test:unit": "node --import tsx --test \"src/**/*.test.ts\"",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "ws:server": "node --import tsx server/ws-server.ts",
     "perf": "node --import tsx --expose-gc server/perf-bench.ts"
   },
@@ -24,6 +25,7 @@
     "zustand": "5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@types/node": "25.6.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",

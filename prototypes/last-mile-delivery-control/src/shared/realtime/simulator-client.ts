@@ -4,15 +4,21 @@
  * requestAnimationFrame flush만 담당한다.
  */
 
-import type { DispatchRule, Role, ScenarioKind } from '@/entities/delivery/types';
+import type { Actor, DispatchRule, Role, ScenarioKind } from '@/entities/delivery/types';
 import { DeltaReducer, type BatchResult } from './delta-reducer';
-import type { RealtimeSource, RealtimeSourceOptions, ServerMessage, SourceMetrics } from './types';
+import type { ClientCommand, RealtimeSource, RealtimeSourceOptions, ServerMessage, SourceMetrics, ViewSubscription } from './types';
+import { SimEngine } from '@/shared/sim/engine';
 
 export type { BatchResult } from './delta-reducer';
 
 export class SimulatorClient implements RealtimeSource {
-  readonly label = 'worker';
-  private worker: Worker;
+  readonly label: string;
+  private worker: Worker | null = null;
+  private inlineEngine: SimEngine | null = null;
+  private inlineTimer: ReturnType<typeof setInterval> | null = null;
+  private inlineRateHz = 10;
+  private inlineRunning = false;
+  private readonly inlineActor: Actor = { id: 'OP-INLINE', role: 'supervisor' };
   private readonly reducer = new DeltaReducer();
   private readonly onBatch: (b: BatchResult) => void;
   private rafId = 0;
@@ -27,19 +33,28 @@ export class SimulatorClient implements RealtimeSource {
 
   constructor(private readonly opts: RealtimeSourceOptions) {
     this.onBatch = opts.onBatch;
-    this.worker = new Worker(
-      new URL('../../workers/simulator.worker.ts', import.meta.url),
-      { type: 'module' },
-    );
-    this.worker.onmessage = (ev: MessageEvent) => this.handleMessage(ev.data as ServerMessage);
-    this.worker.onerror = (ev: ErrorEvent) =>
-      this.opts.onError?.(ev.message || '시뮬레이터 워커 오류');
+    if (typeof Worker === 'undefined') {
+      this.label = 'worker · inline fallback';
+      this.inlineEngine = new SimEngine();
+      return;
+    }
+    this.label = 'worker';
+    try {
+      this.worker = new Worker(new URL('../../workers/simulator.worker.ts', import.meta.url), { type: 'module' });
+      this.worker.onmessage = (ev: MessageEvent) => this.handleMessage(ev.data as ServerMessage);
+      this.worker.onerror = (ev: ErrorEvent) =>
+        this.opts.onError?.(ev.message || '시뮬레이터 워커 오류');
+    } catch (error) {
+      this.label = 'worker · inline fallback';
+      this.inlineEngine = new SimEngine();
+      this.opts.onError?.(`Web Worker를 사용할 수 없어 inline fallback으로 전환했습니다: ${String(error)}`);
+    }
   }
 
   start(): void {
     if (this.running) return;
     this.running = true;
-    this.worker.postMessage({
+    this.send({
       type: 'start',
       count: this.opts.count ?? 40,
       rateHz: this.opts.rateHz ?? 10,
@@ -49,47 +64,51 @@ export class SimulatorClient implements RealtimeSource {
   }
 
   setCount(count: number): void {
-    this.worker.postMessage({ type: 'setCount', count });
+    this.send({ type: 'setCount', count });
   }
 
   setRule(rule: DispatchRule): void {
-    this.worker.postMessage({ type: 'setRule', rule });
+    this.send({ type: 'setRule', rule });
   }
 
   setPaused(paused: boolean): void {
-    this.worker.postMessage({ type: paused ? 'stop' : 'start' });
+    this.send({ type: paused ? 'stop' : 'start' });
   }
 
   inject(scenario: ScenarioKind, on = true): void {
-    this.worker.postMessage({ type: 'inject', scenario, on });
+    this.send({ type: 'inject', scenario, on });
   }
 
   ackAlert(alertId: string): void {
-    this.worker.postMessage({ type: 'ackAlert', alertId });
+    this.send({ type: 'ackAlert', alertId });
   }
 
   setDemo(on: boolean): void {
-    this.worker.postMessage({ type: 'demo', on });
+    this.send({ type: 'demo', on });
   }
 
   setRole(role: Role): void {
-    this.worker.postMessage({ type: 'setRole', role });
+    this.send({ type: 'setRole', role });
   }
 
   reassign(riderId: string): void {
-    this.worker.postMessage({ type: 'reassign', riderId });
+    this.send({ type: 'reassign', riderId });
   }
 
   contactCourier(riderId: string): void {
-    this.worker.postMessage({ type: 'contactCourier', riderId });
+    this.send({ type: 'contactCourier', riderId });
   }
 
   promoteExpress(orderId: string): void {
-    this.worker.postMessage({ type: 'promoteExpress', orderId });
+    this.send({ type: 'promoteExpress', orderId });
   }
 
   setFocus(riderId: string | null): void {
-    this.worker.postMessage({ type: 'setFocus', riderId: riderId ?? undefined });
+    this.send({ type: 'setFocus', riderId: riderId ?? undefined });
+  }
+
+  setSubscription(_subscription: ViewSubscription): void {
+    // Worker/inline 모드는 같은 브라우저 안에서 이미 전체 상태를 계산하므로 no-op.
   }
 
   getMetrics(): SourceMetrics {
@@ -97,14 +116,17 @@ export class SimulatorClient implements RealtimeSource {
   }
 
   requestSnapshot(): void {
-    this.worker.postMessage({ type: 'snapshot' });
+    this.send({ type: 'snapshot' });
   }
 
   dispose(): void {
     this.running = false;
     if (this.rafId) cancelAnimationFrame(this.rafId);
-    this.worker.postMessage({ type: 'stop' });
-    this.worker.terminate();
+    this.send({ type: 'stop' });
+    this.worker?.terminate();
+    if (this.inlineTimer) clearInterval(this.inlineTimer);
+    this.inlineTimer = null;
+    this.inlineEngine = null;
   }
 
   private handleMessage(msg: ServerMessage): void {
@@ -114,6 +136,61 @@ export class SimulatorClient implements RealtimeSource {
     if (needResync) {
       this.metrics.resyncCount += 1;
       this.requestSnapshot();
+    }
+  }
+
+  private send(cmd: ClientCommand): void {
+    if (this.worker) {
+      this.worker.postMessage(cmd);
+      return;
+    }
+    this.handleInline(cmd);
+  }
+
+  private handleInline(cmd: ClientCommand): void {
+    const engine = this.inlineEngine;
+    if (!engine) return;
+    if (cmd.type === 'setRole') {
+      if (cmd.role) this.inlineActor.role = cmd.role;
+      return;
+    }
+    if (cmd.type === 'setFocus') {
+      engine.setFocus(cmd.riderId ?? null);
+      return;
+    }
+    if (cmd.type === 'snapshot') {
+      this.handleMessage(engine.snapshot());
+      return;
+    }
+
+    const result = engine.applyCommand(cmd, this.inlineActor);
+    if (!result.accepted) {
+      this.handleMessage(engine.snapshot());
+      return;
+    }
+    switch (cmd.type) {
+      case 'start':
+        if (typeof cmd.rateHz === 'number' && Number.isFinite(cmd.rateHz)) this.inlineRateHz = Math.min(60, Math.max(1, cmd.rateHz));
+        engine.ensureSpawned(typeof cmd.count === 'number' ? cmd.count : this.opts.count ?? 40);
+        this.inlineRunning = true;
+        if (this.inlineTimer) clearInterval(this.inlineTimer);
+        this.inlineTimer = setInterval(() => {
+          if (this.inlineRunning) this.handleMessage(engine.tick(this.inlineRateHz));
+        }, Math.max(1000 / this.inlineRateHz, 16));
+        this.handleMessage(engine.snapshot());
+        break;
+      case 'stop':
+        this.inlineRunning = false;
+        if (this.inlineTimer) clearInterval(this.inlineTimer);
+        this.inlineTimer = null;
+        this.handleMessage(engine.snapshot());
+        break;
+      case 'setCount':
+        if (typeof cmd.count === 'number' && Number.isFinite(cmd.count)) engine.spawn(cmd.count);
+        this.handleMessage(engine.snapshot());
+        break;
+      default:
+        this.handleMessage(engine.snapshot());
     }
   }
 

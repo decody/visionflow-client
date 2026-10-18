@@ -98,6 +98,11 @@ const replaySpeeds = [1, 2, 4] as const;
 type ReplaySpeed = (typeof replaySpeeds)[number];
 const HISTORY_MAX = 600; // 약 60초(10Hz) 이력 버퍼
 const fleetSizes = [40, 500, 1000, 2000, 5000] as const; // 단계 7: 함대 규모 전환
+
+type PendingAction =
+  | { type: 'reassign'; label: string; target: string; impact: string; riderId: string }
+  | { type: 'contactCourier'; label: string; target: string; impact: string; riderId: string }
+  | { type: 'promoteExpress'; label: string; target: string; impact: string; orderId: string };
 const LIST_CAP = 80; // 좌측 라이더 목록 렌더 상한(대규모 함대에서 DOM 폭증 방지)
 
 // 패널 내부용 경량 오버레이 스크롤바 옵션(hover 시에만 표시).
@@ -109,6 +114,7 @@ const severityRank: Record<AlertWire['severity'], number> = { critical: 0, warni
 
 // 단계 6: 연동 경계 — 역할 선택기와 감사 타임라인.
 const roles: Role[] = ['viewer', 'dispatcher', 'supervisor'];
+const authManagedRole = Boolean(process.env.NEXT_PUBLIC_WS_TOKEN);
 const roleLabel: Record<Role, string> = {
   viewer: '조회',
   dispatcher: '배차',
@@ -196,6 +202,7 @@ export default function DeliveryControlPage() {
   const [fleetSize, setFleetSize] = useState(40);
   const [visibleOnMap, setVisibleOnMap] = useState(0);
   const [actionMessage, setActionMessage] = useState('대기 중인 운영 조치가 없습니다.');
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   // 이력 재생
   const [frameCount, setFrameCount] = useState(0);
   const [replayActive, setReplayActive] = useState(false);
@@ -225,6 +232,7 @@ export default function DeliveryControlPage() {
       count: 40,
       rateHz: 10,
       rule: 'FASTEST_ETA',
+      onError: (message) => setActionMessage(`실시간 소스 오류: ${message}`),
       onBatch: (batch) => {
         if (batch.snapshot) {
           ridersById.clear();
@@ -357,6 +365,10 @@ export default function DeliveryControlPage() {
 
   // 세션 역할 전환(연동 경계 시연). 역할을 낮추면 권한 밖 명령은 감사에 '거부'로 남는다.
   const changeRole = (next: Role) => {
+    if (authManagedRole) {
+      setActionMessage('현재 세션 역할은 WebSocket 인증 토큰으로 서버가 결정합니다.');
+      return;
+    }
     setRoleState(next);
     sourceRef.current?.setRole(next);
     setActionMessage(`세션 역할을 '${roleLabel[next]}'(으)로 전환했습니다. 권한 밖 명령은 거부·감사됩니다.`);
@@ -461,6 +473,10 @@ export default function DeliveryControlPage() {
     sourceRef.current?.setFocus(focusedId || null);
   }, [focusedId]);
 
+  useEffect(() => {
+    sourceRef.current?.setSubscription(selectedZone ? { zone: selectedZone } : {});
+  }, [selectedZone]);
+
   const pipeline = useMemo(
     () =>
       viewOrders
@@ -480,10 +496,18 @@ export default function DeliveryControlPage() {
     const queued = viewOrders.filter((o) => o.status === 'QUEUED').length;
     const inflight = viewOrders.filter((o) => inflightStatus.has(o.status)).length;
     const delayed = viewOrders.filter((o) => o.status === 'DELAYED').length;
+    const completed = viewOrders.filter((o) => o.status === 'DELIVERED').length;
+    const failed = viewOrders.filter((o) => o.status === 'FAILED').length;
+    const batteryRisk = viewRiders.filter((r) => typeof r.battery === 'number' && r.battery <= 25).length;
+    const queuedOrders = viewOrders.filter((o) => o.status === 'QUEUED');
+    const avgWait = queuedOrders.length ? Math.round(queuedOrders.reduce((sum, o) => sum + o.waitMin, 0) / queuedOrders.length) : 0;
+    const dispatchActions = audit.filter((entry) => entry.action === 'reassign' && entry.outcome === 'accepted').length;
+    const slaBase = completed + failed + delayed;
+    const sla = slaBase ? Math.round((completed / slaBase) * 100) : 100;
     const etas = viewRiders.filter((r) => r.status !== 'IDLE' && r.status !== 'CHARGING').map((r) => r.etaMin);
     const avgEta = etas.length ? Math.round(etas.reduce((a, b) => a + b, 0) / etas.length) : 0;
-    return { active: viewRiders.length, delivering, charging, queued, inflight, delayed, avgEta };
-  }, [viewRiders, viewOrders]);
+    return { active: viewRiders.length, delivering, charging, queued, inflight, delayed, avgEta, completed, failed, batteryRisk, avgWait, dispatchActions, sla };
+  }, [audit, viewRiders, viewOrders]);
 
   const sortedAlerts = useMemo(
     () =>
@@ -503,15 +527,47 @@ export default function DeliveryControlPage() {
   const focusAlert = (alert: AlertWire) => {
     if (alert.riderId) setSelectedId(alert.riderId);
   };
-  // 운영 조치 — 연동 경계를 통과한다(dispatcher 이상만 승인). 결과는 감사로 반영.
+  // 운영 조치 — 먼저 영향 범위를 확인하고, 두 번째 클릭에서 연동 경계를 통과한다.
   const requestReassign = () => {
-    if (selected) sourceRef.current?.reassign(selected.id);
+    if (selected) {
+      setPendingAction({
+        type: 'reassign',
+        label: '재배차 요청',
+        target: `${selected.id} · ${selected.name}`,
+        impact: selectedOrder ? `현재 주문 ${selectedOrder.id} · ETA ${selectedOrder.etaMin}분` : '현재 배정 주문 없음',
+        riderId: selected.id,
+      });
+    }
   };
   const contactCourier = () => {
-    if (selected) sourceRef.current?.contactCourier(selected.id);
+    if (selected) {
+      setPendingAction({
+        type: 'contactCourier',
+        label: '라이더 연락',
+        target: `${selected.id} · ${selected.name}`,
+        impact: selectedOrder ? `현재 주문 ${selectedOrder.id} 진행 상황 확인` : '현재 배정 주문 없음',
+        riderId: selected.id,
+      });
+    }
   };
   const promoteExpress = () => {
-    if (selectedOrder && selectedOrder.priority !== 'EXPRESS') sourceRef.current?.promoteExpress(selectedOrder.id);
+    if (selectedOrder && selectedOrder.priority !== 'EXPRESS') {
+      setPendingAction({
+        type: 'promoteExpress',
+        label: '특급 승격',
+        target: selectedOrder.id,
+        impact: `현재 우선순위 NORMAL · ETA ${selectedOrder.etaMin}분`,
+        orderId: selectedOrder.id,
+      });
+    }
+  };
+  const confirmPendingAction = () => {
+    if (!pendingAction) return;
+    if (pendingAction.type === 'reassign') sourceRef.current?.reassign(pendingAction.riderId);
+    if (pendingAction.type === 'contactCourier') sourceRef.current?.contactCourier(pendingAction.riderId);
+    if (pendingAction.type === 'promoteExpress') sourceRef.current?.promoteExpress(pendingAction.orderId);
+    setActionMessage(`${pendingAction.label} 실행 요청을 전송했습니다. 승인·거부 결과는 감사 타임라인에 반영됩니다.`);
+    setPendingAction(null);
   };
   const selectZone = (zone: string) => setSelectedZone((z) => (z === zone ? '' : zone));
 
@@ -553,7 +609,7 @@ export default function DeliveryControlPage() {
         <div className="role-switch" aria-label="세션 역할">
           <span className="role-kicker">역할</span>
           {roles.map((r) => (
-            <button key={r} className={role === r ? 'role-chip active' : 'role-chip'} onClick={() => changeRole(r)} title={`${roleLabel[r]} 권한으로 명령을 전송합니다`}>
+            <button key={r} disabled={authManagedRole} className={role === r ? 'role-chip active' : 'role-chip'} onClick={() => changeRole(r)} title={authManagedRole ? '서버 인증 토큰으로 역할이 결정됩니다' : `${roleLabel[r]} 권한으로 명령을 전송합니다`}>
               {roleLabel[r]}
             </button>
           ))}
@@ -565,6 +621,10 @@ export default function DeliveryControlPage() {
         <Kpi label="진행 중 주문" value={String(kpi.inflight)} detail="집화·배송 수행 중" tone="green" />
         <Kpi label="미배차 대기" value={String(kpi.queued)} detail={`지연 ${kpi.delayed}건`} tone="orange" />
         <Kpi label="평균 ETA" value={`${kpi.avgEta}분`} detail="목표 20분" tone="violet" />
+        <Kpi label="완료 배송" value={String(kpi.completed)} detail={`실패 ${kpi.failed}건`} tone="green" />
+        <Kpi label="SLA 준수율" value={`${kpi.sla}%`} detail="완료·실패·지연 기준" tone="blue" />
+        <Kpi label="평균 대기" value={`${kpi.avgWait}분`} detail="미배차 주문 기준" tone="orange" />
+        <Kpi label="배터리 위험" value={String(kpi.batteryRisk)} detail={`재배차 ${kpi.dispatchActions}건`} tone="violet" />
       </section>
 
       <section className="zone-band" aria-label="권역별 현황">
@@ -715,11 +775,23 @@ export default function DeliveryControlPage() {
           <div className="subheading">운영 조치 <span className="sub-count">{roleLabel[role]} 권한</span></div>
           <div className="command-panel">
             <p>{actionMessage}</p>
-            <div className="command-actions">
-              <button className="command primary" onClick={requestReassign} disabled={!selected}>재배차 요청</button>
-              <button className="command" onClick={contactCourier} disabled={!selected}>라이더 연락</button>
-              <button className="command" onClick={promoteExpress} disabled={!selectedOrder || selectedOrder.priority === 'EXPRESS'}>특급 승격</button>
-            </div>
+            {pendingAction ? (
+              <div className="command-confirm" role="alert">
+                <strong>실행 전 확인</strong>
+                <span>{pendingAction.label} · {pendingAction.target}</span>
+                <small>{pendingAction.impact}</small>
+                <div className="command-actions">
+                  <button className="command primary" onClick={confirmPendingAction}>확인 실행</button>
+                  <button className="command" onClick={() => setPendingAction(null)}>취소</button>
+                </div>
+              </div>
+            ) : (
+              <div className="command-actions">
+                <button className="command primary" onClick={requestReassign} disabled={!selected}>재배차 요청</button>
+                <button className="command" onClick={contactCourier} disabled={!selected}>라이더 연락</button>
+                <button className="command" onClick={promoteExpress} disabled={!selectedOrder || selectedOrder.priority === 'EXPRESS'}>특급 승격</button>
+              </div>
+            )}
             <small className="permission-note">
               {role === 'viewer'
                 ? '조회 권한에서는 운영 명령이 연동 경계에서 거부되고 감사에 남습니다.'

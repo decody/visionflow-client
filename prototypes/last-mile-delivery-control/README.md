@@ -59,13 +59,41 @@ pnpm ws:server                                             # 방식 B: 로컬 ws
 pnpm perf                                                  # 헤드리스 성능 벤치 → perf-report.md
 ```
 
+Web Worker를 사용할 수 없는 브라우저 환경에서는 동일한 `SimEngine`을 메인 스레드에서 실행하는 inline fallback으로 자동 전환한다. 개발 서버를 네트워크 주소로 접속하는 경우에는 `next.config.mjs`의 `allowedDevOrigins`에 해당 preview host를 추가해야 한다.
+
 ### 방식 B (ws 소켓)
 
 `pnpm ws:server`로 로컬 ws 서버(:3014)를 띄운 뒤 `http://localhost:3013/?src=ws`로 접속하면 Web Worker 대신 ws 서버에 연결된다(재연결·heartbeat·스냅샷 재동기 시연). `NEXT_PUBLIC_WS_URL`로 주소를 바꿀 수 있다.
 
+#### WebSocket 인증·상태 범위
+
+기본 로컬 데모는 토큰 없이 supervisor로 동작한다. 운영형 역할 경계를 시연하려면 서버에 `WS_AUTH_TOKENS`를 설정한다.
+
+```bash
+WS_AUTH_TOKENS=demo-viewer=OP-VIEWER:viewer,demo-dispatcher=OP-DISPATCHER:dispatcher
+NEXT_PUBLIC_WS_TOKEN=demo-viewer
+```
+
+토큰이 설정되면 actor와 role은 서버가 결정하고 클라이언트의 `setRole` 변경은 거부된다. 기본 `shared` 모드에서는 모든 연결이 하나의 데모 시뮬레이션 상태를 공유하고, `isolated` 모드에서는 연결별 엔진을 사용한다.
+
+고정 토큰 대신 HS256 JWT를 검증하려면 `WS_JWT_SECRET`을 설정한다. JWT의 `sub`, `role(viewer|dispatcher|supervisor|system)`, 선택적 `exp` claim을 사용하며, 실제 배포에서는 IdP JWKS 검증기로 교체한다.
+
+운영형 보호 설정도 환경변수로 지정할 수 있다.
+
+```bash
+WS_MAX_PAYLOAD_BYTES=65536
+WS_COMMANDS_PER_WINDOW=60
+WS_AUDIT_LOG=./runtime/ws-audit.jsonl
+WS_STATE_SCOPE=isolated
+```
+
+서버는 payload 크기와 연결별 명령 빈도를 제한하고, 재배차·연락·특급 승격·알람 확인 명령의 대상 ID가 현재 엔진에 존재하는지 확인한다. `WS_AUDIT_LOG`가 지정된 경우 승인·거부 결과를 JSONL로 append한다. 실제 배포에서는 이 파일 대신 중앙 감사 로그 저장소로 교체해야 한다.
+
+`WS_STATE_SCOPE=isolated`를 사용하면 연결마다 독립된 시뮬레이션 엔진·일시정지·함대 규모·배차 규칙을 사용한다. 기본값 `shared`는 여러 운영자가 하나의 데모 상태를 함께 보는 호환 모드다.
+
 ### 성능 벤치 (헤드리스)
 
-브라우저 렌더 FPS는 GPU·자동화 환경에 좌우돼 재현성이 낮다. `server/perf-bench.ts`는 ws-server가 매 틱 수행하는 `JSON.stringify(engine.tick())`과 동일 경로를 노드에서 반복 실행해 대수(500/1,000/2,000/5,000)별 tick·직렬화 지연 p95, 델타 바이트, 지속 가능 Hz, 메모리를 측정한다. 고정 seed·고정 clock으로 결정론적이며 결과는 `perf-report.md`에 저장한다. 최근 실행 기준 5,000대에서 frame p95 12.17ms로 10Hz 예산을 약 8× 여유로 통과했다(가·감속·신호·통제·도킹·허브 슬롯 보강 포함).
+브라우저 렌더 FPS는 GPU·자동화 환경에 좌우돼 재현성이 낮다. `server/perf-bench.ts`는 ws-server가 매 틱 수행하는 `JSON.stringify(engine.tick())`과 동일 경로를 노드에서 반복 실행해 대수(500/1,000/2,000/5,000)별 tick·직렬화 지연 p95, 델타 바이트, 지속 가능 Hz, 메모리를 측정한다. 고정 seed·고정 clock으로 결정론적이며 결과는 `perf-report.md`에 저장한다. 최근 실행 기준 5,000대에서 frame p95 13.92ms, 평균 델타 928KB로 지속 가능 Hz 72를 기록해 10Hz 예산을 통과했다(가·감속·신호·통제·도킹·허브 슬롯 보강 포함).
 
 ```bash
 pnpm perf -- --counts=1000,5000 --ticks=600 --rate=10

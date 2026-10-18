@@ -14,9 +14,50 @@ import type {
   AuditEntry,
   CommandResult,
   CommandType,
+  DispatchRule,
   Role,
+  ScenarioKind,
 } from '@/entities/delivery/types';
 import type { ClientCommand } from '@/shared/realtime/types';
+
+const commandTypes = new Set<string>([
+  'snapshot', 'start', 'stop', 'setCount', 'setRule', 'ackAlert', 'demo',
+  'reassign', 'contactCourier', 'promoteExpress', 'inject',
+]);
+const dispatchRules = new Set<DispatchRule>(['FASTEST_ETA', 'NEAREST', 'FIFO']);
+const scenarios = new Set<ScenarioKind>(['incident', 'surge', 'battery', 'closure', 'reset']);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 128;
+}
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/** WebSocket/Worker 경계에서 JSON payload를 런타임 검증한다. */
+export function parseClientCommand(value: unknown): { command: ClientCommand | null; reason?: string } {
+  if (!isRecord(value) || typeof value.type !== 'string' || !commandTypes.has(value.type)) {
+    return { command: null, reason: '지원하지 않는 명령 형식입니다.' };
+  }
+  const type = value.type as ClientCommand['type'];
+  if (type === 'setRule' && !dispatchRules.has(value.rule as DispatchRule)) return { command: null, reason: '배차 규칙이 올바르지 않습니다.' };
+  if (type === 'inject' && (!scenarios.has(value.scenario as ScenarioKind) || (value.on !== undefined && typeof value.on !== 'boolean'))) {
+    return { command: null, reason: '시나리오 payload가 올바르지 않습니다.' };
+  }
+  if (['setCount', 'start'].includes(type) && value.count !== undefined && (!isFiniteNumber(value.count) || value.count < 1 || value.count > 5000)) {
+    return { command: null, reason: 'count는 1~5000 범위의 숫자여야 합니다.' };
+  }
+  if (type === 'start' && value.rateHz !== undefined && (!isFiniteNumber(value.rateHz) || value.rateHz < 1 || value.rateHz > 60)) {
+    return { command: null, reason: 'rateHz는 1~60 범위의 숫자여야 합니다.' };
+  }
+  if (type === 'ackAlert' && !isNonEmptyString(value.alertId)) return { command: null, reason: 'alertId가 필요합니다.' };
+  if (['reassign', 'contactCourier'].includes(type) && !isNonEmptyString(value.riderId)) return { command: null, reason: 'riderId가 필요합니다.' };
+  if (type === 'promoteExpress' && !isNonEmptyString(value.orderId)) return { command: null, reason: 'orderId가 필요합니다.' };
+  return { command: value as unknown as ClientCommand };
+}
 
 /** 역할 등급(높을수록 강한 권한). */
 export const ROLE_RANK: Record<Role, number> = {

@@ -14,6 +14,7 @@ import type {
   RealtimeSourceOptions,
   ServerMessage,
   SourceMetrics,
+  ViewSubscription,
 } from './types';
 
 const HEARTBEAT_MS = 10000;
@@ -74,7 +75,11 @@ export class SocketClient implements RealtimeSource {
     if (this.disposed) return;
     let ws: WebSocket;
     try {
-      ws = new WebSocket(this.url);
+      const token = process.env.NEXT_PUBLIC_WS_TOKEN;
+      const url = token
+        ? `${this.url}${this.url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+        : this.url;
+      ws = new WebSocket(url);
     } catch {
       this.scheduleReconnect();
       return;
@@ -186,6 +191,9 @@ export class SocketClient implements RealtimeSource {
   setFocus(riderId: string | null): void {
     this.focusId = riderId;
     this.send({ type: 'setFocus', riderId: riderId ?? undefined });
+  }
+  setSubscription(subscription: ViewSubscription): void {
+    this.send({ type: 'setSubscription', subscription });
   }
   requestSnapshot(): void {
     this.send({ type: 'snapshot' });

@@ -189,11 +189,29 @@ function isTerminal(order: Order): boolean {
   return order.status === 'DELIVERED' || order.status === 'FAILED';
 }
 
+function sameRiderWire(a: RiderWire, b: RiderWire): boolean {
+  if (
+    a.id !== b.id || a.status !== b.status || a.lon !== b.lon || a.lat !== b.lat ||
+    a.heading !== b.heading || a.speed !== b.speed || a.completed !== b.completed ||
+    a.total !== b.total || a.etaMin !== b.etaMin || a.orderId !== b.orderId ||
+    a.battery !== b.battery || a.dock !== b.dock
+  ) return false;
+  const ar = a.route;
+  const br = b.route;
+  if (ar === br) return true;
+  if (!ar || !br || ar.length !== br.length) return false;
+  for (let i = 0; i < ar.length; i += 1) {
+    if (ar[i]![0] !== br[i]![0] || ar[i]![1] !== br[i]![1]) return false;
+  }
+  return true;
+}
+
 export class SimEngine {
   private readonly graph: RoadGraph;
   private readonly hubNodes: string[];
   private readonly zoneNodes: Record<string, string[]>;
   private readonly riders = new Map<string, Rider>();
+  private readonly riderWireCache = new Map<string, RiderWire>();
   private readonly orders = new Map<string, Order>();
   private rng = mulberry32(20260101);
   private seq = 0;
@@ -300,6 +318,18 @@ export class SimEngine {
     return this.riders.size;
   }
 
+  hasRider(riderId: string): boolean {
+    return this.riders.has(riderId);
+  }
+
+  hasOrder(orderId: string): boolean {
+    return this.orders.has(orderId);
+  }
+
+  hasAlert(alertId: string): boolean {
+    return this.alerts.has(alertId);
+  }
+
   ensureSpawned(count: number): void {
     if (this.riders.size === 0) this.spawn(count);
   }
@@ -310,6 +340,7 @@ export class SimEngine {
 
   spawn(count: number): void {
     this.riders.clear();
+    this.riderWireCache.clear();
     this.orders.clear();
     this.pathMemo.clear();
     this.newOrderIds.clear();
@@ -433,11 +464,20 @@ export class SimEngine {
     this.newAlertIds.clear();
     this.removedAlertIds.clear();
 
+    const upd: RiderWire[] = [];
+    for (const rider of this.riders.values()) {
+      const wire = this.toWire(rider);
+      const previous = this.riderWireCache.get(rider.id);
+      if (!previous || !sameRiderWire(previous, wire)) upd.push(wire);
+      this.riderWireCache.set(rider.id, wire);
+    }
+
     const msg: DeltaMessage = {
       type: 'delta',
       seq: this.seq,
       tick: this.tickCount,
-      upd: [...this.riders.values()].map((r) => this.toWire(r)),
+      // 위치·상태·ETA 등이 바뀐 라이더만 보낸다. 정차·충전 라이더는 반복 전송하지 않는다.
+      upd,
     };
     if (ordersAdd.length) msg.ordersAdd = ordersAdd;
     if (ordersUpd.length) msg.ordersUpd = ordersUpd;
@@ -458,6 +498,7 @@ export class SimEngine {
   }
 
   snapshot(): SnapshotMessage {
+    for (const rider of this.riders.values()) this.riderWireCache.set(rider.id, this.toWire(rider));
     return {
       type: 'snapshot',
       seq: this.seq,

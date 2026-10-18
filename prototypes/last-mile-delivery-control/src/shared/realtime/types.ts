@@ -80,6 +80,11 @@ export interface SignalWire {
   state: 'GO' | 'STOP';
 }
 
+export interface ViewSubscription {
+  zone?: string;
+  extent?: [number, number, number, number];
+}
+
 /** 와이어로 흐르는 주문 상태(생명주기·배차 패널 공통). 단계 3. */
 export interface OrderWire {
   id: string;
@@ -162,6 +167,7 @@ export interface ClientCommand {
   riderId?: string;
   orderId?: string;
   role?: Role;
+  subscription?: ViewSubscription;
 }
 
 /** 개발 진단용 누적 카운터(단계 5). 페이지가 초당 차분으로 rate를 계산한다. */
@@ -205,6 +211,8 @@ export interface RealtimeSource {
   promoteExpress(orderId: string): void;
   /** 단계 7: 추적선을 스트리밍할 포커스 라이더 지정(null이면 없음). */
   setFocus(riderId: string | null): void;
+  /** 연결별 권역/지도 extent 구독. ws 서버에서 outbound 메시지를 필터링한다. */
+  setSubscription(subscription: ViewSubscription): void;
   /** 단계 5: 개발 진단용 누적 카운터 스냅샷. */
   getMetrics(): SourceMetrics;
   dispose(): void;

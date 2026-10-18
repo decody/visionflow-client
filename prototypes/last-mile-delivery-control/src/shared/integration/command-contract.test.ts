@@ -5,6 +5,7 @@ import {
   authorizeCommand,
   buildAuditEntry,
   describeCommand,
+  parseClientCommand,
 } from './command-contract';
 
 const viewer: Actor = { id: 'V', role: 'viewer' };
@@ -66,4 +67,15 @@ test('describeCommand: 사람이 읽는 상세 문자열', () => {
   assert.match(describeCommand({ type: 'promoteExpress', orderId: 'ORD-10231' }), /ORD-10231/);
   assert.match(describeCommand({ type: 'inject', scenario: 'incident', on: true }), /교통 정체/);
   assert.match(describeCommand({ type: 'inject', scenario: 'incident', on: false }), /해제/);
+});
+
+test('parseClientCommand: 유효한 운영 명령을 통과시킨다', () => {
+  const parsed = parseClientCommand({ type: 'setCount', count: 500 });
+  assert.equal(parsed.command?.type, 'setCount');
+});
+
+test('parseClientCommand: 잘못된 범위와 필수 식별자를 거부한다', () => {
+  assert.equal(parseClientCommand({ type: 'setCount', count: 0 }).command, null);
+  assert.equal(parseClientCommand({ type: 'reassign' }).command, null);
+  assert.equal(parseClientCommand({ type: 'inject', scenario: 'unknown' }).command, null);
 });
