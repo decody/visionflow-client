@@ -1,0 +1,429 @@
+{
+  "type": "FeatureCollection",
+  "name": "synthetic-logistics-network",
+  "note": "Synthetic hubs and lanes. NOT a real carrier network.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SGSIN",
+        "kind": "PORT",
+        "name": "Singapore",
+        "region": "APAC",
+        "dwellCap": 40
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          103.8,
+          1.26
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "CNSHA",
+        "kind": "PORT",
+        "name": "Shanghai",
+        "region": "APAC",
+        "dwellCap": 48
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.8,
+          31.0
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "KRICN",
+        "kind": "AIRPORT",
+        "name": "Incheon",
+        "region": "APAC",
+        "dwellCap": 30
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.45,
+          37.46
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "AEJEA",
+        "kind": "PORT",
+        "name": "Jebel Ali",
+        "region": "MEA",
+        "dwellCap": 36
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          55.06,
+          25.0
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "NLRTM",
+        "kind": "PORT",
+        "name": "Rotterdam",
+        "region": "EMEA",
+        "dwellCap": 44
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.1,
+          51.95
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "DEFRA",
+        "kind": "AIRPORT",
+        "name": "Frankfurt",
+        "region": "EMEA",
+        "dwellCap": 28
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          8.57,
+          50.05
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "CNCTU",
+        "kind": "RAIL_TERMINAL",
+        "name": "Chengdu",
+        "region": "APAC",
+        "dwellCap": 20
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          104.07,
+          30.57
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "USLAX",
+        "kind": "PORT",
+        "name": "Los Angeles",
+        "region": "AMER",
+        "dwellCap": 42
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.26,
+          33.73
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "USMEM",
+        "kind": "AIRPORT",
+        "name": "Memphis",
+        "region": "AMER",
+        "dwellCap": 26
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -89.98,
+          35.04
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "USCHI",
+        "kind": "DC",
+        "name": "Chicago DC",
+        "region": "AMER",
+        "dwellCap": 24
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.63,
+          41.88
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "CNSHA",
+        "to": "SGSIN",
+        "mode": "SEA"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            121.8,
+            31.0
+          ],
+          [
+            103.8,
+            1.26
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "SGSIN",
+        "to": "AEJEA",
+        "mode": "SEA"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            103.8,
+            1.26
+          ],
+          [
+            55.06,
+            25.0
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "AEJEA",
+        "to": "NLRTM",
+        "mode": "SEA"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            55.06,
+            25.0
+          ],
+          [
+            4.1,
+            51.95
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "CNSHA",
+        "to": "USLAX",
+        "mode": "SEA"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            121.8,
+            31.0
+          ],
+          [
+            -118.26,
+            33.73
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "KRICN",
+        "to": "DEFRA",
+        "mode": "AIR"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.45,
+            37.46
+          ],
+          [
+            8.57,
+            50.05
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "KRICN",
+        "to": "USMEM",
+        "mode": "AIR"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.45,
+            37.46
+          ],
+          [
+            -89.98,
+            35.04
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "DEFRA",
+        "to": "USMEM",
+        "mode": "AIR"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            8.57,
+            50.05
+          ],
+          [
+            -89.98,
+            35.04
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "CNCTU",
+        "to": "DEFRA",
+        "mode": "RAIL"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            104.07,
+            30.57
+          ],
+          [
+            8.57,
+            50.05
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "CNSHA",
+        "to": "CNCTU",
+        "mode": "RAIL"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            121.8,
+            31.0
+          ],
+          [
+            104.07,
+            30.57
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "USLAX",
+        "to": "USCHI",
+        "mode": "ROAD"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -118.26,
+            33.73
+          ],
+          [
+            -87.63,
+            41.88
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "USMEM",
+        "to": "USCHI",
+        "mode": "ROAD"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -89.98,
+            35.04
+          ],
+          [
+            -87.63,
+            41.88
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "from": "NLRTM",
+        "to": "DEFRA",
+        "mode": "ROAD"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4.1,
+            51.95
+          ],
+          [
+            8.57,
+            50.05
+          ]
+        ]
+      }
+    }
+  ]
+}
