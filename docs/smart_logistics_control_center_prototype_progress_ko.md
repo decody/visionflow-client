@@ -46,14 +46,14 @@
 | P1 | 성능 리포트 재현성 강화 | 완료 — `perf:browser`, 고정 viewport·측정 시간·userAgent·CPU·deviceMemory를 기록 |
 | P2 | 문서 경로와 주석 정리 | 완료 — README의 기획서 경로, 현재 폴더 구조, `page.tsx`·`view-controller.ts`·mock/realtime 계약의 과거 단계 주석을 현재 구현 기준으로 정리 |
 | P2 | Git 전달 상태 정리 | 완료 — 2026-11-02 `visionflow-client`에 커밋·푸시(`dd3f476`, 브랜치 `agent/amhs-oht-control-prototype`). 진행 문서도 `visionflow-client/docs/`로 이동해 함께 추적 |
-| 잔여 | 실제 GPU 브라우저 육안 확인 | 미완 — Playwright/소프트웨어 렌더 환경에서 1k 6.4 FPS·5k 5.2 FPS로 목표 50 FPS 미달. 비대표 수치로 판단하며, 동일 조건의 실제 GPU(로컬 Chrome)에서 글로브 arc·허브·히트맵·지역 상세·전환 애니메이션 육안 확인 필요 |
+| 잔여 | 실제 GPU 브라우저 육안 확인 | 완료 — 2026-11-02 실제 Chrome(로컬 GPU, http://localhost:3015)에서 글로브 렌더·회전·실시간 운송수단이 매끄럽게 동작함을 사용자 육안 확인. Playwright 소프트웨어 렌더 수치(1k 6.4·5k 5.2 FPS)는 비대표로 확정 |
 
 ## 현재 판단
 
 - MVP 코어는 1,000 conveyance / 10,000 shipment에서 10Hz, frame p95 ~20ms로 통과했다.
 - 5,000 / 50,000 스트레스 규모는 코어 frame p95 ~130~150ms, 지속 가능 7~8Hz로 MVP 기준이 아니다(의도된 별도 보고).
 - 브라우저 측정은 1,000대 평균 6.4 FPS, 5,000대 평균 5.2 FPS로 목표 평균 50 FPS에 미달했다. Playwright/소프트웨어 렌더링 환경의 영향 가능성이 크므로 동일 조건의 실제 GPU 측정이 필요하다.
-- 코드·테스트·벤치·문서·Git 정리는 완료했다. 남은 유일한 DoD 항목은 실제 GPU에서의 deck.gl 렌더 육안 확인이다.
+- 코드·테스트·벤치·문서·Git 정리는 완료했다. 2026-11-02 실제 GPU 브라우저 육안 확인까지 마쳐 **기획서 DoD §14 전 항목 충족 = 프로토타입 완성**이다.
 
 ## Git 전달 범위
 
